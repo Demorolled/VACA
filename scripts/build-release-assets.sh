@@ -2,23 +2,30 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # build-release-assets.sh — stage the files that go on a GitHub Release
 # =============================================================================
-# Three files are too big to live in git (two of them are over GitHub's 100 MB
-# hard per-file limit), so they are release assets instead. This script collects
-# them into dist/, hashes them, and prints the exact upload command.
+# These files are too big to live in git (most are over GitHub's 100 MB hard
+# per-file limit), so they are release assets instead. This script collects them
+# into dist/, hashes them, and prints the exact upload command.
 #
 #   dist/Veronica-<version>.AppImage                 portable, needs libfuse2
 #   dist/veronica_<version>_amd64.deb                apt/dpkg install
 #   dist/Veronica-<version>-linux-x64.tar.gz         self-contained runtime dir
-#   dist/SHA256SUMS                                  checksums for all three
+#   dist/Veronica-Setup-<version>.exe                Windows installer (optional)
+#   dist/SHA256SUMS                                  checksums for everything staged
 #
 # The tarball is the whole linux-unpacked/ tree, node_modules included: that is
 # what makes it runnable on a machine with no Node and no FUSE. It is also what
 # scripts/fetch-release-assets.sh extracts back over a clone.
 #
+# The Windows installer is built by a different project (packaging/windows in the
+# source tree), so it is not discovered automatically — pass it in with
+# --windows. Anything already sitting in dist/ as *.exe is hashed and listed too,
+# so a hand-placed installer cannot be silently left out of SHA256SUMS.
+#
 # Nothing here is committed — dist/ is gitignored.
 #
 # Usage
 #   ./scripts/build-release-assets.sh
+#   ./scripts/build-release-assets.sh --windows ~/path/Veronica-Setup-1.0.0.exe
 #   ./scripts/build-release-assets.sh --out /tmp/v1.0.0
 #   ./scripts/build-release-assets.sh --skip-tarball      # AppImage + .deb only
 #   ./scripts/build-release-assets.sh --recompress        # rebuild the .tar.gz
@@ -31,10 +38,12 @@ ROOT="$PWD"
 OUT="$ROOT/dist"
 SKIP_TARBALL=0
 RECOMPRESS=0
+WINDOWS_ASSET=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --out)          OUT="${2:?--out needs a directory}"; shift ;;
+    --windows)      WINDOWS_ASSET="${2:?--windows needs a path to the installer}"; shift ;;
     --skip-tarball) SKIP_TARBALL=1 ;;
     --recompress)   RECOMPRESS=1 ;;
     -h|--help)      awk 'NR>1 { if ($0 ~ /^#/) { sub(/^# ?/, ""); print; next } exit }' "$0"; exit 0 ;;
@@ -79,6 +88,13 @@ stage() {
 stage "$ROOT/Veronica-$VERSION.AppImage"    "$OUT/Veronica-$VERSION.AppImage"    || true
 stage "$ROOT/veronica_${VERSION}_amd64.deb" "$OUT/veronica_${VERSION}_amd64.deb" || true
 
+if [ -n "$WINDOWS_ASSET" ]; then
+  stage "$WINDOWS_ASSET" "$OUT/$(basename "$WINDOWS_ASSET")" || true
+elif ls "$OUT"/*.exe >/dev/null 2>&1; then
+  step "stage Windows installer (already in $OUT)"
+  for f in "$OUT"/*.exe; do say "  keeping $(basename "$f")  ($(du -h "$f" | cut -f1))"; done
+fi
+
 if [ "$SKIP_TARBALL" = 0 ]; then
   step "pack linux-unpacked/ → Veronica-$VERSION-linux-x64.tar.gz"
   [ -x "$ROOT/linux-unpacked/veronica" ] \
@@ -99,7 +115,7 @@ step "checksums"
 # what fetch-release-assets.sh's lookup expects. Globs that match nothing are
 # passed through literally and error out; stderr is dropped, the matches still
 # get hashed, and a wholly empty result is caught below.
-( cd "$OUT" && $(sha_tool) *.AppImage *.deb *.tar.gz 2>/dev/null > SHA256SUMS || true )
+( cd "$OUT" && $(sha_tool) *.AppImage *.deb *.tar.gz *.exe 2>/dev/null > SHA256SUMS || true )
 if [ -s "$OUT/SHA256SUMS" ]; then
   sed 's/^/  /' "$OUT/SHA256SUMS"
 else
@@ -111,7 +127,7 @@ fi
 # rather than after a failed upload.
 step "size check"
 oversize=0
-for f in "$OUT"/*.AppImage "$OUT"/*.deb "$OUT"/*.tar.gz; do
+for f in "$OUT"/*.AppImage "$OUT"/*.deb "$OUT"/*.tar.gz "$OUT"/*.exe; do
   [ -f "$f" ] || continue
   bytes=$(stat -Lc %s "$f")
   mb=$(( bytes / 1000000 ))
@@ -140,7 +156,7 @@ fi
 say ""
 
 say "    gh release create v$VERSION \\"
-for f in "$OUT"/*.AppImage "$OUT"/*.deb "$OUT"/*.tar.gz "$OUT"/SHA256SUMS; do
+for f in "$OUT"/*.AppImage "$OUT"/*.deb "$OUT"/*.tar.gz "$OUT"/*.exe "$OUT"/SHA256SUMS; do
   [ -f "$f" ] || continue
   say "        $OUT/$(basename "$f") \\"
 done

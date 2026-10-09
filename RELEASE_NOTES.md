@@ -1,4 +1,4 @@
-# Veronica 1.0.0 — Linux x64
+# Veronica 1.0.0 — Linux x64 · Windows x64
 
 First public build of Veronica (VACA), the AI code architect: describe an app in
 plain English and it builds it.
@@ -15,7 +15,8 @@ plain English and it builds it.
 | `veronica_1.0.0_amd64.deb` | Ubuntu/Debian system install. `sudo apt install ./veronica_1.0.0_amd64.deb` |
 | `Veronica-1.0.0.AppImage` | Portable, no install. Needs `libfuse2`. |
 | `Veronica-1.0.0-linux-x64.tar.gz` | Self-contained runtime directory. Extract anywhere and run `linux-unpacked/veronica`. |
-| `SHA256SUMS` | Checksums for the three files above. |
+| `Veronica-Setup-1.0.0.exe` | Windows x64 installer. Per-user NSIS, no admin prompt, creates shortcuts. Unsigned. |
+| `SHA256SUMS` | Checksums for the four files above. |
 
 ## You also need the model — it is not in these files
 
@@ -39,8 +40,11 @@ See the README section “The model — downloaded separately”. Briefly:
 
 ## Requirements
 
-- Ubuntu/Debian x86-64. GTK3, NSS, libsecret and the usual Chromium runtime
-  libraries (the `.deb` declares them).
+- Linux: Ubuntu/Debian x86-64. GTK3, NSS, libsecret and the usual Chromium
+  runtime libraries (the `.deb` declares them). Windows: 10/11 x64.
+- The Windows installer was cross-built with wine on Linux and its packaged
+  payload was verified, but it has **not** been installed and launched on a real
+  Windows machine. Expect to shake out first-run issues.
 - No system Node — the bundled backend runs on Electron's own Node.
 - A GPU is not required, but a 14B Q4_K_M wants roughly 9–10 GB of VRAM to be
   usable. It will fall back to CPU, slowly.

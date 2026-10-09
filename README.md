@@ -6,10 +6,10 @@
 [![License](https://img.shields.io/badge/license-proprietary-red)](#license)
 
 Describe what you want in plain English and it builds the app. Electron desktop
-app for Linux x64 (Ubuntu/Debian), bundling its own Node backend — no system
-Node install required.
+app for Linux x64 (Ubuntu/Debian) and Windows x64, bundling its own Node backend
+— no system Node install required.
 
-> **Status: 1.0.0, Linux x64 only.** Prebuilt binaries live on the
+> **Status: 1.0.0, Linux x64 and Windows x64.** Prebuilt binaries live on the
 > [releases page](https://github.com/demorolled/vaca/releases); the model is
 > installed separately (see below).
 
@@ -24,7 +24,7 @@ Node install required.
 
 | Missing | Where it lives | Why |
 |---|---|---|
-| The packaged binaries (AppImage, `.deb`, runtime tarball) | **[Releases](../../releases)** | Two of them are past GitHub's 100 MB per-file limit, and build output does not belong in git. |
+| The packaged binaries (AppImage, `.deb`, runtime tarball, Windows installer) | **[Releases](../../releases)** | Most are past GitHub's 100 MB per-file limit, and build output does not belong in git. |
 | The LLM — Qwen2.5 14B, ~9 GB | **Downloaded separately**, once per machine | Tens of GB, separately licensed, and it changes on its own schedule. See [The model](#the-model--downloaded-separately). |
 
 Everything else — the Electron main process, the backend, the frontend, the
@@ -89,7 +89,22 @@ chmod +x Veronica-1.0.0.AppImage
 Needs FUSE 2 (`sudo apt install libfuse2` on 22.04+). Without it, AppImage
 refuses to start and says so.
 
-### C. Straight from a clone of this repo
+### C. Windows installer
+
+```powershell
+.\Veronica-Setup-1.0.0.exe
+```
+
+A per-user NSIS install (no admin prompt) that creates Start Menu and desktop
+shortcuts. The installer is unsigned, so SmartScreen will warn on first run.
+
+> **Not verified on real Windows.** This installer was cross-built on Linux with
+> wine, and everything below was checked against its packaged payload — same
+> `main.js`, same demo deadline, same `payload/` — but it has not been
+> installed and launched on an actual Windows machine. Treat the first Windows
+> run as a test.
+
+### D. Straight from a clone of this repo
 
 ```bash
 git clone https://github.com/demorolled/vaca.git
@@ -247,7 +262,7 @@ logs, and machine-local `*.env` files.
 | `scripts/install-model.sh` | Pulls or creates the model, then verifies it actually generates. The only step that is not part of the app. |
 | `scripts/run-from-checkout.sh` | Runs the app from a clone. Uses the prebuilt runtime if present, otherwise installs deps + Electron. Handles the Chromium sandbox. |
 | `scripts/fetch-release-assets.sh` | Downloads release assets and verifies them against `SHA256SUMS`; extracts the runtime tarball over the checkout. |
-| `scripts/build-release-assets.sh` | Maintainer: stages the AppImage, `.deb` and runtime tarball into `dist/`, writes `SHA256SUMS`, prints the `gh release create` line. |
+| `scripts/build-release-assets.sh` | Maintainer: stages the AppImage, `.deb`, runtime tarball and (with `--windows`) the Windows installer into `dist/`, writes `SHA256SUMS` over everything it finds, prints the `gh release create` line. |
 | `scripts/repo-slug.sh` | Shared helper: resolves `owner/repo` from `$VACA_REPO`, then the `origin` remote, then the default. |
 
 Every script takes `-h`. `install-model.sh` takes `--dry-run` and
@@ -261,7 +276,8 @@ prints the `gh release create` command for you to run.
 
 ```bash
 ./scripts/install-model.sh --tuned --gguf-url <HF URL>   # confirm the model story
-./scripts/build-release-assets.sh                        # → dist/ + SHA256SUMS
+./scripts/build-release-assets.sh \
+  --windows ~/path/to/Veronica-Setup-1.0.0.exe           # → dist/ + SHA256SUMS
 gh release create v1.0.0 dist/* --title "Veronica 1.0.0" --notes-file RELEASE_NOTES.md
 ```
 
