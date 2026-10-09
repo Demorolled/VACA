@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Particle Physics Lab</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#ccc;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+header{display:flex;align-items:center;padding:4px 12px;background:#12121e;border-bottom:1px solid rgba(255,255,255,0.06);gap:6px;flex-shrink:0}
+header h1{font-size:0.85rem;color:#00d9ff;margin-right:8px}header h1 small{color:#555;font-size:0.5rem;font-weight:400}
+.toolbar{display:flex;gap:2px;flex-wrap:wrap}
+.toolbar button{padding:4px 8px;border:1px solid rgba(255,255,255,0.06);border-radius:3px;background:transparent;color:#888;cursor:pointer;font-size:0.5rem;font-family:inherit;transition:0.1s}
+.toolbar button:hover{border-color:#00d9ff;color:#ccc}
+.toolbar button.active{border-color:#00d9ff;color:#00d9ff;background:rgba(0,217,255,0.1)}
+.toolbar button.primary{background:rgba(0,217,255,0.1);border-color:rgba(0,217,255,0.2);color:#00d9ff}
+.main{flex:1;display:flex;overflow:hidden}
+.canvas-wrap{flex:1;position:relative;background:#080810}
+#simCanvas{width:100%;height:100%}
+.controls{width:200px;background:#12121e;border-left:1px solid rgba(255,255,255,0.06);padding:10px;overflow-y:auto;font-size:0.6rem;flex-shrink:0}
+.controls h3{font-size:0.6rem;color:#888;margin-bottom:6px;margin-top:10px;text-transform:uppercase;letter-spacing:0.3px}
+.controls h3:first-child{margin-top:0}
+.controls label{display:block;color:#666;font-size:0.5rem;margin-top:6px;margin-bottom:2px}
+.controls input[type=range]{width:100%;accent-color:#00d9ff;height:4px}
+.controls .sl-row{display:flex;justify-content:space-between;font-size:0.5rem}
+.controls .sl-row .val{color:#00d9ff}
+.controls select,.controls input[type=number]{width:100%;padding:4px 6px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.06);border-radius:3px;color:#aaa;font-family:inherit;font-size:0.55rem;outline:none}
+.stats{font-size:0.5rem;color:#444;line-height:1.8;padding:8px;background:rgba(0,0,0,0.2);border-radius:4px;margin-top:8px}
+</style>
+</head>
+<body>
+<header>
+  <h1>⚛️ Particle Lab <small>Physics · Forces · Simulation</small></h1>
+  <div class="toolbar">
+    <button onclick="toggleSim()" class="primary" id="simBtn">⏸ Pause</button>
+    <button onclick="clearParticles()">🗑️ Clear</button>
+    <select onchange="loadPreset(this.value)" style="padding:3px 6px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.06);border-radius:3px;color:#888;font-family:inherit;font-size:0.5rem;outline:none">
+      <option value="fire">🔥 Fire</option><option value="fountain">⛲ Fountain</option><option value="galaxy">🌌 Galaxy</option>
+      <option value="explosion">💥 Explosion</option><option value="gravity">🌍 Gravity</option><option value="stars">✨ Starfield</option>
+      <option value="rain">🌧️ Rain</option><option value="snow">❄️ Snow</option><option value="plasma">⚡ Plasma</option>
+    </select>
+    <button onclick="spawnBurst()">💥 Burst</button>
+  </div>
+</header>
+<div class="main">
+  <div class="canvas-wrap"><canvas id="simCanvas"></canvas></div>
+  <div class="controls">
+    <h3>🎛️ Controls</h3>
+    <label>Particle Count</label>
+    <input type="range" min="10" max="500" value="150" id="pCount" oninput="updateControl('count')">
+    <div class="sl-row"><span>10</span><span class="val" id="pCountVal">150</span><span>500</span></div>
+    <label>Gravity</label>
+    <input type="range" min="-200" max="200" value="50" id="pGravity" oninput="updateControl('gravity')">
+    <div class="sl-row"><span class="val" id="pGravityVal">50</span></div>
+    <label>Speed</label>
+    <input type="range" min="1" max="10" value="3" id="pSpeed" oninput="updateControl('speed')">
+    <div class="sl-row"><span class="val" id="pSpeedVal">3</span></div>
+    <label>Size</label>
+    <input type="range" min="1" max="10" value="3" id="pSize" oninput="updateControl('size')">
+    <div class="sl-row"><span class="val" id="pSizeVal">3</span></div>
+    <label>Spread</label>
+    <input type="range" min="0" max="360" value="360" id="pSpread" oninput="updateControl('spread')">
+    <div class="sl-row"><span class="val" id="pSpreadVal">360</span></div>
+    <label>Lifetime</label>
+    <input type="range" min="10" max="500" value="100" id="pLife" oninput="updateControl('life')">
+    <div class="sl-row"><span class="val" id="pLifeVal">100</span></div>
+    <label>Color Scheme</label>
+    <select id="pColorScheme" onchange="updateControl('color')">
+      <option value="fire">🔥 Fire</option><option value="rainbow">🌈 Rainbow</option>
+      <option value="neon">💡 Neon</option><option value="pastel">🌸 Pastel</option>
+      <option value="mono">⚪ Mono</option>
+    </select>
+    <h3>📊 Stats</h3>
+    <div class="stats" id="stats">
+      <div>Particles: <span id="pStat">0</span></div>
+      <div>FPS: <span id="fpsStat">0</span></div>
+      <div>Avg Life: <span id="lifeStat">0</span></div>
+    </div>
+  </div>
+</div>
+<script>
+const canvas=document.getElementById('simCanvas'),ctx=canvas.getContext('2d');
+let particles=[],running=true,lastTime=0,fps=0,frames=0,frameTime=0;
+let settings={count:150,gravity:50,speed:3,size:3,spread:360,life:100,colorScheme:'fire'};
+let mouseX=canvas.width/2,mouseY=canvas.height/2,mouseDown=false;
+
+function resize(){canvas.width=canvas.parentElement.clientWidth;canvas.height=canvas.parentElement.clientHeight}
+window.addEventListener('resize',resize);resize();
+
+canvas.addEventListener('mousemove',e=>{const r=canvas.getBoundingClientRect();mouseX=e.clientX-r.left;mouseY=e.clientY-r.top});
+canvas.addEventListener('mousedown',()=>mouseDown=true);
+canvas.addEventListener('mouseup',()=>mouseDown=false);
+canvas.addEventListener('click',e=>{const r=canvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;spawnExplosion(x,y,50)});
+
+const COLOR_SCHEMES={
+  fire:[{h:0,s:100,l:50},{h:20,s:100,l:55},{h:40,s:100,l:60},{h:0,s:80,l:40},{h:10,s:90,l:45}],
+  rainbow:[{h:0,s:100,l:50},{h:60,s:100,l:50},{h:120,s:100,l:50},{h:180,s:100,l:50},{h:240,s:100,l:50},{h:300,s:100,l:50}],
+  neon:[{h:180,s:100,l:50},{h:280,s:100,l:50},{h:50,s:100,l:50},{h:330,s:100,l:50},{h:120,s:100,l:50}],
+  pastel:[{h:0,s:30,l:80},{h:200,s:30,l:80},{h:120,s:30,l:80},{h:300,s:30,l:80},{h:50,s:30,l:80}],
+  mono:[{h:0,s:0,l:90},{h:0,s:0,l:70},{h:0,s:0,l:50},{h:0,s:0,l:30},{h:0,s:0,l:80}]
+};
+
+function Particle(x,y,vx,vy,life,size,color){
+  this.x=x;this.y=y;this.vx=vx;this.vy=vy;
+  this.life=life||100;this.maxLife=this.life;
+  this.size=size||3;this.color=color||{h:200,s:100,l:50};
+  this.active=true;
+}
+
+function spawnParticle(x,y){
+  const spread=(settings.spread*Math.PI)/180;
+  const angle=Math.random()*spread-spread/2-Math.PI/2;
+  const speed=(Math.random()*0.5+0.5)*settings.speed*2;
+  const vx=Math.cos(angle)*speed+(Math.random()-0.5)*0.5;
+  const vy=Math.sin(angle)*speed;
+  const life=Math.random()*settings.life+settings.life*0.3;
+  const size=(Math.random()*0.5+0.5)*settings.size;
+  const scheme=COLOR_SCHEMES[settings.colorScheme]||COLOR_SCHEMES.fire;
+  const color=scheme[Math.floor(Math.random()*scheme.length)];
+  const p=new Particle(x,y,vx,vy,life,size,color);
+  if(particles.length<settings.count*3)particles.push(p);
+}
+
+function spawnExplosion(x,y,count){
+  for(let i=0;i<(count||30);i++)spawnParticle(x||mouseX,y||mouseY);
+}
+
+function spawnBurst(){for(let i=0;i<60;i++)spawnParticle(mouseX,mouseY)}
+
+function clearParticles(){particles=[]}
+
+function update(dt){
+  const grav=settings.gravity/10000;
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i];
+    p.x+=p.vx;p.y+=p.vy;
+    p.vy+=grav;
+    p.vx*=0.99;p.vy*=0.99;
+    p.life--;
+    if(p.life<=0||p.x<0||p.x>canvas.width||p.y>canvas.height+50){particles.splice(i,1);continue}
+  }
+  
+  // Emit new particles
+  const targetCount=settings.count;
+  while(particles.length<targetCount){
+    if(mouseDown)spawnParticle(mouseX+(Math.random()-0.5)*50,mouseY);
+    else spawnParticle(canvas.width/2+(Math.random()-0.5)*100,canvas.height-20);
+  }
+}
+
+function draw(){
+  ctx.fillStyle='rgba(8,8,16,0.3)';ctx.fillRect(0,0,canvas.width,canvas.height);
+  
+  for(const p of particles){
+    const alpha=p.life/p.maxLife;
+    ctx.save();ctx.globalAlpha=alpha;
+    const col=p.color;
+    ctx.fillStyle=`hsl(${col.h+Math.random()*10-5},${col.s}%,${col.l+Math.random()*10-5}%)`;
+    
+    // Glow
+    const grad=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.size*3);
+    grad.addColorStop(0,`hsla(${col.h},${col.s}%,${col.l}%,${alpha*0.3})`);
+    grad.addColorStop(1,`hsla(${col.h},${col.s}%,${col.l}%,0)`);
+    ctx.fillStyle=grad;ctx.beginPath();ctx.arc(p.x,p.y,p.size*3,0,Math.PI*2);ctx.fill();
+    
+    // Core
+    ctx.fillStyle=`hsl(${col.h},${col.s}%,${col.l}%)`;
+    ctx.beginPath();ctx.arc(p.x,p.y,p.size*alpha,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+  }
+  
+  // Mouse trail effect
+  if(mouseDown){
+    ctx.fillStyle='rgba(0,217,255,0.03)';ctx.beginPath();ctx.arc(mouseX,mouseY,40,0,Math.PI*2);ctx.fill();
+  }
+  
+  // Stats
+  document.getElementById('pStat').textContent=particles.length;
+  const avgLife=particles.reduce((s,p)=>s+p.life,0)/(particles.length||1);
+  document.getElementById('lifeStat').textContent=avgLife.toFixed(0);
+}
+
+function loop(time){
+  const dt=Math.min((time-lastTime)/16.67,3);lastTime=time;
+  
+  if(running&&particles.length<settings.count*3)update(dt);
+  draw();
+  
+  // FPS
+  frames++;frameTime+=dt;
+  if(frameTime>60){fps=Math.round(frames/frameTime*60);frames=0;frameTime=0;document.getElementById('fpsStat').textContent=fps}
+  
+  requestAnimationFrame(loop);
+}
+
+function toggleSim(){running=!running;document.getElementById('simBtn').textContent=running?'⏸ Pause':'▶ Play'}
+
+function updateControl(key){
+  const el=document.getElementById('pCamelCase'?`p${key.charAt(0).toUpperCase()+key.slice(1)}`:null);
+  if(key==='count'){settings.count=parseInt(document.getElementById('pCount').value);document.getElementById('pCountVal').textContent=settings.count}
+  else if(key==='gravity'){settings.gravity=parseInt(document.getElementById('pGravity').value);document.getElementById('pGravityVal').textContent=settings.gravity}
+  else if(key==='speed'){settings.speed=parseInt(document.getElementById('pSpeed').value);document.getElementById('pSpeedVal').textContent=settings.speed}
+  else if(key==='size'){settings.size=parseInt(document.getElementById('pSize').value);document.getElementById('pSizeVal').textContent=settings.size}
+  else if(key==='spread'){settings.spread=parseInt(document.getElementById('pSpread').value);document.getElementById('pSpreadVal').textContent=settings.spread}
+  else if(key==='life'){settings.life=parseInt(document.getElementById('pLife').value);document.getElementById('pLifeVal').textContent=settings.life}
+  else if(key==='color'){settings.colorScheme=document.getElementById('pColorScheme').value}
+}
+
+function loadPreset(name){
+  const presets={
+    fire:{count:200,gravity:-20,speed:4,size:4,spread:60,life:80,colorScheme:'fire'},
+    fountain:{count:150,gravity:80,speed:5,size:3,spread:30,life:120,colorScheme:'rainbow'},
+    galaxy:{count:300,gravity:30,speed:2,size:3,spread:360,life:300,colorScheme:'neon'},
+    explosion:{count:250,gravity:-50,speed:8,size:5,spread:360,life:40,colorScheme:'fire'},
+    gravity:{count:100,gravity:150,speed:2,size:4,spread:360,life:200,colorScheme:'mono'},
+    stars:{count:400,gravity:0,speed:1,size:2,spread:360,life:500,colorScheme:'neon'},
+    rain:{count:300,gravity:200,speed:8,size:2,spread:10,life:60,colorScheme:'mono'},
+    snow:{count:200,gravity:50,speed:1,size:5,spread:20,life:150,colorScheme:'pastel'},
+    plasma:{count:180,gravity:0,speed:3,size:4,spread:360,life:80,colorScheme:'rainbow'}
+  };
+  const p=presets[name];
+  if(!p)return;
+  Object.assign(settings,p);
+  document.getElementById('pCount').value=p.count;document.getElementById('pCountVal').textContent=p.count;
+  document.getElementById('pGravity').value=p.gravity;document.getElementById('pGravityVal').textContent=p.gravity;
+  document.getElementById('pSpeed').value=p.speed;document.getElementById('pSpeedVal').textContent=p.speed;
+  document.getElementById('pSize').value=p.size;document.getElementById('pSizeVal').textContent=p.size;
+  document.getElementById('pSpread').value=p.spread;document.getElementById('pSpreadVal').textContent=p.spread;
+  document.getElementById('pLife').value=p.life;document.getElementById('pLifeVal').textContent=p.life;
+  document.getElementById('pColorScheme').value=p.colorScheme;
+  clearParticles();
+}
+
+resize();
+loadPreset('fire');
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

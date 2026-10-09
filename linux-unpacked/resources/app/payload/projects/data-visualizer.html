@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Data Visualizer</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+  min-height: 100vh;
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+.container { max-width: 1050px; width: 100%; }
+h1 { color: #00d9ff; font-size: 1.5rem; text-align: center; margin-bottom: 4px; }
+.subtitle { color: #666; font-size: 0.8rem; text-align: center; margin-bottom: 12px; }
+.layout { display: flex; gap: 12px; }
+@media (max-width: 750px) { .layout { flex-direction: column; } }
+/* Controls */
+.controls {
+  width: 250px;
+  background: linear-gradient(145deg, #1a1a2e, #1e1e3a);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 16px;
+  flex-shrink: 0;
+  max-height: 550px;
+  overflow-y: auto;
+}
+.controls h3 { color: #888; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; margin-top: 12px; }
+.controls h3:first-child { margin-top: 0; }
+.controls label { display: block; font-size: 0.7rem; color: #666; margin-bottom: 2px; margin-top: 6px; }
+.controls select, .controls input {
+  width: 100%;
+  padding: 6px 10px;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px;
+  color: #ccc;
+  font-size: 0.8rem;
+  font-family: inherit;
+  outline: none;
+}
+.controls select:focus, .controls input:focus { border-color: #00d9ff; }
+.controls .btn {
+  width: 100%;
+  padding: 8px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: 0.15s;
+  margin-top: 6px;
+}
+.btn-primary { background: linear-gradient(135deg, #00d9ff, #0099ff); color: #0f0f1a; }
+.btn-primary:hover { box-shadow: 0 2px 10px rgba(0,217,255,0.3); }
+.btn-secondary { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); color: #aaa; }
+.btn-secondary:hover { background: rgba(255,255,255,0.1); }
+.data-preview { max-height: 150px; overflow-y: auto; font-size: 0.65rem; color: #555; margin-top: 8px; padding: 6px; background: rgba(0,0,0,0.15); border-radius: 4px; font-family: 'Courier New', monospace; white-space: pre; }
+/* Chart */
+.chart-area {
+  flex: 1;
+  background: linear-gradient(145deg, #1a1a2e, #1e1e3a);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 20px;
+  min-height: 450px;
+  display: flex;
+  flex-direction: column;
+}
+.chart-title {
+  text-align: center;
+  font-size: 0.85rem;
+  color: #ccc;
+  margin-bottom: 12px;
+}
+.chart-canvas-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 350px;
+}
+.chart-canvas-wrap canvas { max-width: 100%; }
+.chart-types {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  justify-content: center;
+}
+.chart-type-btn {
+  padding: 4px 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px;
+  background: rgba(255,255,255,0.03);
+  color: #888;
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-family: inherit;
+  transition: 0.1s;
+}
+.chart-type-btn:hover { border-color: #00d9ff; color: #ccc; }
+.chart-type-btn.active { border-color: #00d9ff; background: rgba(0,217,255,0.1); color: #00d9ff; }
+.chart-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  margin-top: 8px;
+}
+.chart-labels span {
+  font-size: 0.65rem;
+  color: #555;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.chart-labels .dot { width: 8px; height: 8px; border-radius: 2px; }
+.empty-chart { text-align: center; padding: 60px; color: #555; font-size: 0.85rem; }
+.stats-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.stats-row .stat {
+  font-size: 0.7rem;
+  color: #666;
+  padding: 2px 8px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 4px;
+}
+.stats-row .stat span { color: #00d9ff; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>📊 Data Visualizer</h1>
+  <p class="subtitle">Create beautiful charts from your data</p>
+  <div class="layout">
+    <div class="controls">
+      <h3>📁 Data</h3>
+      <div style="display:flex;gap:4px">
+        <button class="btn btn-secondary" style="flex:1;font-size:0.7rem;padding:6px" onclick="loadSampleData('sales')">Sample: Sales</button>
+        <button class="btn btn-secondary" style="flex:1;font-size:0.7rem;padding:6px" onclick="loadSampleData('population')">Sample: Pop</button>
+      </div>
+      <button class="btn btn-primary" onclick="document.getElementById('csvInput').click()">📤 Import CSV</button>
+      <input type="file" id="csvInput" accept=".csv,.txt" style="display:none" onchange="importCSV(event)">
+      <label>Chart Type</label>
+      <div class="chart-types" id="chartTypeGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+        <button class="chart-type-btn active" data-type="bar" onclick="setChartType('bar')">📊 Bar</button>
+        <button class="chart-type-btn" data-type="line" onclick="setChartType('line')">📈 Line</button>
+        <button class="chart-type-btn" data-type="pie" onclick="setChartType('pie')">🥧 Pie</button>
+        <button class="chart-type-btn" data-type="area" onclick="setChartType('area')">🗻 Area</button>
+      </div>
+      <label>Color Scheme</label>
+      <select id="colorScheme" onchange="renderChart()">
+        <option value="default">Default</option>
+        <option value="warm">Warm</option>
+        <option value="cool">Cool</option>
+        <option value="mono">Monochrome</option>
+        <option value="pastel">Pastel</option>
+      </select>
+      <h3>📋 Data</h3>
+      <div class="data-preview" id="dataPreview">No data loaded</div>
+    </div>
+    <div class="chart-area">
+      <div class="chart-title" id="chartTitle">Data Visualization</div>
+      <div class="chart-canvas-wrap">
+        <canvas id="chartCanvas" width="500" height="350"></canvas>
+      </div>
+      <div class="stats-row" id="statsRow"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('chartCanvas');
+const ctx = canvas.getContext('2d');
+let chartData = [];
+let chartLabels = [];
+let chartType = 'bar';
+let colorScheme = 'default';
+
+const COLOR_SCHEMES = {
+  default: ['#00d9ff', '#4ade80', '#f87171', '#fbbf24', '#a78bfa', '#f472b6', '#60a5fa', '#fb923c', '#34d399', '#c084fc'],
+  warm: ['#f87171', '#fb923c', '#fbbf24', '#f472b6', '#e879f9', '#c084fc', '#fca5a5', '#fdba74', '#fde68a'],
+  cool: ['#00d9ff', '#60a5fa', '#4ade80', '#34d399', '#a78bfa', '#818cf8', '#67e8f9', '#6ee7b7', '#93c5fd'],
+  mono: ['#e0e0f0', '#b0b0cc', '#8080a8', '#606088', '#404068', '#303050', '#252540', '#1a1a30', '#0f0f20'],
+  pastel: ['#a7f3d0', '#c4b5fd', '#fde68a', '#fecaca', '#ddd6fe', '#fed7aa', '#bfdbfe', '#fbcfe8', '#a5f3fc']
+};
+
+function getColor(index) {
+  const colors = COLOR_SCHEMES[colorScheme] || COLOR_SCHEMES.default;
+  return colors[index % colors.length];
+}
+
+function loadSampleData(type) {
+  if (type === 'sales') {
+    chartLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    chartData = [4200, 5600, 4800, 6100, 7300, 6800, 7900, 8500, 7200, 9100, 8700, 10200];
+  } else {
+    chartLabels = ['Asia', 'Africa', 'Europe', 'North America', 'South America', 'Oceania'];
+    chartData = [4600, 1400, 750, 600, 430, 45];
+  }
+  document.getElementById('chartTitle').textContent = type === 'sales' ? 'Monthly Sales (2026)' : 'Population by Continent (millions)';
+  renderChart();
+  updateDataPreview();
+}
+
+function importCSV(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const lines = ev.target.result.split('\n').filter(l => l.trim());
+      if (lines.length < 2) { alert('CSV must have header + data rows'); return; }
+      const headers = lines[0].split(',').map(h => h.trim());
+      chartLabels = [];
+      chartData = [];
+      for (let i = 1; i < Math.min(lines.length, 21); i++) {
+        const cols = lines[i].split(',').map(c => c.trim());
+        if (cols.length >= 2) {
+          chartLabels.push(cols[0]);
+          chartData.push(parseFloat(cols[1]) || 0);
+        }
+      }
+      document.getElementById('chartTitle').textContent = headers[0] + ' vs ' + headers[1];
+      renderChart();
+      updateDataPreview();
+    } catch { alert('Failed to parse CSV. Format: label,value'); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+function updateDataPreview() {
+  const preview = document.getElementById('dataPreview');
+  if (chartLabels.length === 0) { preview.textContent = 'No data loaded'; return; }
+  preview.textContent = chartLabels.map((l, i) => `${l}: ${chartData[i]}`).join('\n');
+}
+
+function setChartType(type) {
+  chartType = type;
+  document.querySelectorAll('#chartTypeGrid .chart-type-btn').forEach(b => b.classList.toggle('active', b.dataset.type === type));
+  renderChart();
+}
+
+function renderChart() {
+  if (chartData.length === 0) return;
+  canvas.width = Math.min(500, 50 * chartData.length + 80);
+  canvas.height = 350;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  
+  const padding = { top: 30, bottom: 40, left: 60, right: 30 };
+  const w = canvas.width - padding.left - padding.right;
+  const h = canvas.height - padding.top - padding.bottom;
+  
+  const maxVal = Math.max(...chartData) * 1.1 || 1;
+  
+  if (chartType === 'bar') drawBarChart(padding, w, h, maxVal);
+  else if (chartType === 'line') drawLineChart(padding, w, h, maxVal);
+  else if (chartType === 'pie') drawPieChart(padding, w, h);
+  else if (chartType === 'area') drawAreaChart(padding, w, h, maxVal);
+  
+  // Stats
+  const sum = chartData.reduce((a, b) => a + b, 0);
+  const avg = sum / chartData.length;
+  const max = Math.max(...chartData);
+  const min = Math.min(...chartData);
+  document.getElementById('statsRow').innerHTML = 
+    `<div class="stat">Total: <span>${sum.toLocaleString()}</span></div>
+     <div class="stat">Average: <span>${avg.toFixed(1)}</span></div>
+     <div class="stat">Max: <span>${max.toLocaleString()}</span></div>
+     <div class="stat">Min: <span>${min.toLocaleString()}</span></div>`;
+}
+
+function drawBarChart(padding, w, h, maxVal) {
+  const bw = Math.min(40, w / chartData.length * 0.6);
+  const gap = w / chartData.length;
+  
+  ctx.strokeStyle = '#333'; ctx.lineWidth = 0.5;
+  ctx.beginPath();
+  ctx.moveTo(padding.left, padding.top);
+  ctx.lineTo(padding.left, padding.top + h);
+  ctx.lineTo(padding.left + w, padding.top + h);
+  ctx.stroke();
+  
+  // Grid lines
+  for (let i = 0; i <= 4; i++) {
+    const y = padding.top + h * (1 - i / 4);
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.beginPath(); ctx.moveTo(padding.left, y); ctx.lineTo(padding.left + w, y); ctx.stroke();
+    ctx.fillStyle = '#555'; ctx.font = '10px sans-serif'; ctx.textAlign = 'right';
+    ctx.fillText(Math.round(maxVal * i / 4), padding.left - 8, y + 4);
+  }
+  
+  chartData.forEach((val, i) => {
+    const x = padding.left + i * gap + (gap - bw) / 2;
+    const barH = (val / maxVal) * h;
+    const y = padding.top + h - barH;
+    
+    const grad = ctx.createLinearGradient(x, y, x, padding.top + h);
+    const color = getColor(i);
+    grad.addColorStop(0, color);
+    grad.addColorStop(1, color + '44');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.roundRect(x, y, bw, barH, [3, 3, 0, 0]);
+    ctx.fill();
+    
+    ctx.fillStyle = '#888'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(val.toLocaleString(), x + bw / 2, y - 6);
+    ctx.fillText(chartLabels[i], x + bw / 2, padding.top + h + 14);
+  });
+}
+
+function drawLineChart(padding, w, h, maxVal) {
+  const step = w / (chartData.length - 1);
+  
+  // Grid
+  for (let i = 0; i <= 4; i++) {
+    const y = padding.top + h * (1 - i / 4);
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.beginPath(); ctx.moveTo(padding.left, y); ctx.lineTo(padding.left + w, y); ctx.stroke();
+    ctx.fillStyle = '#555'; ctx.font = '10px sans-serif'; ctx.textAlign = 'right';
+    ctx.fillText(Math.round(maxVal * i / 4), padding.left - 8, y + 4);
+  }
+  
+  // Line
+  ctx.beginPath();
+  chartData.forEach((val, i) => {
+    const x = padding.left + i * step;
+    const y = padding.top + h - (val / maxVal) * h;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = '#00d9ff';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+  
+  // Area fill
+  ctx.lineTo(padding.left + (chartData.length - 1) * step, padding.top + h);
+  ctx.lineTo(padding.left, padding.top + h);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(0,217,255,0.08)';
+  ctx.fill();
+  
+  // Points & labels
+  chartData.forEach((val, i) => {
+    const x = padding.left + i * step;
+    const y = padding.top + h - (val / maxVal) * h;
+    ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fillStyle = '#00d9ff'; ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.stroke();
+    
+    ctx.fillStyle = '#888'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(val.toLocaleString(), x, y - 10);
+    ctx.fillText(chartLabels[i], x, padding.top + h + 14);
+  });
+}
+
+function drawPieChart(padding, w, h) {
+  const cx = padding.left + w / 2;
+  const cy = padding.top + h / 2;
+  const radius = Math.min(w, h) / 2 - 10;
+  const total = chartData.reduce((a, b) => a + b, 0);
+  let startAngle = -Math.PI / 2;
+  
+  chartData.forEach((val, i) => {
+    const sliceAngle = (val / total) * Math.PI * 2;
+    const color = getColor(i);
+    
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, radius, startAngle, startAngle + sliceAngle);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.strokeStyle = '#1a1a2e';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Label
+    if (val / total > 0.05) {
+      const midAngle = startAngle + sliceAngle / 2;
+      const lx = cx + Math.cos(midAngle) * radius * 0.65;
+      const ly = cy + Math.sin(midAngle) * radius * 0.65;
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(Math.round(val / total * 100) + '%', lx, ly + 3);
+    }
+    
+    startAngle += sliceAngle;
+  });
+  
+  // Legend
+  const legendY = padding.top + h + 20;
+  let lx = padding.left + 20;
+  chartLabels.forEach((label, i) => {
+    ctx.fillStyle = getColor(i);
+    ctx.fillRect(lx, legendY, 10, 10);
+    ctx.fillStyle = '#888'; ctx.font = '9px sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText(label, lx + 14, legendY + 8);
+    lx += ctx.measureText(label).width + 30;
+  });
+}
+
+function drawAreaChart(padding, w, h, maxVal) {
+  const step = w / (chartData.length - 1);
+  
+  // Grid
+  for (let i = 0; i <= 4; i++) {
+    const y = padding.top + h * (1 - i / 4);
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.beginPath(); ctx.moveTo(padding.left, y); ctx.lineTo(padding.left + w, y); ctx.stroke();
+    ctx.fillStyle = '#555'; ctx.font = '10px sans-serif'; ctx.textAlign = 'right';
+    ctx.fillText(Math.round(maxVal * i / 4), padding.left - 8, y + 4);
+  }
+  
+  // Build path
+  const points = chartData.map((val, i) => ({
+    x: padding.left + i * step,
+    y: padding.top + h - (val / maxVal) * h
+  }));
+  
+  // Area fill
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, padding.top + h);
+  points.forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.lineTo(points[points.length - 1].x, padding.top + h);
+  ctx.closePath();
+  
+  const grad = ctx.createLinearGradient(0, padding.top, 0, padding.top + h);
+  const color = getColor(0);
+  grad.addColorStop(0, color + '66');
+  grad.addColorStop(1, color + '11');
+  ctx.fillStyle = grad;
+  ctx.fill();
+  
+  // Line on top
+  ctx.beginPath();
+  points.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  
+  // Points
+  points.forEach((p, i) => {
+    ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
+    ctx.fillStyle = '#888'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(chartData[i].toLocaleString(), p.x, p.y - 8);
+    ctx.fillText(chartLabels[i], p.x, padding.top + h + 14);
+  });
+}
+
+// Color scheme selector
+document.getElementById('colorScheme').addEventListener('change', (e) => {
+  colorScheme = e.target.value;
+  renderChart();
+});
+
+// Init
+loadSampleData('sales');
+</script>
+</body>
+</html>

@@ -1,0 +1,235 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Graph Theory Visualizer</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#ccc;min-height:100vh;padding:16px;display:flex;justify-content:center}.container{max-width:960px;width:100%}h1{color:#00d9ff;font-size:1rem;margin-bottom:2px;text-align:center}p.sub{color:#555;font-size:0.6rem;margin-bottom:10px;text-align:center}.main-layout{display:flex;gap:12px}.sidebar{width:220px;flex-shrink:0}.canvas-wrap{flex:1;position:relative}#graphCanvas{border:2px solid rgba(255,255,255,0.06);border-radius:8px;width:100%;height:480px;cursor:pointer;display:block}.panel{background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:10px;margin-bottom:8px}.panel-title{color:#888;font-size:0.55rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}.btn-group{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}.btn{padding:4px 10px;border:1px solid rgba(255,255,255,0.06);border-radius:4px;background:transparent;color:#888;cursor:pointer;font-size:0.5rem;font-family:inherit;transition:0.1s;white-space:nowrap}.btn:hover{border-color:#00d9ff;color:#ccc}.btn.primary{background:rgba(0,217,255,0.08);border-color:rgba(0,217,255,0.2);color:#00d9ff}.btn.accent{background:rgba(74,222,128,0.08);border-color:rgba(74,222,128,0.2);color:#4ade80}.btn.danger{background:rgba(248,113,113,0.08);border-color:rgba(248,113,113,0.2);color:#f87171}.stats-row{display:flex;gap:10px;font-size:0.5rem;color:#555;flex-wrap:wrap}.stats-row span{display:flex;align-items:center;gap:3px}.val{color:#00d9ff}.info-box{font-size:0.5rem;color:#666;max-height:100px;overflow-y:auto;padding:4px 0}.info-box div{padding:1px 0}.algo-select{width:100%;padding:4px 6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:4px;color:#888;font-size:0.5rem;font-family:inherit;margin-bottom:4px}.weight-input{width:50px;padding:3px 6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.5rem;font-family:inherit;text-align:center;margin-left:4px}label{font-size:0.5rem;color:#555}</style></head><body><div class="container">
+<h1>🔗 Graph Theory Visualizer</h1><p class="sub">Click to add nodes · Drag between nodes to add edges · Step through algorithms</p>
+<div class="main-layout">
+<div class="sidebar">
+<div class="panel">
+<div class="panel-title">Modes</div>
+<div class="btn-group">
+<button class="btn primary" onclick="setMode('addNode')">➕ Node</button>
+<button class="btn" onclick="setMode('addEdge')">🔗 Edge</button>
+<button class="btn" onclick="setMode('select')">👆 Select</button>
+<button class="btn" onclick="setMode('delete')">🗑️ Delete</button>
+</div>
+</div>
+<div class="panel">
+<div class="panel-title">Algorithms</div>
+<select class="algo-select" id="algoSelect">
+<option value="bfs">BFS (Shortest Path - Unweighted)</option>
+<option value="dfs">DFS (Depth-First Search)</option>
+<option value="dijkstra">Dijkstra (Shortest Path - Weighted)</option>
+<option value="mst-prim">MST - Prim's</option>
+<option value="mst-kruskal">MST - Kruskal's</option>
+<option value="components">Connected Components</option>
+<option value="topological">Topological Sort (DAG)</option>
+</select>
+<div class="btn-group" style="margin-top:4px">
+<button class="btn primary" onclick="runAlgorithm()">▶ Run</button>
+<button class="btn" onclick="stepAlgorithm()">👣 Step</button>
+<button class="btn" onclick="resetVisualization()">Reset</button>
+</div>
+</div>
+<div class="panel">
+<div class="panel-title">Actions</div>
+<div class="btn-group">
+<button class="btn" onclick="clearGraph()">🗑️ Clear</button>
+<button class="btn" onclick="loadDemo()">📥 Demo Graph</button>
+<button class="btn" onclick="loadWeightedDemo()">⚖️ Weighted Demo</button>
+<button class="btn" onclick="loadDAG()">📊 DAG Demo</button>
+</div>
+</div>
+<div class="panel">
+<div class="panel-title">Edge Weight</div>
+<div><label>Weight: <input type="number" id="edgeWeight" class="weight-input" value="1" min="1" max="99"></label></div>
+</div>
+<div class="panel">
+<div class="panel-title">Stats</div>
+<div class="stats-row">
+<span>Nodes: <span class="val" id="nodeCount">0</span></span>
+<span>Edges: <span class="val" id="edgeCount">0</span></span>
+<span>Algo: <span class="val" id="algoName">-</span></span>
+</div>
+</div>
+<div class="panel">
+<div class="panel-title">Output</div>
+<div class="info-box" id="outputBox">Ready</div>
+</div>
+</div>
+<div class="canvas-wrap">
+<canvas id="graphCanvas"></canvas>
+</div>
+</div></div>
+<script>
+const canvas=document.getElementById('graphCanvas'),ctx=canvas.getContext('2d');
+let W=0,H=0;
+function resize(){const r=canvas.parentElement.getBoundingClientRect();canvas.width=W=r.width;canvas.height=H=480;draw()}
+window.addEventListener('resize',resize);
+
+let nodes=[],edges=[],mode='addNode',selected=null;
+let vizState=null,vizSteps=[],vizStep=0,vizActive=false;
+let animNodes=new Set(),animEdges=new Set(),animPath=[];
+let nodeIdCounter=0;
+
+function setMode(m){mode=m;document.querySelectorAll('.btn-group .btn.primary').forEach(b=>b.classList.remove('primary'));const labels={addNode:'➕ Node',addEdge:'🔗 Edge',select:'👆 Select',delete:'🗑️ Delete'};document.querySelectorAll('.btn-group .btn').forEach(b=>{if(b.textContent.trim()===labels[m])b.classList.add('primary')});selected=null;draw()}
+
+function addNode(x,y){const id=nodeIdCounter++;nodes.push({id,x,y,label:String.fromCharCode(65+id%26)+(id>=26?Math.floor(id/26):'')});draw();updateStats();saveToStorage()}
+function addEdge(from,to,weight=1){if(from===to)return;if(edges.some(e=>(e.from===from&&e.to===to)))return;edges.push({from,to,weight:parseInt(weight)||1});draw();updateStats();saveToStorage()}
+function deleteNode(id){edges=edges.filter(e=>e.from!==id&&e.to!==id);nodes=nodes.filter(n=>n.id!==id);draw();updateStats();saveToStorage()}
+function deleteEdge(from,to){edges=edges.filter(e=>!(e.from===from&&e.to===to));draw();updateStats();saveToStorage()}
+
+function findNode(x,y,r=18){return nodes.find(n=>Math.hypot(n.x-x,n.y-y)<r)}
+function findEdge(x,y){return edges.find(e=>{const a=nodes.find(n=>n.id===e.from),b=nodes.find(n=>n.id===e.to);if(!a||!b)return false;const d=distToSegment(x,y,a.x,a.y,b.x,b.y);return d<8&&d>=0})}
+
+function distToSegment(px,py,x1,y1,x2,y2){const dx=x2-x1,dy=y2-y1,l=dx*dx+dy*dy;if(l===0)return Math.hypot(px-x1,py-y1);const t=Math.max(0,Math.min(1,((px-x1)*dx+(py-y1)*dy)/l));return Math.hypot(px-(x1+t*dx),py-(y1+t*dy))}
+
+canvas.onmousedown=e=>{
+  const r=canvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
+  if(mode==='addNode'&&!findNode(x,y)){addNode(x,y);return}
+  const hit=findNode(x,y);
+  if(mode==='delete'){if(hit){deleteNode(hit.id)}}else if(mode==='select'){selected=hit||null;draw()}else if(mode==='addEdge'){if(hit){if(!selected){selected=hit;draw()}}else if(selected){selected=null;draw()}}
+}
+canvas.onmouseup=e=>{
+  if(mode==='addEdge'&&selected){const r=canvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;const hit=findNode(x,y);if(hit&&hit.id!==selected.id){const w=parseInt(document.getElementById('edgeWeight').value)||1;addEdge(selected.id,hit.id,w)}selected=null;draw()}
+}
+canvas.onmousemove=e=>{const r=canvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;if(mode==='addEdge'&&selected){draw();ctx.beginPath();ctx.moveTo(selected.x,selected.y);ctx.lineTo(x,y);ctx.strokeStyle='rgba(0,217,255,0.3)';ctx.lineWidth=2;ctx.setLineDash([4,4]);ctx.stroke();ctx.setLineDash([])}}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  // Edges
+  for(const e of edges){const a=nodes.find(n=>n.id===e.from),b=nodes.find(n=>n.id===e.to);if(!a||!b)continue;
+    const isAnim=animEdges.has(`${e.from}-${e.to}`)||animEdges.has(`${e.to}-${e.from}`);
+    ctx.strokeStyle=isAnim?'#4ade80':animPath.some(p=>(p.from===e.from&&p.to===e.to)||(p.from===e.to&&p.to===e.from))?'#00d9ff':'rgba(255,255,255,0.12)';
+    ctx.lineWidth=isAnim?3:1.5;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+    // Weight label
+    const mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
+    ctx.fillStyle='#555';ctx.font='8px sans-serif';ctx.textAlign='center';ctx.fillText(e.weight,mx,my-6);
+    // Arrow for directed look
+    const angle=Math.atan2(b.y-a.y,b.x-a.x);ctx.fillStyle=ctx.strokeStyle;
+    ctx.beginPath();ctx.arc(b.x-Math.cos(angle)*10,b.y-Math.sin(angle)*10,3,0,Math.PI*2);ctx.fill();
+  }
+  // Nodes
+  for(const n of nodes){
+    const isAnim=animNodes.has(n.id);
+    ctx.fillStyle=isAnim?'#4ade80':selected&&selected.id===n.id?'#00d9ff':'#1a1a2e';
+    ctx.strokeStyle=isAnim?'#4ade80':selected&&selected.id===n.id?'#00d9ff':'rgba(255,255,255,0.15)';
+    ctx.lineWidth=2;ctx.beginPath();ctx.arc(n.x,n.y,16,0,Math.PI*2);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#ccc';ctx.font='9px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(n.label,n.x,n.y);
+  }
+}
+
+function runAlgorithm(){
+  const algo=document.getElementById('algoSelect').value;
+  document.getElementById('algoName').textContent=algo;
+  resetVisualization();
+  vizActive=true;vizSteps=[];vizStep=0;animNodes.clear();animEdges.clear();animPath=[];
+  if(algo==='bfs')runBFS();else if(algo==='dfs')runDFS();else if(algo==='dijkstra')runDijkstra();else if(algo==='mst-prim')runPrim();else if(algo==='mst-kruskal')runKruskal();else if(algo==='components')runComponents();else if(algo==='topological')runTopological();
+}
+
+function stepAlgorithm(){if(!vizActive||vizStep>=vizSteps.length){document.getElementById('outputBox').innerHTML='<div>✅ Algorithm complete</div>';return}
+  const s=vizSteps[vizStep];vizStep++;
+  if(s.type==='visit'){animNodes.add(s.id);if(s.label)log(s.label)}else if(s.type==='edge'){animEdges.add(`${s.from}-${s.to}`);if(s.label)log(s.label)}else if(s.type==='path'){animPath=s.path;log(s.label)}else if(s.type==='done'){vizActive=false;log(s.label)}else if(s.type==='clear'){animNodes.clear();animEdges.clear();if(s.label)log(s.label)}
+  draw();updateStats();
+}
+function resetVisualization(){vizActive=false;vizSteps=[];vizStep=0;animNodes.clear();animEdges.clear();animPath=[];draw();document.getElementById('outputBox').innerHTML='<div>Ready</div>'}
+function log(msg){const box=document.getElementById('outputBox');box.innerHTML+=`<div>${escapeHTML(msg)}</div>`;box.scrollTop=box.scrollHeight}
+
+function escapeHTML(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+// BFS
+function runBFS(){if(!nodes.length){log('No nodes');vizActive=false;return}
+  const start=nodes[0];const visited=new Set(),queue=[start.id],parent={};
+  visited.add(start.id);
+  while(queue.length>0){
+    const curr=queue.shift();vizSteps.push({type:'visit',id:curr,label:`Visiting ${getLabel(curr)}`});
+    for(const e of edges.filter(e=>e.from===curr||e.to===curr)){
+      const nb=e.from===curr?e.to:e.from;
+      if(!visited.has(nb)){visited.add(nb);parent[nb]=curr;queue.push(nb);vizSteps.push({type:'edge',from:curr,to:nb,label:`  Edge: ${getLabel(curr)}→${getLabel(nb)}`})}
+    }
+  }
+  vizSteps.push({type:'done',label:`✅ BFS complete — ${visited.size} nodes visited`});log(`BFS from ${getLabel(start.id)}: ${[...visited].map(v=>getLabel(v)).join(', ')}`);
+}
+// DFS
+function runDFS(){if(!nodes.length){log('No nodes');vizActive=false;return}
+  const start=nodes[0],visited=new Set(),stack=[start.id];
+  while(stack.length>0){
+    const curr=stack.pop();if(visited.has(curr))continue;visited.add(curr);
+    vizSteps.push({type:'visit',id:curr,label:`Visiting ${getLabel(curr)}`});
+    for(const e of edges.filter(e=>e.from===curr||e.to===curr)){
+      const nb=e.from===curr?e.to:e.from;if(!visited.has(nb)){stack.push(nb);vizSteps.push({type:'edge',from:curr,to:nb,label:`  Edge: ${getLabel(curr)}→${getLabel(nb)}`})}
+    }
+  }
+  vizSteps.push({type:'done',label:`✅ DFS complete — ${visited.size} nodes visited`})}
+// Dijkstra
+function runDijkstra(){if(!nodes.length){log('No nodes');vizActive=false;return}
+  const start=nodes[0],dist={},prev={},unvisited=new Set(nodes.map(n=>n.id));
+  for(const n of nodes)dist[n.id]=Infinity;dist[start.id]=0;
+  while(unvisited.size>0){
+    let curr=null,minD=Infinity;for(const id of unvisited){if(dist[id]<minD){minD=dist[id];curr=id}}
+    if(curr===null||dist[curr]===Infinity)break;
+    unvisited.delete(curr);vizSteps.push({type:'visit',id:curr,label:`Visiting ${getLabel(curr)} (dist=${dist[curr]})`});
+    for(const e of edges.filter(e=>e.from===curr||e.to===curr)){
+      const nb=e.from===curr?e.to:e.from;if(!unvisited.has(nb))continue;
+      const nd=dist[curr]+e.weight;
+      if(nd<dist[nb]){dist[nb]=nd;prev[nb]=curr;vizSteps.push({type:'edge',from:curr,to:nb,label:`  Update ${getLabel(nb)}→${nd}`})}
+    }
+  }
+  // Show shortest paths
+  for(const n of nodes){if(n.id!==start.id&&dist[n.id]<Infinity){
+    let path=[],cur=n.id;while(cur!==undefined){path.unshift(cur);cur=prev[cur]}
+    vizSteps.push({type:'path',path:path.map(id=>({from:path[path.indexOf(id)-1],to:id})).filter(p=>p.to!==undefined),label:`  Path to ${getLabel(n.id)}: ${path.map(p=>getLabel(p)).join('→')} (dist=${dist[n.id]})`});
+  }}
+  vizSteps.push({type:'done',label:`✅ Dijkstra complete`})}
+// Prim's MST
+function runPrim(){if(!nodes.length){log('No nodes');vizActive=false;return}
+  const mst=[],visited=new Set([nodes[0].id]),allNodes=new Set(nodes.map(n=>n.id));
+  while(visited.size<allNodes.size){
+    let minEdge=null,minW=Infinity;
+    for(const id of visited){for(const e of edges.filter(e=>e.from===id||e.to===id)){const nb=e.from===id?e.to:e.from;if(!visited.has(nb)&&e.weight<minW){minW=e.weight;minEdge=e}}}
+    if(!minEdge)break;
+    mst.push(minEdge);visited.add(minEdge.from===minEdge.to?null:minEdge.from===visited.values().next().value?minEdge.to:minEdge.from);
+    visited.add(minEdge.to);vizSteps.push({type:'edge',from:minEdge.from,to:minEdge.to,label:`Add edge ${getLabel(minEdge.from)}—${getLabel(minEdge.to)} (w=${minEdge.weight})`});
+  }
+  vizSteps.push({type:'done',label:`✅ MST (Prim's) — ${mst.length} edges, total weight ${mst.reduce((s,e)=>s+e.weight,0)}`})}
+// Kruskal's MST
+function runKruskal(){if(!nodes.length){log('No nodes');vizActive=false;return}
+  const parent={};function find(x){while(parent[x]!==x)parent[x]=parent[parent[x]],x=parent[x];return x}
+  function union(a,b){parent[find(a)]=find(b)}
+  nodes.forEach(n=>parent[n.id]=n.id);
+  const sorted=[...edges].sort((a,b)=>a.weight-b.weight),mst=[];
+  for(const e of sorted){if(find(e.from)!==find(e.to)){union(e.from,e.to);mst.push(e);vizSteps.push({type:'edge',from:e.from,to:e.to,label:`Add edge ${getLabel(e.from)}—${getLabel(e.to)} (w=${e.weight})`})}}
+  vizSteps.push({type:'done',label:`✅ Kruskal's MST — ${mst.length} edges, total weight ${mst.reduce((s,e)=>s+e.weight,0)}`})}
+// Connected Components
+function runComponents(){if(!nodes.length){log('No nodes');vizActive=false;return}
+  const visited=new Set(),comps=[];
+  for(const n of nodes){
+    if(visited.has(n.id))continue;
+    const comp=[],stack=[n.id];
+    while(stack.length>0){const c=stack.pop();if(visited.has(c))continue;visited.add(c);comp.push(c);vizSteps.push({type:'visit',id:c,label:`Component ${comps.length+1}: ${getLabel(c)}`});for(const e of edges.filter(e=>e.from===c||e.to===c)){const nb=e.from===c?e.to:e.from;if(!visited.has(nb))stack.push(nb)}}
+    comps.push(comp);
+  }
+  vizSteps.push({type:'done',label:`✅ ${comps.length} component(s): ${comps.map((c,i)=>`${i+1}: ${c.map(id=>getLabel(id)).join(',')}`).join(' | ')}`})}
+// Topological Sort
+function runTopological(){if(!nodes.length){log('No nodes');vizActive=false;return}
+  const adj={},inDeg={};nodes.forEach(n=>{adj[n.id]=[];inDeg[n.id]=0});
+  edges.forEach(e=>{adj[e.from].push(e.to);inDeg[e.to]=(inDeg[e.to]||0)+1});
+  const queue=Object.entries(inDeg).filter(([,d])=>d===0).map(([id])=>parseInt(id)),order=[];
+  while(queue.length>0){
+    const curr=queue.shift();order.push(curr);vizSteps.push({type:'visit',id:curr,label:`Visit ${getLabel(curr)}`});
+    for(const nb of adj[curr]){inDeg[nb]--;if(inDeg[nb]===0)queue.push(nb);vizSteps.push({type:'edge',from:curr,to:nb,label:`  Edge ${getLabel(curr)}→${getLabel(nb)}`})}
+  }
+  if(order.length!==nodes.length)log('⚠️ Graph has a cycle! No valid topological order.');
+  else vizSteps.push({type:'done',label:`✅ Topological sort: ${order.map(id=>getLabel(id)).join(' → ')}`})}
+
+function getLabel(id){const n=nodes.find(n=>n.id===id);return n?n.label:'?'}
+function updateStats(){document.getElementById('nodeCount').textContent=nodes.length;document.getElementById('edgeCount').textContent=edges.length}
+
+function clearGraph(){nodes=[];edges=[];nodeIdCounter=0;selected=null;resetVisualization();updateStats();saveToStorage()}
+function loadDemo(){clearGraph();setMode('addNode');[150,250,350,450].forEach((x,i)=>{addNode(x,80+i*100)});addEdge(0,1,1);addEdge(1,2,1);addEdge(2,3,1);addEdge(0,2,1);addEdge(1,3,1);draw();saveToStorage()}
+function loadWeightedDemo(){clearGraph();setMode('addNode');[120,200,320,440,520].forEach((x,i)=>{addNode(x,60+i*80)});addEdge(0,1,4);addEdge(0,2,2);addEdge(1,2,1);addEdge(1,3,5);addEdge(2,3,8);addEdge(2,4,10);addEdge(3,4,2);draw();saveToStorage()}
+function loadDAG(){clearGraph();setMode('addNode');[150,250,350,450,250,350].forEach((x,i)=>{addNode(x,40+i*70)});addEdge(0,1,1);addEdge(0,2,1);addEdge(1,3,1);addEdge(2,3,1);addEdge(1,4,1);addEdge(4,5,1);addEdge(3,5,1);draw();saveToStorage()}
+
+function saveToStorage(){try{localStorage.setItem('graphTheory_data',JSON.stringify({nodes:nodes.map(n=>({id:n.id,x:n.x,y:n.y,label:n.label})),edges,nodeIdCounter}))}catch(e){}}
+function loadFromStorage(){try{const d=JSON.parse(localStorage.getItem('graphTheory_data'));if(d&&d.nodes&&d.nodes.length){nodes=d.nodes;edges=d.edges;nodeIdCounter=d.nodeIdCounter;return true}}catch(e){}return false}
+
+if(!loadFromStorage())loadDemo();else{draw();updateStats()}
+resize();
+</script></body></html>

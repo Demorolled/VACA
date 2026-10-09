@@ -1,0 +1,138 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Table Builder</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#ccc;min-height:100vh;padding:12px;display:flex;justify-content:center}.container{max-width:1060px;width:100%}h1{color:#00d9ff;font-size:1rem;margin-bottom:2px;text-align:center}p.sub{color:#555;font-size:0.6rem;margin-bottom:8px;text-align:center}.flex{display:flex;gap:10px}.sidebar{width:220px;flex-shrink:0}.main{flex:1}.panel{background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:8px;margin-bottom:6px}.panel-title{color:#888;font-size:0.5rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px}.prop-row{display:flex;align-items:center;gap:6px;margin:3px 0;flex-wrap:wrap}.prop-row label{font-size:0.45rem;color:#555;min-width:55px}.prop-row input[type=color]{width:28px;height:22px;border:none;border-radius:3px;cursor:pointer;padding:0;background:none}.prop-row input[type=color]::-webkit-color-swatch{border:1px solid rgba(255,255,255,0.1);border-radius:3px}.prop-row input[type=number]{width:46px;padding:3px 4px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem;text-align:center;font-family:inherit}.prop-row input[type=text]{flex:1;padding:3px 6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem;font-family:inherit}.prop-row select{flex:1;padding:3px 4px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem;font-family:inherit}.prop-row input[type=checkbox]{accent-color:#00d9ff}.btn{padding:4px 10px;border:1px solid rgba(255,255,255,0.06);border-radius:4px;background:transparent;color:#888;cursor:pointer;font-size:0.5rem;font-family:inherit;transition:0.1s}.btn:hover{border-color:#00d9ff;color:#ccc}.btn.primary{background:rgba(0,217,255,0.08);border-color:rgba(0,217,255,0.2);color:#00d9ff}.preset-btn{padding:3px 8px;border:1px solid rgba(255,255,255,0.04);border-radius:3px;background:transparent;color:#666;cursor:pointer;font-size:0.45rem;font-family:inherit;margin:1px}.preset-btn:hover{border-color:#00d9ff;color:#ccc}.table-wrap{overflow:auto;max-height:280px;border:1px solid rgba(255,255,255,0.04);border-radius:4px;margin:4px 0}.table-wrap table{width:100%;border-collapse:collapse;font-size:0.5rem}.table-wrap th{padding:var(--cell-pad,6px 10px);background:var(--header-bg,#1a1a2e);color:var(--header-color,#00d9ff);border:var(--border-width,1px) solid var(--border-color,rgba(255,255,255,0.08));text-align:left;font-weight:600}.table-wrap td{padding:var(--cell-pad,6px 10px);color:var(--cell-color,#888);border:var(--border-width,1px) solid var(--border-color,rgba(255,255,255,0.08))}.table-wrap tr.striped:nth-child(even) td{background:rgba(255,255,255,0.02)}.table-wrap tr:hover td{background:rgba(0,217,255,0.03)}.css-out{font-family:'Courier New',monospace;font-size:0.45rem;color:#666;padding:6px;background:rgba(255,255,255,0.02);border-radius:4px;max-height:120px;overflow:auto;white-space:pre-wrap}.editable-input{background:transparent;border:none;color:inherit;font:inherit;width:100%;padding:2px;outline:none}.editable-input:focus{background:rgba(0,217,255,0.04)}</style></head><body><div class="container">
+<h1>📊 Table Builder</h1><p class="sub">Design HTML tables with live preview, styling controls, and export</p>
+<div class="flex">
+<div class="sidebar">
+<div class="panel"><div class="panel-title">Presets</div>
+<button class="preset-btn" onclick="loadPreset('dark')">Dark</button>
+<button class="preset-btn" onclick="loadPreset('light')">Light</button>
+<button class="preset-btn" onclick="loadPreset('minimal')">Minimal</button>
+<button class="preset-btn" onclick="loadPreset('bordered')">Bordered</button>
+<button class="preset-btn" onclick="loadPreset('compact')">Compact</button>
+</div>
+<div class="panel"><div class="panel-title">Data</div>
+<div class="prop-row"><label>Rows</label><input type="number" id="rowCount" value="5" min="1" max="20" onchange="rebuildTable()"></div>
+<div class="prop-row"><label>Cols</label><input type="number" id="colCount" value="4" min="1" max="10" onchange="rebuildTable()"></div>
+<button class="btn" onclick="rebuildTable()" style="width:100%">🔄 Rebuild</button>
+</div>
+<div class="panel"><div class="panel-title">Header</div>
+<div class="prop-row"><label>Background</label><input type="color" id="headerBg" value="#1a1a2e" onchange="renderTable()"></div>
+<div class="prop-row"><label>Text</label><input type="color" id="headerColor" value="#00d9ff" onchange="renderTable()"></div>
+</div>
+<div class="panel"><div class="panel-title">Body</div>
+<div class="prop-row"><label>Cell Color</label><input type="color" id="cellColor" value="#888" onchange="renderTable()"></div>
+<div class="prop-row"><label>Cell Padding</label><input type="number" id="cellPad" value="8" onchange="renderTable()">px</div>
+<div class="prop-row"><label>Font Size</label><input type="number" id="cellFont" value="11" onchange="renderTable()">px</div>
+</div>
+<div class="panel"><div class="panel-title">Borders</div>
+<div class="prop-row"><label>Color</label><input type="color" id="borderColor" value="rgba(255,255,255,0.08)" onchange="renderTable()"></div>
+<div class="prop-row"><label>Width</label><input type="number" id="borderWidth" value="1" min="0" max="5" onchange="renderTable()">px</div>
+<div class="prop-row"><label>Stripes</label><input type="checkbox" id="stripes" checked onchange="renderTable()"></div>
+<div class="prop-row"><label>Hover</label><input type="checkbox" id="hover" checked onchange="renderTable()"></div>
+</div>
+<div class="panel"><button class="btn primary" onclick="copyCSS()" style="width:100%;margin-bottom:2px">📋 Copy CSS</button>
+<button class="btn" onclick="copyHTML()" style="width:100%">📋 Copy HTML</button></div>
+</div>
+<div class="main">
+<div class="panel"><div class="panel-title">Live Preview <span style="color:#555;font-weight:400;font-size:0.45rem">(click cells to edit)</span></div>
+<div class="table-wrap" id="tablePreview"></div></div>
+<div class="panel"><div class="panel-title">Generated CSS</div><pre class="css-out" id="cssOutput">/* Table CSS */</pre></div>
+</div></div></div>
+<script>
+let tableData={headers:[],rows:[]};
+
+function rebuildTable(){
+  const rows=parseInt(document.getElementById('rowCount').value);
+  const cols=parseInt(document.getElementById('colCount').value);
+  const defaultHeaders=['Name','Email','Role','Status','Joined','Actions','Location','Department','Phone','Score'];
+  tableData.headers=Array.from({length:cols},(_,i)=>defaultHeaders[i]||`Column ${i+1}`);
+  tableData.rows=Array.from({length:rows},(_,ri)=>Array.from({length:cols},(_,ci)=>{
+    const names=['Alice','Bob','Charlie','Diana','Eve','Frank','Grace','Hank','Ivy','Jack','Kate','Leo','Mia','Noah','Olivia','Paul','Quinn','Ray','Sara','Tom'];
+    const emails=['alice@co.com','bob@co.com','charlie@co.com','diana@co.com','eve@co.com'];
+    const roles=['Admin','Editor','Viewer','Moderator','Contributor'];
+    const statuses=['Active','Pending','Inactive','Suspended'];
+    const sampleData=[
+      names[Math.floor(Math.random()*names.length)],
+      emails[Math.floor(Math.random()*emails.length)],
+      roles[Math.floor(Math.random()*roles.length)],
+      statuses[Math.floor(Math.random()*statuses.length)],
+      new Date(Date.now()-Math.random()*1e10).toLocaleDateString(),
+      'Edit',
+      ...Array.from({length:cols-6},()=>String(Math.floor(Math.random()*1000)))
+    ];
+    return sampleData[ci]||String(Math.floor(Math.random()*1000));
+  }));
+  renderTable();
+  saveToStorage();
+}
+
+function renderTable(){
+  const table=document.getElementById('tablePreview');
+  const headerBg=document.getElementById('headerBg').value;
+  const headerColor=document.getElementById('headerColor').value;
+  const cellColor=document.getElementById('cellColor').value;
+  const cellPad=parseInt(document.getElementById('cellPad').value);
+  const cellFont=parseInt(document.getElementById('cellFont').value);
+  const borderColor=document.getElementById('borderColor').value;
+  const borderW=parseInt(document.getElementById('borderWidth').value);
+  const stripes=document.getElementById('stripes').checked;
+  const hoverEnabled=document.getElementById('hover').checked;
+
+  const pad=`${Math.round(cellPad*0.6)}px ${cellPad}px`;
+  let html=`<table style="--cell-pad:${pad};--header-bg:${headerBg};--header-color:${headerColor};--cell-color:${cellColor};--border-color:${borderColor};--border-width:${borderW}px;font-size:${cellFont}px">
+    <thead><tr>${tableData.headers.map((h,i)=>`<th><input class="editable-input" value="${escapeHTML(h)}" onchange="tableData.headers[${i}]=this.value;saveToStorage()" style="color:${headerColor};font-weight:600"></th>`).join('')}</tr></thead>
+    <tbody>${tableData.rows.map((row,ri)=>`<tr class="${stripes?'striped':''}" style="${hoverEnabled?'':''}">${row.map((cell,ci)=>`<td><input class="editable-input" value="${escapeHTML(cell)}" onchange="tableData.rows[${ri}][${ci}]=this.value;saveToStorage()" style="color:${cellColor}"></td>`).join('')}</tr>`).join('')}</tbody>
+  </table>`;
+  table.innerHTML=html;
+  updateCSS();
+  saveToStorage();
+}
+
+function updateCSS(){
+  const headerBg=document.getElementById('headerBg').value;
+  const headerColor=document.getElementById('headerColor').value;
+  const cellColor=document.getElementById('cellColor').value;
+  const cellPad=parseInt(document.getElementById('cellPad').value);
+  const cellFont=parseInt(document.getElementById('cellFont').value);
+  const borderColor=document.getElementById('borderColor').value;
+  const borderW=parseInt(document.getElementById('borderWidth').value);
+  const stripes=document.getElementById('stripes').checked;
+  const hoverEnabled=document.getElementById('hover').checked;
+  document.getElementById('cssOutput').textContent=
+`.styled-table {\n  width: 100%;\n  border-collapse: collapse;\n  font-size: ${cellFont}px;\n}\n\n.styled-table th {\n  padding: ${Math.round(cellPad*0.6)}px ${cellPad}px;\n  background: ${headerBg};\n  color: ${headerColor};\n  border: ${borderW}px solid ${borderColor};\n  text-align: left;\n  font-weight: 600;\n}\n\n.styled-table td {\n  padding: ${Math.round(cellPad*0.6)}px ${cellPad}px;\n  color: ${cellColor};\n  border: ${borderW}px solid ${borderColor};\n}\n${stripes?'\n.styled-table tr:nth-child(even) {\n  background: rgba(255,255,255,0.02);\n}':''}\n${hoverEnabled?'\n.styled-table tr:hover td {\n  background: rgba(0,217,255,0.03);\n}':''}`;
+}
+
+function copyCSS(){navigator.clipboard.writeText(document.getElementById('cssOutput').textContent).then(()=>showToast('CSS copied!'))}
+function copyHTML(){navigator.clipboard.writeText(document.getElementById('tablePreview').innerHTML).then(()=>showToast('HTML copied!'))}
+function showToast(m){const t=document.createElement('div');t.textContent=m;Object.assign(t.style,{position:'fixed',bottom:20,left:'50%',transform:'translateX(-50%)',background:'rgba(0,217,255,0.15)',color:'#00d9ff',padding:'6px 16px',borderRadius:'4px',fontSize:'0.55rem',zIndex:999,transition:'opacity 0.2s',border:'1px solid rgba(0,217,255,0.2)'});document.body.appendChild(t);setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),300)},2000)}
+function escapeHTML(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+function loadPreset(name){
+  const presets={
+    dark:{headerBg:'#1a1a2e',headerColor:'#00d9ff',cellColor:'#888',cellPad:8,cellFont:11,borderColor:'rgba(255,255,255,0.08)',borderWidth:1,stripes:true,hover:true},
+    light:{headerBg:'#f1f5f9',headerColor:'#1e293b',cellColor:'#475569',cellPad:10,cellFont:11,borderColor:'#e2e8f0',borderWidth:1,stripes:true,hover:true},
+    minimal:{headerBg:'transparent',headerColor:'#888',cellColor:'#555',cellPad:6,cellFont:10,borderColor:'rgba(255,255,255,0.03)',borderWidth:0,stripes:false,hover:true},
+    bordered:{headerBg:'#0a0a14',headerColor:'#4ade80',cellColor:'#888',cellPad:8,cellFont:11,borderColor:'rgba(74,222,128,0.15)',borderWidth:2,stripes:false,hover:true},
+    compact:{headerBg:'transparent',headerColor:'#555',cellColor:'#666',cellPad:4,cellFont:9,borderColor:'rgba(255,255,255,0.03)',borderWidth:1,stripes:false,hover:false}
+  };
+  const p=presets[name];if(!p)return;
+  Object.entries(p).forEach(([k,v])=>{const el=document.getElementById(k);if(el.type==='checkbox')el.checked=v;else el.value=v});
+  renderTable();saveToStorage();
+}
+
+function saveToStorage(){try{localStorage.setItem('tablebuilder_data',JSON.stringify(
+  {rowCount:document.getElementById('rowCount').value,
+   colCount:document.getElementById('colCount').value,
+   headerBg:document.getElementById('headerBg').value,
+   headerColor:document.getElementById('headerColor').value,
+   cellColor:document.getElementById('cellColor').value,
+   cellPad:document.getElementById('cellPad').value,
+   cellFont:document.getElementById('cellFont').value,
+   borderColor:document.getElementById('borderColor').value,
+   borderWidth:document.getElementById('borderWidth').value,
+   stripes:document.getElementById('stripes').checked,
+   hover:document.getElementById('hover').checked,
+   tableData
+}))}catch(e){}}
+function loadFromStorage(){try{const d=JSON.parse(localStorage.getItem('tablebuilder_data'));if(d&&d.tableData){Object.entries(d).forEach(([k,v])=>{const el=document.getElementById(k);if(el){if(el.type==='checkbox')el.checked=v;else el.value=v}});tableData=d.tableData;return true}}catch(e){}return false}
+if(!loadFromStorage())rebuildTable();else renderTable()
+</script></body></html>

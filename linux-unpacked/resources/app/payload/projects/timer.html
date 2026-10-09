@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html><head><title>Timer</title><style>
+body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#1a1a2e;color:#fff}
+.timer{text-align:center}
+h1{color:#00d9ff;margin-bottom:16px}
+.display{font-size:64px;font-family:monospace;color:#fff;margin:24px 0;letter-spacing:4px}
+.controls{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.controls button{padding:10px 24px;font-size:14px;border:none;cursor:pointer;font-weight:600}
+.start{background:#4ade80;color:#0f0f1a}.pause{background:#fbbf24;color:#0f0f1a}.reset{background:#f87171;color:#fff}
+.presets{display:flex;gap:4px;justify-content:center;margin-bottom:16px}
+.presets button{padding:6px 12px;font-size:12px;background:#252542;border:1px solid #4a4a6a;color:#aaa;cursor:pointer}
+.presets button:hover{border-color:#00d9ff}
+</style></head><body>
+<div class="timer"><h1>⎔ Timer</h1>
+<div class="presets">
+<button onclick="setTime(300)">5 min</button>
+<button onclick="setTime(600)">10 min</button>
+<button onclick="setTime(900)">15 min</button>
+<button onclick="setTime(1800)">30 min</button>
+</div>
+<div class="display" id="display">05:00</div>
+<div class="controls">
+<button class="start" id="startBtn" onclick="start()">▶ Start</button>
+<button class="reset" onclick="reset()">↻ Reset</button>
+</div>
+</div>
+<script>
+let total=300,remaining=300,interval=null,running=false
+function fmt(s){const m=Math.floor(s/60);const sec=s%60;return String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0')}
+function render(){document.getElementById('display').textContent=fmt(remaining)}
+function setTime(s){if(running)return;total=s;remaining=s;render()}
+function start(){if(running){clearInterval(interval);running=false;document.getElementById('startBtn').textContent='▶ Resume';return}
+running=true;document.getElementById('startBtn').textContent='⏸ Pause'
+interval=setInterval(()=>{remaining--;render();if(remaining<=0){clearInterval(interval);running=false;document.getElementById('startBtn').textContent='▶ Start';alert('⏰ Time is up!')}},1000)}
+function reset(){clearInterval(interval);running=false;remaining=total;document.getElementById('startBtn').textContent='▶ Start';render()}
+render()
+</script></body></html>

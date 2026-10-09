@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Whiteboard Pro</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#ccc;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+header{display:flex;align-items:center;padding:4px 10px;background:#12121e;border-bottom:1px solid rgba(255,255,255,0.06);gap:4px;flex-shrink:0;font-size:0.65rem}
+header h1{font-size:0.85rem;color:#00d9ff;margin-right:8px}header h1 small{color:#555;font-size:0.5rem;font-weight:400}
+.tool-group{display:flex;gap:2px;margin-right:6px}
+.tool-group button{padding:4px 8px;border:1px solid rgba(255,255,255,0.06);border-radius:3px;background:transparent;color:#888;cursor:pointer;font-size:0.55rem;font-family:inherit;transition:0.1s;line-height:1}
+.tool-group button:hover{border-color:#00d9ff;color:#ccc}
+.tool-group button.active{border-color:#00d9ff;color:#00d9ff;background:rgba(0,217,255,0.1)}
+.tool-group .sep{width:1px;background:rgba(255,255,255,0.06);margin:0 2px}
+.color-picker{display:flex;gap:2px;align-items:center}
+.color-picker input[type=color]{width:22px;height:22px;border:1px solid rgba(255,255,255,0.06);border-radius:3px;cursor:pointer;background:transparent;padding:0}
+.color-dot{width:16px;height:16px;border-radius:3px;cursor:pointer;border:2px solid transparent;transition:0.1s}
+.color-dot.active{border-color:#fff}
+.size-slider{display:flex;align-items:center;gap:4px}
+.size-slider input{width:50px;accent-color:#00d9ff;height:4px}
+.size-slider .val{color:#00d9ff;font-size:0.5rem;min-width:16px;text-align:right}
+.canvas-wrap{flex:1;position:relative;overflow:hidden;background:#0e0e1a;cursor:crosshair}
+#wbCanvas{position:absolute;top:0;left:0}
+.sticky-note{position:absolute;min-width:160px;padding:10px 12px;border-radius:4px;font-size:0.75rem;line-height:1.4;cursor:move;box-shadow:0 2px 8px rgba(0,0,0,0.3);z-index:5;font-family:'Segoe UI',Arial,sans-serif}
+.sticky-note .close{position:absolute;top:2px;right:6px;cursor:pointer;color:rgba(0,0,0,0.3);font-size:0.7rem}
+.sticky-note .close:hover{color:rgba(0,0,0,0.6)}
+.sticky-note textarea{border:none;background:transparent;resize:none;width:100%;min-height:40px;outline:none;font-family:inherit;font-size:0.75rem;color:rgba(0,0,0,0.7)}
+.status{font-size:0.5rem;color:#444;padding:2px 10px;border-top:1px solid rgba(255,255,255,0.04);display:flex;gap:12px;flex-shrink:0}
+</style>
+</head>
+<body>
+<header>
+  <h1>🖊️ Whiteboard <small>Draw · Shapes · Text</small></h1>
+  <div class="tool-group">
+    <button class="active" data-tool="pen" onclick="setTool('pen')">✏️ Pen</button>
+    <button data-tool="line" onclick="setTool('line')">📏 Line</button>
+    <button data-tool="rect" onclick="setTool('rect')">▭ Rect</button>
+    <button data-tool="circle" onclick="setTool('circle')">○ Circle</button>
+    <button data-tool="arrow" onclick="setTool('arrow')">➡ Arrow</button>
+    <button data-tool="text" onclick="setTool('text')">T Text</button>
+    <span class="sep"></span>
+    <button data-tool="sticky" onclick="addSticky()">🗒️ Note</button>
+    <button data-tool="select" onclick="setTool('select')">↖ Select</button>
+    <span class="sep"></span>
+    <button onclick="undo()">↩ Undo</button>
+    <button onclick="redo()">↪ Redo</button>
+    <button onclick="clearBoard()">🗑️ Clear</button>
+    <button onclick="exportPNG()">💾 Export</button>
+  </div>
+  <div class="color-picker">
+    <input type="color" id="penColor" value="#00d9ff" onchange="updatePen()">
+    <div style="display:flex;gap:2px">
+      {['#00d9ff','#4ade80','#fbbf24','#f87171','#a78bfa','#ffffff','#ff6633','#ffcc00'].map(c=>
+        `<div class="color-dot" style="background:${c};${penColor===c?'border-color:#fff':''}" onclick="setColor('${c}')"></div>`
+      ).join('')}
+    </div>
+  </div>
+  <div class="size-slider">
+    <input type="range" min="1" max="20" value="3" id="penSize" oninput="updatePen()">
+    <span class="val" id="penSizeVal">3</span>
+  </div>
+</header>
+<div class="canvas-wrap" id="canvasWrap">
+  <canvas id="wbCanvas"></canvas>
+  <div id="stickyContainer"></div>
+</div>
+<div class="status">
+  <span id="modeStatus">Tool: Pen</span>
+  <span id="coordStatus">0, 0</span>
+  <span id="objStatus">0 objects</span>
+</div>
+
+<script>
+const canvas=document.getElementById('wbCanvas'),ctx=canvas.getContext('2d');
+const wrap=document.getElementById('canvasWrap');
+let elements=[],stickies=[],selectedEl=null;
+let currentTool='pen',penColor='#00d9ff',penSize=3;
+let isDrawing=false,startX,startY;
+let undoStack=[],redoStack=[];
+
+function resize(){
+  canvas.width=wrap.clientWidth;canvas.height=wrap.clientHeight;
+  render();
+}
+window.addEventListener('resize',resize);
+
+function setTool(tool){
+  currentTool=tool;
+  document.querySelectorAll('[data-tool]').forEach(b=>b.classList.toggle('active',b.dataset.tool===tool));
+  canvas.style.cursor=tool==='text'?'text':tool==='select'?'default':'crosshair';
+  document.getElementById('modeStatus').textContent=`Tool: ${tool.charAt(0).toUpperCase()+tool.slice(1)}`;
+}
+
+function setColor(c){penColor=c;document.getElementById('penColor').value=c;updatePen()}
+function updatePen(){penSize=parseInt(document.getElementById('penSize').value);document.getElementById('penSizeVal').textContent=penSize}
+
+function saveState(){
+  undoStack.push(JSON.parse(JSON.stringify(elements)));
+  if(undoStack.length>30)undoStack.shift();
+  redoStack=[];
+}
+
+function undo(){
+  if(undoStack.length===0)return;
+  redoStack.push(JSON.parse(JSON.stringify(elements)));
+  elements=undoStack.pop();
+  render();
+}
+function redo(){
+  if(redoStack.length===0)return;
+  undoStack.push(JSON.parse(JSON.stringify(elements)));
+  elements=redoStack.pop();
+  render();
+}
+
+canvas.addEventListener('mousedown',e=>{
+  const rect=canvas.getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top;
+  document.getElementById('coordStatus').textContent=`${Math.round(x)}, ${Math.round(y)}`;
+  
+  if(currentTool==='select'){
+    // Check elements
+    selectedEl=null;
+    for(let i=elements.length-1;i>=0;i--){
+      const el=elements[i];
+      if(el.type==='pen'||el.type==='line'||el.type==='arrow'){
+        for(const p of el.points||[el]){if(Math.abs(p.x-x)<8&&Math.abs(p.y-y)<8){selectedEl=i;break}}
+      }else if(el.type==='rect'||el.type==='circle'){
+        if(x>=el.x&&x<=el.x+el.w&&y>=el.y&&y<=el.y+el.h){selectedEl=i;break}
+      }
+      if(selectedEl!==null)break;
+    }
+    if(selectedEl!==null){canvas.style.cursor='move';isDrawing=true;startX=x;startY=y;return}
+    else{canvas.style.cursor='default'}
+    return;
+  }
+  
+  if(currentTool==='text'){
+    const text=prompt('Enter text:','Hello');
+    if(text){saveState();elements.push({type:'text',x,y,text,color:penColor,size:penSize*4});render()}
+    return;
+  }
+  
+  isDrawing=true;startX=x;startY=y;
+  if(currentTool==='pen'){saveState();elements.push({type:'pen',color:penColor,size:penSize,points:[{x,y}]})}
+});
+
+canvas.addEventListener('mousemove',e=>{
+  const rect=canvas.getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top;
+  document.getElementById('coordStatus').textContent=`${Math.round(x)}, ${Math.round(y)}`;
+  if(!isDrawing)return;
+  
+  if(selectedEl!==null&&currentTool==='select'){
+    const el=elements[selectedEl];
+    if(el){el.x+=x-startX;el.y+=y-startY;startX=x;startY=y;render();return}
+  }
+  
+  const last=elements[elements.length-1];
+  if(currentTool==='pen'&&last&&last.type==='pen'){last.points.push({x,y});render();return}
+  
+  // Preview for shapes
+  render();
+  ctx.save();
+  ctx.strokeStyle=penColor;ctx.lineWidth=penSize;ctx.globalAlpha=0.3;
+  ctx.setLineDash([5,5]);
+  ctx.beginPath();
+  if(currentTool==='line'||currentTool==='arrow'){ctx.moveTo(startX,startY);ctx.lineTo(x,y)}
+  else if(currentTool==='rect'){ctx.rect(Math.min(startX,x),Math.min(startY,y),Math.abs(x-startX),Math.abs(y-startY))}
+  else if(currentTool==='circle'){const cx=(startX+x)/2,cy=(startY+y)/2,rx=Math.abs(x-startX)/2,ry=Math.abs(y-startY)/2;ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2)}
+  ctx.stroke();
+  ctx.restore();
+});
+
+canvas.addEventListener('mouseup',e=>{
+  if(!isDrawing)return;
+  isDrawing=false;canvas.style.cursor=currentTool==='select'?'default':'crosshair';
+  
+  if(selectedEl!==null){selectedEl=null;return}
+  
+  const rect=canvas.getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top;
+  
+  if(Math.abs(x-startX)<3&&Math.abs(y-startY)<3&&currentTool!=='pen')return;
+  
+  if(currentTool!=='pen'){
+    saveState();
+    const el={type:currentTool,color:penColor,size:penSize,x:Math.min(startX,x),y:Math.min(startY,y),w:Math.abs(x-startX),h:Math.abs(y-startY)};
+    if(currentTool==='line'||currentTool==='arrow'){delete el.w;delete el.h;el.x1=startX;el.y1=startY;el.x2=x;el.y2=y}
+    if(currentTool==='circle'){el.cx=(startX+x)/2;el.cy=(startY+y)/2;el.rx=Math.abs(x-startX)/2;el.ry=Math.abs(y-startY)/2;delete el.x;delete el.y;delete el.w;delete el.h}
+    elements.push(el);
+  }
+  render();
+  updateStatus();
+});
+
+function render(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  // Grid
+  ctx.strokeStyle='rgba(255,255,255,0.02)';ctx.lineWidth=0.5;
+  for(let x=0;x<canvas.width;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke()}
+  for(let y=0;y<canvas.height;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke()}
+  
+  for(const el of elements){
+    ctx.save();
+    ctx.strokeStyle=el.color;ctx.fillStyle=el.color;ctx.lineWidth=el.size||2;ctx.lineCap='round';ctx.lineJoin='round';
+    
+    switch(el.type){
+      case 'pen':
+        if(el.points.length<1)break;
+        ctx.beginPath();
+        el.points.forEach((p,i)=>{i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y)});
+        ctx.stroke();
+        break;
+      case 'line':
+        ctx.beginPath();ctx.moveTo(el.x1,el.y1);ctx.lineTo(el.x2,el.y2);ctx.stroke();
+        break;
+      case 'arrow':{
+        ctx.beginPath();ctx.moveTo(el.x1,el.y1);ctx.lineTo(el.x2,el.y2);ctx.stroke();
+        const angle=Math.atan2(el.y2-el.y1,el.x2-el.x1);
+        const aSize=10;
+        ctx.beginPath();ctx.moveTo(el.x2,el.y2);
+        ctx.lineTo(el.x2-aSize*Math.cos(angle-Math.PI/6),el.y2-aSize*Math.sin(angle-Math.PI/6));
+        ctx.moveTo(el.x2,el.y2);
+        ctx.lineTo(el.x2-aSize*Math.cos(angle+Math.PI/6),el.y2-aSize*Math.sin(angle+Math.PI/6));
+        ctx.stroke();
+        break;
+      }
+      case 'rect':
+        ctx.fillStyle=el.color+'22';ctx.fillRect(el.x,el.y,el.w,el.h);
+        ctx.strokeRect(el.x,el.y,el.w,el.h);
+        break;
+      case 'circle':
+        ctx.beginPath();ctx.ellipse(el.cx,el.cy,el.rx,el.ry,0,0,Math.PI*2);
+        ctx.fillStyle=el.color+'22';ctx.fill();
+        ctx.stroke();
+        break;
+      case 'text':
+        ctx.fillStyle=el.color;ctx.font=`${el.size||16}px Arial`;
+        ctx.fillText(el.text,el.x,el.y);
+        break;
+    }
+    ctx.restore();
+  }
+  
+  // Selected element highlight
+  if(selectedEl!==null&&elements[selectedEl]){
+    const el=elements[selectedEl];
+    ctx.save();ctx.strokeStyle='#00d9ff';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+    let ex,ey,ew,eh;
+    if(el.type==='text'){ex=el.x-4;ey=el.y-(el.size||16);ew=ctx.measureText(el.text).width+8;eh=(el.size||16)+6}
+    else if(el.type==='pen'){const xs=el.points.map(p=>p.x),ys=el.points.map(p=>p.y);ex=Math.min(...xs)-5;ey=Math.min(...ys)-5;ew=Math.max(...xs)-Math.min(...xs)+10;eh=Math.max(...ys)-Math.min(...ys)+10}
+    else if(el.type==='rect'){ex=el.x;ey=el.y;ew=el.w;eh=el.h}
+    else if(el.type==='circle'){ex=el.cx-el.rx;ey=el.cy-el.ry;ew=el.rx*2;eh=el.ry*2}
+    else if(el.type==='line'||el.type==='arrow'){ex=Math.min(el.x1,el.x2)-5;ey=Math.min(el.y1,el.y2)-5;ew=Math.abs(el.x2-el.x1)+10;eh=Math.abs(el.y2-el.y1)+10}
+    if(ew>0&&eh>0){ctx.strokeRect(ex,ey,ew,eh)}
+    ctx.restore();
+  }
+  
+  document.getElementById('objStatus').textContent=`${elements.length+stickies.length} objects`;
+}
+
+function addSticky(){
+  const colors=['#fff3cd','#d4edda','#cce5ff','#f8d7da','#e8d5f5','#d1ecf1'];
+  const color=colors[Math.floor(Math.random()*colors.length)];
+  const note=document.createElement('div');note.className='sticky-note';
+  const id='sticky_'+Date.now();
+  note.style.cssText=`left:${50+Math.random()*200}px;top:${50+Math.random()*150}px;background:${color}`;
+  note.innerHTML=`<div class="close" onclick="this.parentElement.remove();updateStatus()">×</div><textarea placeholder="Type a note..." rows="3">New note</textarea>`;
+  note.onmousedown=function(e){if(e.target.tagName==='TEXTAREA')return;const r=this.getBoundingClientRect();const ox=e.clientX-r.left,oy=e.clientY-r.top;const move=ev=>{this.style.left=(ev.clientX-ox)+'px';this.style.top=(ev.clientY-oy)+'px'};const up=()=>{document.removeEventListener('mousemove',move);document.removeEventListener('mouseup',up)};document.addEventListener('mousemove',move);document.addEventListener('mouseup',up)};
+  document.getElementById('stickyContainer').appendChild(note);
+  note.querySelector('textarea').focus();
+  updateStatus();
+}
+
+function clearBoard(){if(!confirm('Clear all drawings?'))return;elements=[];render();updateStatus()}
+function updateStatus(){document.getElementById('objStatus').textContent=`${elements.length+document.querySelectorAll('.sticky-note').length} objects`}
+
+function exportPNG(){
+  const tempCanvas=document.createElement('canvas');
+  tempCanvas.width=canvas.width;tempCanvas.height=canvas.height;
+  const tctx=tempCanvas.getContext('2d');
+  tctx.fillStyle='#ffffff';tctx.fillRect(0,0,tempCanvas.width,tempCanvas.height);
+  tctx.drawImage(canvas,0,0);
+  // Render stickies onto temp canvas
+  document.querySelectorAll('.sticky-note').forEach(n=>{
+    const left=parseInt(n.style.left),top=parseInt(n.style.top);
+    tctx.fillStyle=n.style.background;tctx.fillRect(left,top,160,80);
+    tctx.fillStyle='#333';tctx.font='12px Arial';
+    const text=n.querySelector('textarea').value;
+    tctx.fillText(text,left+8,top+24);
+  });
+  const link=document.createElement('a');link.download='whiteboard.png';link.href=tempCanvas.toDataURL();link.click();
+}
+
+resize();
+setTool('pen');
+</script>
+</body>
+</html>

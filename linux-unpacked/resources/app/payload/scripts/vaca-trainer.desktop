@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=VACA Trainer
+GenericName=Self-play training loop
+Comment=Start the VACA self-play trainer and its live scoreboard
+Exec=/home/homellmlab/Desktop/visual-ai-architect/scripts/vaca-trainer.sh menu
+Icon=utilities-terminal
+Terminal=true
+Categories=Development;
+Keywords=vaca;trainer;scoreboard;llm;
+StartupNotify=true
+Path=/home/homellmlab/Desktop/visual-ai-architect

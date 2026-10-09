@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>🎆 3D Fireworks</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #060814; font-family: 'Segoe UI', system-ui, sans-serif; }
+  #scene { position: fixed; inset: 0; }
+  canvas { display: block; }
+  #hud {
+    position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 10;
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(12, 16, 30, 0.8); border: 1px solid rgba(255, 150, 60, 0.3);
+    border-radius: 12px; padding: 10px 16px; backdrop-filter: blur(8px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.5); color: #f0e0d0; font-size: 14px; user-select: none;
+  }
+  #hud button {
+    background: rgba(255, 140, 50, 0.16); color: #ffd9b0; border: 1px solid rgba(255,160,70,0.4);
+    border-radius: 8px; padding: 5px 11px; font-size: 13px; cursor: pointer; transition: all 0.15s;
+  }
+  #hud button:hover { background: rgba(255,140,50,0.35); color: #fff; transform: translateY(-1px); }
+  #count { color: #ffc28a; font-size: 13px; min-width: 90px; text-align: center; }
+  #hint { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 10;
+    color: rgba(200, 190, 180, 0.5); font-size: 12.5px; white-space: nowrap; }
+  #fallback { display: none; position: fixed; inset: 0; align-items: center; justify-content: center;
+    color: #ff9c9c; font-size: 16px; padding: 24px; text-align: center; z-index: 20; }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+<div id="scene"></div>
+<div id="fallback">3D unavailable — could not load Three.js (CDN blocked or offline).</div>
+<div id="hud">
+  <span>🎆 Fireworks</span>
+  <button id="fire">🚀 Launch</button>
+  <button id="show">Show (3 rockets)</button>
+  <span id="count">Rockets: 0</span>
+</div>
+<div id="hint">Click anywhere on the sky to launch a rocket</div>
+
+<script>
+(function () {
+  'use strict';
+  if (typeof THREE === 'undefined') { document.getElementById('fallback').style.display = 'flex'; return; }
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x060814);
+
+  const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 300);
+  camera.position.set(0, 9, 30);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  document.getElementById('scene').appendChild(renderer.domElement);
+
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.minDistance = 6;
+  controls.maxDistance = 80;
+  controls.target.set(0, 8, 0);
+
+  scene.add(new THREE.AmbientLight(0x334466, 0.7));
+
+  // ── City skyline silhouette at the bottom (dark boxes) ──────────────────
+  const skyline = new THREE.Group();
+  for (let i = 0; i < 26; i++) {
+    const w = 1 + Math.random() * 2;
+    const h = 2 + Math.random() * 7;
+    const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, w),
+      new THREE.MeshBasicMaterial({ color: 0x0d1224 }));
+    b.position.set((Math.random() - 0.5) * 60, h / 2 - 1, (Math.random() - 0.5) * 30 - 8);
+    skyline.add(b);
+  }
+  scene.add(skyline);
+
+  // ── Stars ───────────────────────────────────────────────────────────────
+  const starCount = 1200;
+  const starPos = new Float32Array(starCount * 3);
+  for (let i = 0; i < starCount * 3; i++) starPos[i] = (Math.random() - 0.5) * 180;
+  const starGeo = new THREE.BufferGeometry();
+  starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+  scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.2, transparent: true, opacity: 0.8 })));
+
+  // ── Fireworks engine ────────────────────────────────────────────────────
+  const PALETTE = [0xff4d4d, 0xffa64d, 0xfff24d, 0x66ff66, 0x66ddff, 0xcc88ff, 0xff88d8];
+  const rockets = [];      // {mesh, vel, targetY}
+  const bursts = [];       // {points, posAttr, vel, colorAttr, life, maxLife, opacity}
+  const GRAVITY = -5.5;
+  let rocketCount = 0;
+  const countEl = document.getElementById('count');
+
+  function launch(x, z) {
+    const rocket = new THREE.Mesh(
+      new THREE.SphereGeometry(0.16, 8, 8),
+      new THREE.MeshBasicMaterial({ color: 0xffe0b0 })
+    );
+    rocket.position.set(x, 1, z);
+    scene.add(rocket);
+    const targetY = 12 + Math.random() * 8;
+    rockets.push({ mesh: rocket, vel: 0, targetY });
+    rocketCount++;
+    countEl.textContent = 'Rockets: ' + rocketCount;
+  }
+
+  function explode(x, y, z, color) {
+    const n = 160;
+    const pos = new Float32Array(n * 3);
+    const vel = new Float32Array(n * 3);
+    const col = new Float32Array(n * 3);
+    const c = new THREE.Color(color);
+    for (let i = 0; i < n; i++) {
+      pos[i * 3] = x; pos[i * 3 + 1] = y; pos[i * 3 + 2] = z;
+      // random direction on a sphere, with a speed spread
+      const th = Math.random() * Math.PI * 2;
+      const ph = Math.acos(2 * Math.random() - 1);
+      const sp = 1.5 + Math.random() * 3.5;
+      vel[i * 3] = Math.sin(ph) * Math.cos(th) * sp;
+      vel[i * 3 + 1] = Math.cos(ph) * sp;
+      vel[i * 3 + 2] = Math.sin(ph) * Math.sin(th) * sp;
+      col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    const mat = new THREE.PointsMaterial({
+      size: 0.22, vertexColors: true, transparent: true, opacity: 1,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    });
+    const points = new THREE.Points(geo, mat);
+    scene.add(points);
+    bursts.push({ points, pos, vel, life: 0, maxLife: 1.6 + Math.random() * 0.6 });
+  }
+
+  // ── Click-to-launch (pick a point on the sky plane behind the skyline) ──
+  const raycaster = new THREE.Raycaster();
+  const pointer = new THREE.Vector2();
+  const pickPlane = new THREE.Mesh(new THREE.PlaneGeometry(80, 40), new THREE.MeshBasicMaterial({ visible: false }));
+  pickPlane.position.set(0, 20, -25);
+  scene.add(pickPlane);
+  renderer.domElement.addEventListener('pointerdown', (e) => {
+    const rect = renderer.domElement.getBoundingClientRect();
+    pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    raycaster.setFromCamera(pointer, camera);
+    const hit = raycaster.intersectObject(pickPlane)[0];
+    if (hit) launch(hit.point.x, hit.point.z);
+  });
+
+  document.getElementById('fire').addEventListener('click', () => launch((Math.random() - 0.5) * 24, (Math.random() - 0.5) * 12));
+  document.getElementById('show').addEventListener('click', () => {
+    for (let i = 0; i < 3; i++) setTimeout(() => launch((Math.random() - 0.5) * 24, (Math.random() - 0.5) * 12), i * 350);
+  });
+
+  window.addEventListener('resize', () => {
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+
+  // ── Animation loop ──────────────────────────────────────────────────────
+  function updateBursts(dt) {
+    for (let i = bursts.length - 1; i >= 0; i--) {
+      const b = bursts[i];
+      b.life += dt;
+      const k = b.life / b.maxLife;
+      if (k >= 1) {
+        scene.remove(b.points);
+        b.points.geometry.dispose();
+        b.points.material.dispose();
+        bursts.splice(i, 1);
+        continue;
+      }
+      const pos = b.pos;
+      for (let j = 0; j < pos.length / 3; j++) {
+        pos[j * 3] += b.vel[j * 3] * dt;
+        pos[j * 3 + 1] += b.vel[j * 3 + 1] * dt + GRAVITY * dt * dt * 0.5;
+        pos[j * 3 + 2] += b.vel[j * 3 + 2] * dt;
+        b.vel[j * 3 + 1] += GRAVITY * dt;
+      }
+      b.points.geometry.attributes.position.needsUpdate = true;
+      b.points.material.opacity = 1 - k * k;
+      b.points.scale.setScalar(1 + k * 0.6);
+    }
+  }
+
+  function updateRockets(dt) {
+    for (let i = rockets.length - 1; i >= 0; i--) {
+      const r = rockets[i];
+      r.vel += 14 * dt;
+      r.mesh.position.y += r.vel * dt;
+      if (r.mesh.position.y >= r.targetY) {
+        explode(r.mesh.position.x, r.mesh.position.y, r.mesh.position.z, PALETTE[Math.floor(Math.random() * PALETTE.length)]);
+        scene.remove(r.mesh);
+        rockets.splice(i, 1);
+      }
+    }
+  }
+
+  let last = null;
+  function animate(now) {
+    requestAnimationFrame(animate);
+    if (last === null) last = now;
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    updateRockets(dt);
+    updateBursts(dt);
+    controls.update();
+    renderer.render(scene, camera);
+  }
+  requestAnimationFrame(animate);
+
+  // ── Test/automation hook ────────────────────────────────────────────────
+  window.__vaca3d = {
+    launch: launch,
+    rockets: () => rockets.length,
+    bursts: () => bursts.length,
+    launched: () => rocketCount,
+  };
+})();
+</script>
+</body>
+</html>

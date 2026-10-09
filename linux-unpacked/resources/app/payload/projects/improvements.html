@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Improvement Blueprint</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: #0f0f1a;
+  color: #d0d0e0;
+  padding: 30px 20px;
+  line-height: 1.7;
+}
+.container { max-width: 900px; margin: 0 auto; }
+h1 { color: #00d9ff; font-size: 2rem; margin-bottom: 4px; }
+h2 { color: #4ade80; font-size: 1.3rem; margin: 30px 0 12px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 6px; }
+h3 { color: #fbbf24; font-size: 1rem; margin: 20px 0 8px; }
+p { margin-bottom: 10px; color: #b0b0c0; }
+strong { color: #e0e0f0; }
+.card {
+  background: linear-gradient(145deg, #1a1a2e, #1e1e3a);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 18px;
+  margin-bottom: 14px;
+}
+.badge { display: inline-block; padding: 1px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; }
+.badge.crit { background: rgba(239,68,68,0.2); color: #ef4444; }
+.badge.high { background: rgba(248,113,113,0.15); color: #f87171; }
+.badge.med { background: rgba(251,191,36,0.15); color: #f59e0b; }
+.badge.low { background: rgba(96,165,250,0.15); color: #60a5fa; }
+.badge.easy { background: rgba(74,222,128,0.15); color: #4ade80; }
+ul, ol { margin: 8px 0 12px 20px; }
+li { margin-bottom: 6px; color: #b0b0c0; }
+code { background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 3px; font-size: 0.85em; color: #f472b6; }
+hr { border: none; height: 1px; background: rgba(255,255,255,0.06); margin: 20px 0; }
+.effort { display: inline-block; font-size: 0.65rem; padding: 1px 6px; border-radius: 3px; margin-left: 4px; }
+.effort.quick { background: rgba(74,222,128,0.1); color: #4ade80; }
+.effort.medium { background: rgba(251,191,36,0.1); color: #fbbf24; }
+.effort.big { background: rgba(248,113,113,0.1); color: #f87171; }
+.priority { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+.priority.p1 { background: #ef4444; }
+.priority.p2 { background: #f59e0b; }
+.priority.p3 { background: #3b82f6; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>🔧 System Improvement Blueprint</h1>
+<p style="color:#888;margin-bottom:20px">Based on analysis of 24 apps • 7.5/10 current grade • Target: 9/10+</p>
+
+<div class="card" style="border-left:3px solid #ef4444">
+  <p><strong>Current Grade: 7.5/10</strong> — These improvements target <strong>9/10+</strong> by fixing critical security issues, adding automated testing infrastructure, improving accessibility, and strengthening the code generation pipeline.</p>
+</div>
+
+<!-- ====== PHASE 1 ====== -->
+<h2>🚨 Phase 1 — Critical Fixes (Week 1)</h2>
+<p style="font-size:0.85rem;color:#888">Highest impact, lowest effort. These are the must-fix items before anything else.</p>
+
+<h3><span class="priority p1"></span> 1.1 Fix XSS in App Generation Pipeline <span class="effort quick">Quick fix</span></h3>
+<div class="card">
+<p><span class="badge crit">CRITICAL</span> <strong>Problem:</strong> 3 generated apps (expense-tracker, chat-app, kanban-board) use <code>innerHTML</code> with unsanitized user input. The <code>CodeScanner.ts</code> already <em>detects</em> this pattern but doesn't prevent it during generation.</p>
+<p><strong>Fix:</strong> Add HTML entity escaping as a post-generation step in the scaffolder:</p>
+<pre style="background:rgba(0,0,0,0.3);padding:12px;border-radius:6px;margin:8px 0;overflow-x:auto;font-size:0.8rem;color:#a0d8a0"><code>// Add this utility to scaffolder.ts
+function escapeHtml(str) {
+  return str.replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+}
+
+// Run securityScan on generated HTML before writing
+// Auto-fix innerHTML assignments with escaped content</code></pre>
+<p><strong>Bonus:</strong> The <code>previewHtmlBuilder.ts</code> already has an <code>escapeHtml()</code> function — reuse it in the scaffolder for generated app output.</p>
+</div>
+
+<h3><span class="priority p1"></span> 1.2 Automatic Post-Gen Security Scan <span class="effort quick">Quick fix</span></h3>
+<div class="card">
+<p><span class="badge crit">CRITICAL</span> <strong>Problem:</strong> The <code>CodeScanner.securityScan()</code> method already exists and detects XSS, eval(), SQL injection, and 12 other vulnerability types — but it's not automatically called after code generation.</p>
+<p><strong>Fix:</strong> Add a <code>postGenerationScan</code> step in the generation pipeline that:</p>
+<ol>
+  <li>Runs <code>securityScan()</code> on every generated file</li>
+  <li>Blocks deployment if critical/high vulnerabilities found</li>
+  <li>Returns scan report to the user with remediation suggestions</li>
+</ol>
+<p><strong>Impact:</strong> Zero new code needed — just wire up the existing scanner into the generation pipeline.</p>
+</div>
+
+<h3><span class="priority p1"></span> 1.3 Replace eval() in Sandbox with Safe Runner <span class="effort medium">Medium effort</span></h3>
+<div class="card">
+<p><span class="badge crit">CRITICAL</span> <strong>Problem:</strong> The sandbox preview uses <code>eval(appCode)</code> to run generated JavaScript. This is a security risk — generated code could access the parent window's DOM, localStorage, or cookies.</p>
+<p><strong>Fix:</strong> Replace <code>eval()</code> with an iframe-based sandbox:</p>
+<pre style="background:rgba(0,0,0,0.3);padding:12px;border-radius:6px;margin:8px 0;overflow-x:auto;font-size:0.8rem;color:#a0d8a0"><code>// Instead of: eval(appCode);
+// Use:
+const iframe = document.createElement('iframe');
+iframe.sandbox = 'allow-scripts allow-same-origin';
+iframe.srcdoc = `&lt;script&gt;${appCode}&lt;/script&gt;`;
+iframe.style.display = 'none';
+document.body.appendChild(iframe);</code></pre>
+<p><strong>Impact:</strong> Prevents sandbox code from accessing the parent application entirely.</p>
+</div>
+
+<!-- ====== PHASE 2 ====== -->
+<h2>⚡ Phase 2 — Core Architecture (Week 2-3)</h2>
+<p style="font-size:0.85rem;color:#888">Medium effort, high impact. These improve reliability, accuracy, and user experience.</p>
+
+<h3><span class="priority p2"></span> 2.1 App Testing Automation <span class="effort medium">Medium effort</span></h3>
+<div class="card">
+<p><span class="badge high">HIGH</span> <strong>Problem:</strong> Apps were tested manually via browser — no automated test harness exists. This makes regression testing impossible.</p>
+<p><strong>Fix:</strong> Create an automated app test suite that:</p>
+<ol>
+  <li>Launches each HTML app in a headless browser (Puppeteer/Playwright)</li>
+  <li>Checks for: page load, console errors, interactive elements, keyboard nav</li>
+  <li>Generates a test report with pass/fail for each app</li>
+  <li>Runs on every code generation to catch regressions</li>
+</ol>
+<p style="margin-top:6px;font-size:0.85rem;color:#888">Suggested tool: <strong>Vitest + Playwright</strong> (already have Vitest in deps)</p>
+</div>
+
+<h3><span class="priority p2"></span> 2.2 Timer Accuracy Fix <span class="effort quick">Quick fix</span></h3>
+<div class="card">
+<p><span class="badge high">HIGH</span> <strong>Problem:</strong> Multiple apps use <code>setInterval(fn, 1000)</code> which drifts over time. The pomodoro timer could be off by 3-5 seconds after 25 minutes.</p>
+<p><strong>Fix:</strong> Replace with <code>Date.now()</code> differential pattern:</p>
+<pre style="background:rgba(0,0,0,0.3);padding:12px;border-radius:6px;margin:8px 0;overflow-x:auto;font-size:0.8rem;color:#a0d8a0"><code>// Instead of:
+setInterval(() => { timeLeft--; }, 1000);
+
+// Use:
+const startTime = Date.now();
+const duration = 25 * 60 * 1000;
+setInterval(() => {
+  const elapsed = Date.now() - startTime;
+  const remaining = Math.max(0, duration - elapsed);
+  updateDisplay(Math.ceil(remaining / 1000));
+  if (remaining <= 0) onComplete();
+}, 100); // check every 100ms for accuracy</code></pre>
+<p><strong>Apps affected:</strong> pomodoro-timer, music-player, typing-test</p>
+</div>
+
+<h3><span class="priority p2"></span> 2.3 Add Accessibility Scaffold to Generated Apps <span class="effort medium">Medium effort</span></h3>
+<div class="card">
+<p><span class="badge high">HIGH</span> <strong>Problem:</strong> All 24 apps lack ARIA labels, proper heading hierarchy, and keyboard navigation support.</p>
+<p><strong>Fix:</strong> Create an accessibility plugin for the scaffolder that automatically adds:</p>
+<ul>
+  <li><code>lang="en"</code> attribute to all HTML documents</li>
+  <li><code>role="button"</code> and <code>aria-label</code> on interactive elements</li>
+  <li><code>tabindex</code> and keyboard event handlers</li>
+  <li>Focus management for modals and dynamic content</li>
+  <li>Color contrast verification (WCAG 2.1 AA compliance)</li>
+</ul>
+</div>
+
+<h3><span class="priority p2"></span> 2.4 Mobile Touch Support for Kanban <span class="effort medium">Medium effort</span></h3>
+<div class="card">
+<p><span class="badge med">MEDIUM</span> <strong>Problem:</strong> HTML5 Drag and Drop API doesn't work on touch devices. The kanban board is unusable on mobile.</p>
+<p><strong>Fix:</strong> Add touch event handlers (<code>touchstart</code>, <code>touchmove</code>, <code>touchend</code>) that mirror the drag/drop behavior. Use <code>elementFromPoint()</code> to detect drop targets on touch devices.</p>
+</div>
+
+<!-- ====== PHASE 3 ====== -->
+<h2>🚀 Phase 3 — Advanced Features (Week 4-6)</h2>
+<p style="font-size:0.85rem;color:#888">Larger efforts that unlock major capability improvements.</p>
+
+<h3><span class="priority p3"></span> 3.1 Multi-Framework App Generation Templates <span class="effort big">Big effort</span></h3>
+<div class="card">
+<p><span class="badge med">MEDIUM</span> <strong>Problem:</strong> Currently all apps are vanilla HTML/CSS/JS. No React, Vue, Svelte, or Next.js support.</p>
+<p><strong>Fix:</strong> Extend the scaffolder with template engines:</p>
+<ul>
+  <li><strong>React:</strong> Generate JSX components with Vite build config</li>
+  <li><strong>Vue:</strong> Generate SFC (.vue) files with Vite</li>
+  <li><strong>Svelte:</strong> Generate .svelte files</li>
+  <li><strong>Next.js:</strong> Generate pages/api structure</li>
+</ul>
+<p><strong>Piggyback on existing system:</strong> The node types and data flow already exist — just swap the output template.</p>
+</div>
+
+<h3><span class="priority p3"></span> 3.2 Interactive Live Preview <span class="effort big">Big effort</span></h3>
+<div class="card">
+<p><span class="badge med">MEDIUM</span> <strong>Problem:</strong> The sandbox preview is a static HTML page. Users can't see changes as they edit nodes.</p>
+<p><strong>Fix:</strong> Implement WebSocket-based live preview that:</p>
+<ol>
+  <li>Streams code changes in real-time as nodes are edited</li>
+  <li>Hot-reloads the preview without full page refresh</li>
+  <li>Shows compilation errors inline in the node editor</li>
+</ol>
+<p><strong>Architecture:</strong> The <code>socket.io-client</code> is already in package.json — just need a Socket.IO server for streaming code changes.</p>
+</div>
+
+<h3><span class="priority p3"></span> 3.3 AI-Powered Fix Suggestions <span class="effort big">Big effort</span></h3>
+<div class="card">
+<p><span class="badge med">MEDIUM</span> <strong>Problem:</strong> When code generation produces errors, the user sees raw error messages with no guidance on how to fix them.</p>
+<p><strong>Fix:</strong> Pipe CodeScanner results + error output into the LLM to generate human-readable fix suggestions:</p>
+<pre style="background:rgba(0,0,0,0.3);padding:12px;border-radius:6px;margin:8px 0;overflow-x:auto;font-size:0.8rem;color:#a0d8a0"><code>1. Run generated code → catch errors
+2. Run CodeScanner → get vulnerability report
+3. Send both to LLM: "Here's the code, here's the error,
+   here are security issues found. Suggest fixes."
+4. Display fix suggestions with diff view</code></pre>
+</div>
+
+<h3><span class="priority p3"></span> 3.4 Backend Reliability & Offline Mode <span class="effort big">Big effort</span></h3>
+<div class="card">
+<p><span class="badge crit">CRITICAL</span> <strong>Problem:</strong> Backend went down multiple times during testing. No offline fallback — entire app breaks when backend is unavailable.</p>
+<p><strong>Fix:</strong> Multi-pronged approach:</p>
+<ul>
+  <li><strong>Retry with exponential backoff:</strong> All API calls retry 3× with 1s/2s/4s delays</li>
+  <li><strong>Offline queue:</strong> Queue failed operations and replay when backend recovers</li>
+  <li><strong>Local-only mode:</strong> Detect backend status and fall back to localStorage for all operations</li>
+  <li><strong>Health endpoint:</strong> Add <code>/api/health</code> with DB connection check, disk space, uptime</li>
+</ul>
+</div>
+
+<!-- ====== SUMMARY TABLE ====== -->
+<h2>📊 Improvement Summary</h2>
+<table style="width:100%;border-collapse:collapse;margin:12px 0">
+  <tr>
+    <th style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08);text-align:left;color:#00d9ff">Improvement</th>
+    <th style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08);text-align:left;color:#00d9ff">Effort</th>
+    <th style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08);text-align:left;color:#00d9ff">Impact</th>
+    <th style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08);text-align:left;color:#00d9ff">Grade Boost</th>
+  </tr>
+  <tr><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)">XSS fix in generation pipeline</td><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)"><span class="effort quick">Hours</span></td><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)">🔴 Critical</td><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)">+0.5</td></tr>
+  <tr><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)">Post-gen security scan (wire up CodeScanner)</td><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)"><span class="effort quick">Hours</span></td><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)">🔴 Critical</td><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)">+0.5</td></tr>
+  <tr><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)">Replace eval() with iframe sandbox</td><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)"><span class="effort quick">Hours</span></td><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)">🔴 Critical</td><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)">+0.3</td></tr>
+  <tr><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)">Backend reliability & offline mode</td><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)"><span class="effort big">Days</span></td><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)">🟡 High</td><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)">+0.4</td></tr>
+  <tr><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)">Automated app testing (Playwright)</td><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)"><span class="effort medium">Days</span></td><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)">🟡 High</td><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)">+0.4</td></tr>
+  <tr><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)">Timer accuracy (Date.now() pattern)</td><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)"><span class="effort quick">Hours</span></td><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)">🟡 Medium</td><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)">+0.2</td></tr>
+  <tr><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)">Accessibility scaffold</td><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)"><span class="effort medium">Days</span></td><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)">🟡 Medium</td><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)">+0.3</td></tr>
+  <tr><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)">Mobile touch for Kanban</td><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)"><span class="effort medium">Hours</span></td><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)">🟢 Low</td><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)">+0.2</td></tr>
+  <tr><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)">Multi-framework templates</td><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)"><span class="effort big">Weeks</span></td><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)">🔵 Feature</td><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)">+0.5</td></tr>
+  <tr><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)">Live preview (WebSocket)</td><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)"><span class="effort big">Days</span></td><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)">🔵 Feature</td><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)">+0.4</td></tr>
+  <tr><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)">AI-powered fix suggestions</td><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)"><span class="effort big">Days</span></td><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)">🔵 Feature</td><td style="padding:8px 12px;border:1px solid rgba(255,255,255,0.08)">+0.3</td></tr>
+</table>
+
+<div class="card" style="border-left:3px solid #00d9ff;margin-top:20px">
+  <p><strong>Total potential grade improvement: ~4.0 points</strong></p>
+  <p style="font-size:0.85rem;color:#888">Starting from 7.5/10, the easiest wins (Phase 1 alone) bump to ~8.8/10. All 3 phases combined could push past 9.5/10.</p>
+</div>
+
+<hr>
+<p style="text-align:center;font-size:0.8rem;color:#444">Generated by Visual AI Architect · Based on comprehensive analysis of 24 apps and 15 browser tests</p>
+
+</div>
+</body>
+</html>

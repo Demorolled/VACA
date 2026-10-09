@@ -1,0 +1,92 @@
+{
+ "apps": [
+  {
+   "id": "tictactoe",
+   "name": "Tic-Tac-Toe",
+   "file": "tictactoe.html",
+   "icon": "✕",
+   "goal": "A two-player Tic-Tac-Toe game with a 3x3 grid. Players take turns placing X and O marks. The first to get 3 in a row wins. Includes win detection, draw detection, and a reset button.",
+   "category": "game"
+  },
+  {
+   "id": "calculator",
+   "name": "Calculator",
+   "file": "calculator.html",
+   "icon": "⌨",
+   "goal": "A basic four-function calculator supporting addition, subtraction, multiplication, and division. Includes number buttons, operator buttons, clear, sign toggle, percentage, and an equals button to compute results.",
+   "category": "utility"
+  },
+  {
+   "id": "todo-list",
+   "name": "Todo List",
+   "file": "todo-list.html",
+   "icon": "☑",
+   "goal": "A task management app where users can add, complete, and delete tasks. Tasks are saved to localStorage. Shows remaining item count and supports check/uncheck of completed items.",
+   "category": "productivity"
+  },
+  {
+   "id": "timer",
+   "name": "Timer",
+   "file": "timer.html",
+   "icon": "⏱",
+   "goal": "A countdown timer with preset durations (5, 10, 15, 30 minutes). Features start/pause/resume controls, a reset button, and an alert when time runs out.",
+   "category": "utility"
+  },
+  {
+   "id": "weather-widget",
+   "name": "Weather Widget",
+   "file": "weather-widget.html",
+   "icon": "🌤",
+   "goal": "A weather display app that shows temperature, humidity, and wind speed for a searched city. Includes preset cities (London, Paris, Tokyo, New York, Sydney, Moscow) with simulated weather data.",
+   "category": "widget"
+  },
+  {
+   "id": "note-pad",
+   "name": "Note Pad",
+   "file": "note-pad.html",
+   "icon": "📝",
+   "goal": "A note-taking app with multiple notes, auto-save to localStorage, add/delete notes, and a text editor. Users can create, edit, and organize multiple notes.",
+   "category": "productivity"
+  },
+  {
+   "id": "stopwatch",
+   "name": "Stopwatch",
+   "file": "stopwatch.html",
+   "icon": "⏱",
+   "goal": "A stopwatch with start/pause, lap time tracking, and reset functionality. Shows elapsed time in minutes:seconds.tenths format and lists all lap times.",
+   "category": "utility"
+  },
+  {
+   "id": "color-picker",
+   "name": "Color Picker",
+   "file": "color-picker.html",
+   "icon": "🎨",
+   "goal": "An RGB color picker with three sliders (red, green, blue) showing a live preview. Displays hex value, copy-to-clipboard, and saves favorite colors to localStorage.",
+   "category": "utility"
+  },
+  {
+   "id": "unit-converter",
+   "name": "Unit Converter",
+   "file": "unit-converter.html",
+   "icon": "⚖",
+   "goal": "A unit converter supporting length, mass, temperature, speed, and volume conversions. Features category switching, swap units button, and live conversion as you type.",
+   "category": "utility"
+  },
+  {
+   "id": "countdown",
+   "name": "Countdown",
+   "file": "countdown.html",
+   "icon": "⌛",
+   "goal": "A date countdown app showing days, hours, minutes, and seconds until a target date. Includes preset events (Christmas, New Year), custom date picker, and a celebration message.",
+   "category": "utility"
+  },
+  {
+   "id": "claims-audit",
+   "name": "Claims Audit",
+   "file": "claims-audit.html",
+   "icon": "🧪",
+   "goal": "Tests VACA's stated claims (data/soul.json) against the live backend: quick or full probe run, per-claim PASS/FAIL + scores, and an improvement report. Mirrors scripts/audit-claims.py in the browser.",
+   "category": "utility"
+  }
+ ]
+}

@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Code Playground Pro</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'SF Mono','Fira Code','Consolas',monospace;background:#0a0a14;color:#ccc;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+header{display:flex;align-items:center;padding:4px 12px;background:#12121e;border-bottom:1px solid rgba(255,255,255,0.06);gap:8px;font-family:'Segoe UI',Arial,sans-serif}
+header h1{font-size:0.85rem;color:#00d9ff}header h1 small{color:#555;font-size:0.55rem}
+.toolbar{display:flex;gap:3px}
+.toolbar button{padding:4px 10px;border:1px solid rgba(255,255,255,0.06);border-radius:3px;background:rgba(255,255,255,0.03);color:#888;cursor:pointer;font-size:0.55rem;font-family:inherit;transition:0.1s}
+.toolbar button:hover{border-color:#00d9ff;color:#ccc}
+.toolbar button.run{background:rgba(0,217,255,0.1);border-color:rgba(0,217,255,0.2);color:#00d9ff}
+.main{display:flex;flex:1;overflow:hidden}
+.file-tree{width:160px;background:#0e0e1a;border-right:1px solid rgba(255,255,255,0.04);padding:4px;overflow-y:auto;font-size:0.6rem;flex-shrink:0}
+.file-tree .ft-header{color:#555;padding:4px 8px;font-size:0.5rem;text-transform:uppercase;letter-spacing:0.5px;font-family:'Segoe UI',Arial,sans-serif}
+.file-item{padding:3px 8px;cursor:pointer;border-radius:2px;color:#888;display:flex;align-items:center;gap:4px}
+.file-item:hover{background:rgba(255,255,255,0.03);color:#aaa}
+.file-item.active{background:rgba(0,217,255,0.08);color:#00d9ff}
+.file-item .icon{font-size:0.55rem}
+.editor-panel{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.tab-bar{display:flex;background:#0e0e1a;border-bottom:1px solid rgba(255,255,255,0.04);min-height:28px;overflow-x:auto;flex-shrink:0}
+.tab{display:flex;align-items:center;gap:4px;padding:4px 12px;cursor:pointer;font-size:0.6rem;color:#666;border-right:1px solid rgba(255,255,255,0.04);border-bottom:2px solid transparent;white-space:nowrap;font-family:'Segoe UI',Arial,sans-serif}
+.tab:hover{color:#888;background:rgba(255,255,255,0.02)}
+.tab.active{color:#ccc;border-bottom-color:#00d9ff;background:rgba(0,217,255,0.03)}
+.tab .close{margin-left:4px;color:#444;cursor:pointer;font-size:0.5rem}
+.tab .close:hover{color:#f87171}
+.editor-area{flex:1;display:flex;position:relative}
+#codeEditor{flex:1;background:#0e0e1a;color:#ccc;border:none;outline:none;padding:12px;font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:13px;line-height:1.6;resize:none;tab-size:2;white-space:pre;overflow:auto}
+#codeEditor:focus{background:#0a0a16}
+.line-nums{width:44px;background:#0a0a14;border-right:1px solid rgba(255,255,255,0.04);padding:12px 6px;text-align:right;font-size:13px;line-height:1.6;color:#333;overflow:hidden;user-select:none;font-family:'SF Mono','Fira Code','Consolas',monospace;flex-shrink:0}
+.output-panel{height:180px;background:#0e0e1a;border-top:1px solid rgba(255,255,255,0.04);display:flex;flex-direction:column;flex-shrink:0}
+.output-tabs{display:flex;padding:0 8px;font-size:0.55rem;font-family:'Segoe UI',Arial,sans-serif}
+.output-tabs button{padding:4px 12px;border:none;background:transparent;color:#555;cursor:pointer;border-bottom:2px solid transparent;font-family:inherit}
+.output-tabs button.active{color:#00d9ff;border-bottom-color:#00d9ff}
+.output-content{flex:1;overflow:auto;padding:8px 12px;font-size:12px;line-height:1.5;color:#888}
+.output-content .log{color:#888}.output-content .error{color:#f87171}.output-content .warn{color:#fbbf24}.output-content .info{color:#00d9ff}
+.preview-frame{width:100%;height:100%;border:none;background:#fff}
+</style>
+</head>
+<body>
+<header>
+  <h1>💻 Code Playground <small>Multi-file Editor · Console · Preview</small></h1>
+  <div class="toolbar">
+    <button onclick="runCode()" class="run">▶ Run</button>
+    <button onclick="formatCode()">✨ Format</button>
+    <button onclick="addFile()">📄 +File</button>
+    <button onclick="saveProject()">💾 Save</button>
+    <button onclick="loadProject()">📂 Load</button>
+    <button onclick="showShortcuts()">⌨️ Keys</button>
+  </div>
+</header>
+<div class="main">
+  <div class="file-tree" id="fileTree">
+    <div class="ft-header">📁 Project Files</div>
+  </div>
+  <div class="editor-panel">
+    <div class="tab-bar" id="tabBar"></div>
+    <div class="editor-area">
+      <div class="line-nums" id="lineNums">1</div>
+      <textarea id="codeEditor" spellcheck="false" oninput="onCodeChange()" onscroll="syncScroll()"></textarea>
+    </div>
+    <div class="output-panel">
+      <div class="output-tabs">
+        <button class="active" onclick="switchOutputTab('console')" id="consoleTab">📟 Console</button>
+        <button onclick="switchOutputTab('preview')" id="previewTab">👁 Preview</button>
+      </div>
+      <div id="consoleOutput" class="output-content"></div>
+      <iframe id="previewFrame" class="preview-frame" style="display:none" sandbox="allow-scripts allow-modals"></iframe>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ──
+let files = {};
+let currentFile = null;
+let fileOrder = [];
+let nextFileId = 1;
+
+const DEFAULT_HTML = `<!DOCTYPE html>
+<html>
+<head><title>Preview</title><style>body{font-family:Arial;padding:20px;background:#f5f5f5}</style></head>
+<body>
+  <h1>Hello, World!</h1>
+  <p>Edit this HTML in the editor →</p>
+  <button onclick="alert('Hello!')">Click Me</button>
+</body>
+</html>`;
+
+function init() {
+  addFileInternal('index.html', DEFAULT_HTML, 'html');
+  addFileInternal('style.css', 'body { color: #333; }\nh1 { color: #0066ff; }', 'css');
+  addFileInternal('app.js', 'console.log("App initialized!");\ndocument.body.style.background = "#e8f4f8";', 'js');
+  switchFile(fileOrder[0]);
+}
+
+// ── FILE MANAGEMENT ──
+function addFile() {
+  const name = prompt('File name (e.g., script.js):', 'script.js');
+  if (!name) return;
+  const ext = name.split('.').pop();
+  const template = { html: '<!DOCTYPE html>\n<html>\n<head><title>New</title></head>\n<body>\n  <p>New file</p>\n</body>\n</html>', js: '// New JavaScript file\nconsole.log("loaded");', css: '/* New CSS file */', json: '{}', txt: '' };
+  addFileInternal(name, template[ext] || '', ext);
+  switchFile(name);
+}
+
+function addFileInternal(name, content, ext) {
+  if (files[name]) { if(!confirm(`Replace ${name}?`))return; }
+  files[name] = { name, content, ext, id: nextFileId++ };
+  if (!fileOrder.includes(name)) fileOrder.push(name);
+  renderFileTree();
+  renderTabs();
+}
+
+function deleteFile(name) {
+  if (fileOrder.length <= 1) return;
+  if (!confirm(`Delete ${name}?`)) return;
+  delete files[name];
+  fileOrder = fileOrder.filter(f => f !== name);
+  if (currentFile === name) switchFile(fileOrder[0]);
+  renderFileTree();
+  renderTabs();
+}
+
+function switchFile(name) {
+  currentFile = name;
+  const file = files[name];
+  if (!file) return;
+  document.getElementById('codeEditor').value = file.content;
+  updateLineNumbers();
+  renderTabs();
+  renderFileTree();
+}
+
+function onCodeChange() {
+  const file = files[currentFile];
+  if (file) file.content = document.getElementById('codeEditor').value;
+  updateLineNumbers();
+}
+
+function getFileIcon(name) {
+  const ext = name.split('.').pop();
+  return { html: '🌐', js: '📜', css: '🎨', json: '📋', txt: '📄', jsx: '⚛️', ts: '🦾' }[ext] || '📄';
+}
+
+// ── RENDER ──
+function renderFileTree() {
+  const tree = document.getElementById('fileTree');
+  tree.innerHTML = '<div class="ft-header">📁 Project Files</div>';
+  for (const name of fileOrder) {
+    const f = files[name];
+    if (!f) continue;
+    const div = document.createElement('div');
+    div.className = 'file-item' + (name === currentFile ? ' active' : '');
+    div.innerHTML = `<span class="icon">${getFileIcon(name)}</span>${name}`;
+    div.onclick = () => switchFile(name);
+    div.oncontextmenu = (e) => { e.preventDefault(); if (confirm(`Delete ${name}?`)) deleteFile(name); };
+    tree.appendChild(div);
+  }
+}
+
+function renderTabs() {
+  const bar = document.getElementById('tabBar');
+  bar.innerHTML = '';
+  for (const name of fileOrder) {
+    if (!files[name]) continue;
+    const tab = document.createElement('div');
+    tab.className = 'tab' + (name === currentFile ? ' active' : '');
+    tab.innerHTML = `${getFileIcon(name)} ${name} <span class="close" onclick="event.stopPropagation();deleteFile('${name}')">×</span>`;
+    tab.onclick = () => switchFile(name);
+    bar.appendChild(tab);
+  }
+}
+
+function updateLineNumbers() {
+  const editor = document.getElementById('codeEditor');
+  const lines = editor.value.split('\n').length;
+  document.getElementById('lineNums').textContent = Array.from({length: lines}, (_, i) => i + 1).join('\n');
+}
+
+function syncScroll() {
+  const editor = document.getElementById('codeEditor');
+  document.getElementById('lineNums').scrollTop = editor.scrollTop;
+}
+
+// ── RUN ──
+function runCode() {
+  const output = document.getElementById('consoleOutput');
+  const preview = document.getElementById('previewFrame');
+  output.innerHTML = '<div class="info">▶ Running...</div>';
+  
+  // Override console
+  const logs = [];
+  const fakeConsole = {
+    log: (...args) => { logs.push({ type: 'log', text: args.map(String).join(' ') }); },
+    error: (...args) => { logs.push({ type: 'error', text: args.map(String).join(' ') }); },
+    warn: (...args) => { logs.push({ type: 'warn', text: args.map(String).join(' ') }); },
+    info: (...args) => { logs.push({ type: 'info', text: args.map(String).join(' ') }); },
+  };
+  
+  // Build HTML from files
+  const htmlFile = files['index.html'] || files[Object.keys(files).find(f => f.endsWith('.html'))];
+  const cssFiles = Object.values(files).filter(f => f.name.endsWith('.css'));
+  const jsFiles = Object.values(files).filter(f => f.name.endsWith('.js'));
+  
+  if (htmlFile) {
+    let html = htmlFile.content;
+    // Inject CSS
+    let cssContent = cssFiles.map(f => `/* ${f.name} */\n${f.content}`).join('\n\n');
+    if (cssContent) {
+      const styleTag = `<style>\n${cssContent}\n</style>`;
+      if (html.includes('</head>')) html = html.replace('</head>', styleTag + '\n</head>');
+      else html = styleTag + '\n' + html;
+    }
+    // Inject JS
+    let jsContent = jsFiles.map(f => `// ${f.name}\n${f.content}`).join('\n\n');
+    if (jsContent) {
+      const scriptTag = `<script>\n${jsContent}\n<\/script>`;
+      if (html.includes('</body>')) html = html.replace('</body>', scriptTag + '\n</body>');
+      else html = html + '\n' + scriptTag;
+    }
+    
+    preview.srcdoc = html;
+    output.innerHTML = '<div class="info">✅ Preview updated</div>';
+    logs.forEach(l => { output.innerHTML += `<div class="${l.type}">${escapeHTML(l.text)}</div>`; });
+  } else {
+    // Run as JavaScript
+    try {
+      const jsCode = Object.values(files).map(f => f.content).join('\n');
+      const fn = new Function('console', jsCode);
+      fn(fakeConsole);
+      logs.forEach(l => { output.innerHTML += `<div class="${l.type}">${escapeHTML(l.text)}</div>`; });
+      if (logs.length === 0) output.innerHTML += '<div class="info">✅ Code executed (no output)</div>';
+    } catch(e) {
+      output.innerHTML += `<div class="error">❌ ${escapeHTML(e.message)}</div>`;
+    }
+  }
+  
+  switchOutputTab('console');
+}
+
+function escapeHTML(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function formatCode() {
+  const editor = document.getElementById('codeEditor');
+  try {
+    // Simple formatting: fix indentation
+    const lines = editor.value.split('\n');
+    let indent = 0;
+    const formatted = lines.map(line => {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('}') || trimmed.startsWith(']') || trimmed.startsWith(')')) indent = Math.max(0, indent - 1);
+      const result = '  '.repeat(indent) + trimmed;
+      if (trimmed.endsWith('{') || trimmed.endsWith('[') || trimmed.endsWith('(')) indent++;
+      return result;
+    }).join('\n');
+    editor.value = formatted;
+    onCodeChange();
+  } catch(e) { console.error('Format error:', e); }
+}
+
+// ── SAVE / LOAD ──
+function saveProject() {
+  const data = { version: 1, files: Object.fromEntries(Object.entries(files).map(([k,v]) => [k, v.content])), order: fileOrder };
+  localStorage.setItem('codePlayground_project', JSON.stringify(data));
+  showToast('💾 Project saved!');
+}
+
+function loadProject() {
+  const raw = localStorage.getItem('codePlayground_project');
+  if (!raw) { showToast('No saved project found'); return; }
+  const data = JSON.parse(raw);
+  files = {};
+  fileOrder = data.order || Object.keys(data.files);
+  for (const [name, content] of Object.entries(data.files)) {
+    const ext = name.split('.').pop();
+    files[name] = { name, content, ext, id: nextFileId++ };
+  }
+  currentFile = fileOrder[0];
+  renderFileTree();
+  renderTabs();
+  switchFile(currentFile);
+  showToast('📂 Project loaded!');
+}
+
+function showToast(msg) {
+  const el = document.createElement('div');
+  el.style.cssText = 'position:fixed;bottom:200px;left:50%;transform:translateX(-50%);background:rgba(0,217,255,0.9);color:#000;padding:8px 20px;border-radius:6px;font-size:0.7rem;z-index:100;transition:0.3s;font-family:Arial,sans-serif';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => { el.style.opacity='0'; setTimeout(()=>el.remove(),300); }, 2000);
+}
+
+function switchOutputTab(tab) {
+  document.getElementById('consoleOutput').style.display = tab === 'console' ? 'block' : 'none';
+  document.getElementById('previewFrame').style.display = tab === 'preview' ? 'block' : 'none';
+  document.getElementById('consoleTab').className = tab === 'console' ? 'active' : '';
+  document.getElementById('previewTab').className = tab === 'preview' ? 'active' : '';
+}
+
+function showShortcuts() {
+  alert(`⌨️ Keyboard Shortcuts:\n\nCtrl+Enter → Run\nCtrl+S → Save\nCtrl+N → New File\nCtrl+Shift+F → Format\nTab → Indent\nShift+Tab → Unindent`);
+}
+
+// ── KEYBOARD ──
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const ta = e.target;
+      const start = ta.selectionStart, end = ta.selectionEnd;
+      ta.value = ta.value.substring(0, start) + '  ' + ta.value.substring(end);
+      ta.selectionStart = ta.selectionEnd = start + 2;
+      onCodeChange();
+    }
+    if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); runCode(); }
+    if (e.ctrlKey && e.key === 's') { e.preventDefault(); saveProject(); }
+    if (e.ctrlKey && e.key === 'n') { e.preventDefault(); addFile(); }
+    if (e.ctrlKey && e.shiftKey && e.key === 'F') { e.preventDefault(); formatCode(); }
+  }
+});
+
+// ── INIT ──
+init();
+</script>
+</body>
+</html>

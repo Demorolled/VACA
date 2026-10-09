@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pantry-to-Recipe Shopping Planner</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; color: #e6edf3; background: #0d1117; }
+  h1 { font-size: 1.4rem; }
+  input, textarea { width: 100%; box-sizing: border-box; margin: .3rem 0 .8rem; padding: .5rem; background: #161b22; color: #e6edf3; border: 1px solid #30363d; border-radius: 6px; }
+  button { padding: .5rem 1rem; background: #2ea043; color: #fff; border: 0; border-radius: 6px; cursor: pointer; }
+  ul { list-style: none; padding: 0; }
+  li { padding: .35rem 0; border-bottom: 1px solid #21262d; display: flex; justify-content: space-between; }
+  .have { text-decoration: line-through; color: #8b949e; }
+  .muted { color: #8b949e; font-size: .85rem; }
+</style>
+</head>
+<body>
+<h1>🥫 Pantry-to-Recipe Planner</h1>
+<p class="muted">Scaffold (batch 2). Track your pantry, add a recipe, and get a shopping list of only what's missing.</p>
+
+<h2>My pantry</h2>
+<form id="pantryForm">
+  <input id="pantryItem" placeholder="Add an item you already have, e.g. onions" autocomplete="off">
+  <button type="submit">Add to pantry</button>
+</form>
+<ul id="pantryList"></ul>
+
+<h2>Recipe ingredients</h2>
+<form id="recipeForm">
+  <textarea id="recipeItems" rows="3" placeholder="One ingredient per line, e.g.&#10;2 onions&#10;400g pasta"></textarea>
+  <button type="submit">Build shopping list</button>
+</form>
+
+<h2>Shopping list (what you're missing)</h2>
+<ul id="missingList"></ul>
+<p class="muted" id="note">Nothing yet — add a recipe to generate your list.</p>
+
+<script>
+const pantry = JSON.parse(localStorage.getItem('pantry') || '[]');
+const missing = JSON.parse(localStorage.getItem('missing') || '[]');
+
+function save(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+function renderPantry() {
+  const ul = document.getElementById('pantryList');
+  ul.innerHTML = pantry.map((item, i) =>
+    `<li>${item} <button data-remove="${i}">✕</button></li>`).join('');
+  ul.querySelectorAll('[data-remove]').forEach(b =>
+    b.onclick = () => { pantry.splice(+b.dataset.remove, 1); save('pantry', pantry); renderPantry(); });
+}
+function renderMissing() {
+  const ul = document.getElementById('missingList');
+  ul.innerHTML = missing.map(item => `<li>${item} <span class="muted">need</span></li>`).join('');
+  document.getElementById('note').textContent =
+    missing.length ? 'List ready — export via copy or the grocery export feature.' : 'Nothing yet — add a recipe to generate your list.';
+}
+document.getElementById('pantryForm').onsubmit = e => {
+  e.preventDefault();
+  const val = document.getElementById('pantryItem').value.trim();
+  if (val) { pantry.push(val.toLowerCase()); save('pantry', pantry); document.getElementById('pantryItem').value = ''; renderPantry(); }
+};
+document.getElementById('recipeForm').onsubmit = e => {
+  e.preventDefault();
+  const lines = document.getElementById('recipeItems').value.split('\n').map(s => s.trim()).filter(Boolean);
+  // TODO: parse quantities/units; for now treat each line as an item name
+  missing.length = 0;
+  for (const line of lines) {
+    const name = line.replace(/^[\d./]+\s*(\w+\s+)?/, '').toLowerCase(); // crude: strip leading qty/unit
+    if (!pantry.includes(name)) missing.push(line);
+  }
+  save('missing', missing);
+  document.getElementById('recipeItems').value = '';
+  renderMissing();
+};
+renderPantry(); renderMissing();
+</script>
+</body>
+</html>

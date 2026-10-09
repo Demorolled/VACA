@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Interactive Dashboard</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+  min-height: 100vh;
+  padding: 20px;
+}
+.container { max-width: 1100px; margin: 0 auto; }
+h1 { color: #00d9ff; font-size: 1.5rem; text-align: center; margin-bottom: 4px; }
+.subtitle { color: #666; font-size: 0.8rem; text-align: center; margin-bottom: 16px; }
+.controls {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.controls select {
+  padding: 8px 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  color: #aaa;
+  font-size: 0.8rem;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+}
+.controls select:focus { border-color: #00d9ff; }
+.controls .btn {
+  padding: 8px 18px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+  background: linear-gradient(135deg, #00d9ff, #0099ff);
+  color: #0f0f1a;
+  font-family: inherit;
+}
+.controls .btn:hover { box-shadow: 0 4px 15px rgba(0,217,255,0.3); }
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.kpi-card {
+  background: linear-gradient(145deg, #1a1a2e, #1e1e3a);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 16px;
+  position: relative;
+  overflow: hidden;
+}
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+}
+.kpi-card:nth-child(1)::before { background: linear-gradient(90deg, #00d9ff, #0099ff); }
+.kpi-card:nth-child(2)::before { background: linear-gradient(90deg, #4ade80, #34d399); }
+.kpi-card:nth-child(3)::before { background: linear-gradient(90deg, #fbbf24, #f59e0b); }
+.kpi-card:nth-child(4)::before { background: linear-gradient(90deg, #a78bfa, #8b5cf6); }
+.kpi-label { font-size: 0.65rem; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.kpi-value { font-size: 1.6rem; font-weight: 700; color: #e0e0f0; font-variant-numeric: tabular-nums; }
+.kpi-change {
+  font-size: 0.7rem;
+  margin-top: 2px;
+}
+.kpi-change.up { color: #4ade80; }
+.kpi-change.down { color: #f87171; }
+.charts-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+@media (max-width: 700px) { .charts-row { grid-template-columns: 1fr; } }
+.chart-card {
+  background: linear-gradient(145deg, #1a1a2e, #1e1e3a);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 18px;
+}
+.chart-title {
+  font-size: 0.8rem;
+  color: #888;
+  font-weight: 600;
+  margin-bottom: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+/* Line Chart */
+.line-chart { position: relative; height: 200px; }
+.line-chart svg { width: 100%; height: 100%; }
+.line-chart .grid-line { stroke: rgba(255,255,255,0.04); stroke-width: 1; }
+.line-chart .data-line {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.line-chart .data-area {
+  fill: url(#gradient);
+  opacity: 0.15;
+}
+.line-chart .dot {
+  fill: #fff;
+  stroke-width: 2;
+  cursor: pointer;
+  transition: r 0.15s;
+}
+.line-chart .dot:hover { r: 6; }
+.line-chart .dot-label {
+  font-size: 9px;
+  fill: #888;
+  text-anchor: middle;
+}
+.line-chart .y-label {
+  font-size: 8px;
+  fill: #444;
+}
+/* Bar Chart */
+.bar-chart { height: 180px; display: flex; align-items: flex-end; gap: 6px; padding: 0 4px; }
+.bar-wrapper { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; }
+.bar {
+  width: 100%;
+  border-radius: 3px 3px 0 0;
+  transition: height 0.5s ease;
+  min-height: 2px;
+  cursor: pointer;
+  position: relative;
+}
+.bar:hover { opacity: 0.8; }
+.bar-value {
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  color: #aaa;
+  white-space: nowrap;
+  opacity: 0;
+  transition: 0.15s;
+}
+.bar:hover .bar-value { opacity: 1; }
+.bar-label {
+  font-size: 7px;
+  color: #555;
+  margin-top: 4px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 40px;
+}
+/* Pie Chart */
+.pie-container { display: flex; align-items: center; gap: 16px; height: 180px; }
+.pie-chart { flex-shrink: 0; }
+.pie-legend { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.pie-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+}
+.pie-legend-item .color-dot {
+  width: 8px; height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.pie-legend-item .lbl { color: #888; flex: 1; }
+.pie-legend-item .val { color: #aaa; font-weight: 600; }
+/* Bottom row */
+.bottom-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+@media (max-width: 700px) { .bottom-row { grid-template-columns: 1fr; } }
+.activity-list { max-height: 180px; overflow-y: auto; }
+.activity-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  font-size: 0.75rem;
+}
+.activity-item:last-child { border-bottom: none; }
+.activity-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.activity-text { color: #aaa; flex: 1; }
+.activity-time { color: #444; font-size: 0.6rem; }
+.refresh-info {
+  text-align: center;
+  font-size: 0.65rem;
+  color: #444;
+  margin-top: 10px;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>📊 Interactive Dashboard</h1>
+  <p class="subtitle">Real-time analytics and data visualization</p>
+  <div class="controls">
+    <select id="timeRange" onchange="refreshData()">
+      <option value="7d">Last 7 days</option>
+      <option value="30d" selected>Last 30 days</option>
+      <option value="90d">Last 90 days</option>
+    </select>
+    <select id="dataset" onchange="refreshData()">
+      <option value="sales">Sales Data</option>
+      <option value="traffic">Website Traffic</option>
+      <option value="users">User Growth</option>
+    </select>
+    <button class="btn" onclick="refreshData()">🔄 Refresh</button>
+  </div>
+  
+  <div class="kpi-row" id="kpiRow"></div>
+  
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-title">📈 Revenue Trend</div>
+      <div class="line-chart" id="lineChart"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">🎯 Traffic Sources</div>
+      <div class="pie-container" id="pieContainer"></div>
+    </div>
+  </div>
+  
+  <div class="bottom-row">
+    <div class="chart-card">
+      <div class="chart-title">📊 Monthly Comparison</div>
+      <div class="bar-chart" id="barChart"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">⚡ Recent Activity</div>
+      <div class="activity-list" id="activityList"></div>
+    </div>
+  </div>
+  
+  <div class="refresh-info">Auto-updates every 30 seconds • Data is randomly generated for demo</div>
+</div>
+
+<script>
+const COLORS = ['#00d9ff', '#4ade80', '#fbbf24', '#f87171', '#a78bfa', '#f472b6', '#34d399', '#fb923c'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const ACTIVITY_TYPES = [
+  { text: 'New user registered', dot: '#4ade80' },
+  { text: 'Order completed', dot: '#00d9ff' },
+  { text: 'Payment received', dot: '#4ade80' },
+  { text: 'Support ticket opened', dot: '#fbbf24' },
+  { text: 'New product added', dot: '#a78bfa' },
+  { text: 'Review submitted', dot: '#f472b6' },
+  { text: 'Account upgraded', dot: '#00d9ff' },
+  { text: 'Session expired', dot: '#f87171' },
+];
+
+function generateData(days) {
+  const data = [];
+  let value = 50000 + Math.random() * 20000;
+  for (let i = days - 1; i >= 0; i--) {
+    const change = (Math.random() - 0.48) * 0.1;
+    value = value * (1 + change);
+    data.push({
+      date: new Date(Date.now() - i * 86400000),
+      value: Math.round(value * 100) / 100,
+    });
+  }
+  return data;
+}
+
+function generateBarData() {
+  const currentMonth = new Date().getMonth();
+  return MONTHS.slice(0, currentMonth + 1).map((month, i) => ({
+    label: month,
+    value: Math.round(30000 + Math.random() * 70000),
+  }));
+}
+
+function generatePieData() {
+  return [
+    { label: 'Direct', value: Math.round(20 + Math.random() * 20), color: '#00d9ff' },
+    { label: 'Organic', value: Math.round(20 + Math.random() * 20), color: '#4ade80' },
+    { label: 'Social', value: Math.round(10 + Math.random() * 15), color: '#fbbf24' },
+    { label: 'Referral', value: Math.round(10 + Math.random() * 10), color: '#a78bfa' },
+    { label: 'Email', value: Math.round(5 + Math.random() * 10), color: '#f472b6' },
+  ];
+}
+
+function generateKPIs() {
+  const baseRevenue = 85000 + Math.random() * 15000;
+  const users = 1200 + Math.random() * 300;
+  const orders = 340 + Math.random() * 80;
+  const conversion = 3.2 + Math.random() * 1.5;
+  
+  return [
+    { label: 'Total Revenue', value: `$${Math.round(baseRevenue).toLocaleString()}`, change: `+${(Math.random() * 12 + 2).toFixed(1)}%`, up: true },
+    { label: 'Active Users', value: Math.round(users).toLocaleString(), change: `+${(Math.random() * 8 + 1).toFixed(1)}%`, up: true },
+    { label: 'Orders', value: Math.round(orders).toLocaleString(), change: `${(Math.random() > 0.3 ? '+' : '-')}${(Math.random() * 5).toFixed(1)}%`, up: Math.random() > 0.3 },
+    { label: 'Conversion', value: `${conversion.toFixed(1)}%`, change: `+${(Math.random() * 0.8 + 0.1).toFixed(2)}%`, up: true },
+  ];
+}
+
+function generateActivity() {
+  const activities = [];
+  const now = Date.now();
+  for (let i = 0; i < 12; i++) {
+    const act = ACTIVITY_TYPES[Math.floor(Math.random() * ACTIVITY_TYPES.length)];
+    const time = new Date(now - i * (1800000 + Math.random() * 3600000));
+    activities.push({
+      text: act.text,
+      dot: act.dot,
+      time: time.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+    });
+  }
+  return activities;
+}
+
+function renderKPIs(kpis) {
+  document.getElementById('kpiRow').innerHTML = kpis.map(kpi => `
+    <div class="kpi-card">
+      <div class="kpi-label">${kpi.label}</div>
+      <div class="kpi-value">${kpi.value}</div>
+      <div class="kpi-change ${kpi.up ? 'up' : 'down'}">
+        ${kpi.up ? '▲' : '▼'} ${kpi.change} vs last period
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderLineChart(data) {
+  const svg = document.getElementById('lineChart');
+  const w = svg.clientWidth || 500;
+  const h = 200;
+  const pad = { top: 10, right: 10, bottom: 20, left: 50 };
+  const chartW = w - pad.left - pad.right;
+  const chartH = h - pad.top - pad.bottom;
+  
+  const values = data.map(d => d.value);
+  const min = Math.min(...values) * 0.95;
+  const max = Math.max(...values) * 1.05;
+  const xScale = chartW / (data.length - 1);
+  const yScale = chartH / (max - min);
+  
+  // Grid lines
+  let gridHtml = '';
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.top + (chartH / 4) * i;
+    const val = max - ((max - min) / 4) * i;
+    gridHtml += `<line class="grid-line" x1="${pad.left}" y1="${y}" x2="${w - pad.right}" y2="${y}"/>`;
+    gridHtml += `<text class="y-label" x="${pad.left - 5}" y="${y + 3}" text-anchor="end">$${Math.round(val / 1000)}k</text>`;
+  }
+  
+  // Data points
+  const points = data.map((d, i) => ({
+    x: pad.left + i * xScale,
+    y: pad.top + chartH - (d.value - min) * yScale,
+  }));
+  
+  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+  const areaPath = linePath + ` L${points[points.length - 1].x},${pad.top + chartH} L${points[0].x},${pad.top + chartH} Z`;
+  
+  // X-axis labels
+  let xLabels = '';
+  const step = Math.max(1, Math.floor(data.length / 8));
+  for (let i = 0; i < data.length; i += step) {
+    const d = data[i].date;
+    xLabels += `<text class="dot-label" x="${points[i].x}" y="${h - 4}">${d.getMonth() + 1}/${d.getDate()}</text>`;
+  }
+  
+  svg.innerHTML = `
+    <defs>
+      <linearGradient id="gradient" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#00d9ff" stop-opacity="0.3"/>
+        <stop offset="100%" stop-color="#00d9ff" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    ${gridHtml}
+    <path class="data-area" d="${areaPath}"/>
+    <path class="data-line" d="${linePath}" stroke="#00d9ff"/>
+    ${points.map((p, i) => `<circle class="dot" cx="${p.x}" cy="${p.y}" r="3" stroke="#00d9ff"><title>$${data[i].value.toLocaleString()}</title></circle>`).join('')}
+    ${xLabels}
+  `;
+}
+
+function renderBarChart(data) {
+  const container = document.getElementById('barChart');
+  const maxVal = Math.max(...data.map(d => d.value));
+  
+  container.innerHTML = data.map(d => {
+    const h = (d.value / maxVal) * 160;
+    const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+    return `
+      <div class="bar-wrapper">
+        <div class="bar" style="height:${h}px;background:${color}">
+          <div class="bar-value">$${(d.value / 1000).toFixed(0)}k</div>
+        </div>
+        <div class="bar-label">${d.label}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderPieChart(data) {
+  const total = data.reduce((s, d) => s + d.value, 0);
+  const container = document.getElementById('pieContainer');
+  
+  // SVG Pie
+  let cumulative = 0;
+  const slices = data.map(d => {
+    const startAngle = (cumulative / total) * 360;
+    cumulative += d.value;
+    const endAngle = (cumulative / total) * 360;
+    return { ...d, startAngle, endAngle };
+  });
+  
+  const cx = 80, cy = 80, r = 65;
+  let paths = '';
+  slices.forEach(s => {
+    const startRad = ((s.startAngle - 90) * Math.PI) / 180;
+    const endRad = ((s.endAngle - 90) * Math.PI) / 180;
+    const x1 = cx + r * Math.cos(startRad);
+    const y1 = cy + r * Math.sin(startRad);
+    const x2 = cx + r * Math.cos(endRad);
+    const y2 = cy + r * Math.sin(endRad);
+    const largeArc = s.endAngle - s.startAngle > 180 ? 1 : 0;
+    paths += `<path d="M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${largeArc},1 ${x2},${y2} Z" fill="${s.color}" opacity="0.85"/>`;
+  });
+  
+  // Legend
+  const legendHtml = data.map(d => `
+    <div class="pie-legend-item">
+      <span class="color-dot" style="background:${d.color}"></span>
+      <span class="lbl">${d.label}</span>
+      <span class="val">${Math.round((d.value / total) * 100)}%</span>
+    </div>
+  `).join('');
+  
+  container.innerHTML = `
+    <div class="pie-chart">
+      <svg width="160" height="160" viewBox="0 0 160 160">
+        ${paths}
+        <text x="80" y="80" text-anchor="middle" dominant-baseline="central" fill="#e0e0f0" font-size="14" font-weight="600">${total}</text>
+      </svg>
+    </div>
+    <div class="pie-legend">${legendHtml}</div>
+  `;
+}
+
+function renderActivity(activities) {
+  document.getElementById('activityList').innerHTML = activities.map(a => `
+    <div class="activity-item">
+      <span class="activity-dot" style="background:${a.dot}"></span>
+      <span class="activity-text">${a.text}</span>
+      <span class="activity-time">${a.time}</span>
+    </div>
+  `).join('');
+}
+
+function refreshData() {
+  const days = parseInt(document.getElementById('timeRange').value);
+  
+  const lineData = generateData(days);
+  const barData = generateBarData();
+  const pieData = generatePieData();
+  const kpis = generateKPIs();
+  const activity = generateActivity();
+  
+  renderKPIs(kpis);
+  renderLineChart(lineData);
+  renderBarChart(barData);
+  renderPieChart(pieData);
+  renderActivity(activity);
+}
+
+// Auto-refresh
+let autoRefresh = setInterval(refreshData, 30000);
+
+refreshData();
+window.addEventListener('resize', refreshData);
+
+// Clean up on page hide
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    clearInterval(autoRefresh);
+  } else {
+    refreshData();
+    autoRefresh = setInterval(refreshData, 30000);
+  }
+});
+</script>
+</body>
+</html>

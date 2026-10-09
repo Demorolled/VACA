@@ -1,0 +1,31 @@
+# Default: text files get LF in the repo and on checkout everywhere.
+* text=auto eol=lf
+
+# Windows-only launchers keep CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Shell scripts must never pick up CRLF — a shebang with \r fails with the
+# baffling "bad interpreter: No such file or directory".
+*.sh text eol=lf
+*.desktop text eol=lf
+
+# Binary assets.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.pak binary
+*.so binary
+*.dat binary
+*.bin binary
+*.y4m binary
+*.gguf binary
+
+# Generated / lock-like files: keep them out of diffs and language stats.
+package-lock.json -diff linguist-generated

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';" />
+<title>Veronica — Settings</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 22px 24px 28px;
+    background: #0d0d1a; color: #e8e8f4;
+    font: 13px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  h1 { font-size: 16px; margin: 0 0 4px; }
+  p.sub { margin: 0 0 18px; color: #8b8ba7; font-size: 12px; }
+  fieldset {
+    border: 1px solid #26263c; border-radius: 10px;
+    padding: 14px 16px 16px; margin: 0 0 16px;
+  }
+  legend { padding: 0 6px; color: #9d9dc0; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+  label { display: block; margin: 10px 0 4px; color: #b9b9d4; font-size: 12px; }
+  input[type=text], input[type=number], select {
+    width: 100%; padding: 8px 10px; border-radius: 7px;
+    border: 1px solid #33334d; background: #16162a; color: #e8e8f4; font-size: 13px;
+  }
+  input:focus, select:focus { outline: none; border-color: #5b7fd4; }
+  .row { display: flex; gap: 10px; }
+  .row > div { flex: 1; }
+  .hint { color: #77779a; font-size: 11px; margin-top: 4px; }
+  .radio { display: flex; align-items: flex-start; gap: 9px; margin: 9px 0; }
+  .radio input { margin-top: 2px; }
+  .radio span small { display: block; color: #77779a; font-size: 11px; }
+  footer { display: flex; gap: 10px; align-items: center; margin-top: 4px; }
+  button {
+    border: 0; border-radius: 7px; padding: 9px 16px; font-size: 13px;
+    cursor: pointer; font-weight: 600;
+  }
+  #save { background: #5b7fd4; color: #fff; }
+  #save:hover { background: #6b8de0; }
+  .ghost { background: #22223a; color: #c9c9e2; font-weight: 500; }
+  .ghost:hover { background: #2c2c4a; }
+  #status { margin-left: auto; color: #77779a; font-size: 11px; text-align: right; }
+  .warn { color: #ffcf7a; font-size: 11px; margin-top: 6px; }
+</style>
+</head>
+<body>
+  <h1>Veronica — Settings</h1>
+  <p class="sub">AI Code Architect (VACA) · desktop build</p>
+
+  <fieldset>
+    <legend>Backend</legend>
+    <div class="radio">
+      <input type="radio" name="mode" id="mode-local" value="local" />
+      <label for="mode-local" style="margin:0">
+        Local (bundled)
+        <span><small>Runs the app's own backend on this machine, from your user data folder.</small></span>
+      </label>
+    </div>
+    <div class="radio">
+      <input type="radio" name="mode" id="mode-remote" value="remote" />
+      <label for="mode-remote" style="margin:0">
+        Remote
+        <span><small>Use a backend already running elsewhere, e.g. the agent box.</small></span>
+      </label>
+    </div>
+    <label for="remoteBackendUrl">Remote backend URL</label>
+    <input type="text" id="remoteBackendUrl" placeholder="http://192.168.1.234:3001" />
+    <label for="port">Local backend port</label>
+    <input type="number" id="port" min="1024" max="65535" />
+    <div class="hint">If the port is busy, a free one is chosen automatically.</div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Model — Qwen2.5 14B</legend>
+    <div class="row">
+      <div>
+        <label for="llmBaseUrl">LLM endpoint</label>
+        <input type="text" id="llmBaseUrl" placeholder="http://127.0.0.1:11434/v1" />
+      </div>
+      <div>
+        <label for="llmModel">Model</label>
+        <input type="text" id="llmModel" />
+      </div>
+    </div>
+    <div class="hint">
+      This build is pinned to a single model. Point the endpoint at an
+      Ollama/OpenAI-compatible server that has it, e.g. the agent box at
+      <code>http://192.168.1.234:11434/v1</code>.
+    </div>
+    <div class="warn" id="modelWarn"></div>
+  </fieldset>
+
+  <footer>
+    <button id="save">Save &amp; restart</button>
+    <button class="ghost" id="open-runtime">Open data folder</button>
+    <button class="ghost" id="open-logs">Open logs</button>
+    <div id="status"></div>
+  </footer>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+
+  function setModeUI(mode) {
+    const remote = mode === 'remote';
+    $('remoteBackendUrl').disabled = !remote;
+    $('port').disabled = remote;
+  }
+
+  async function load() {
+    const s = await window.veronica.getSettings();
+    document.querySelector(`input[name=mode][value="${s.mode}"]`).checked = true;
+    $('remoteBackendUrl').value = s.remoteBackendUrl || '';
+    $('port').value = s.port || 3001;
+    $('llmBaseUrl').value = s.llmBaseUrl || '';
+    $('llmModel').value = s.llmModel || '';
+    setModeUI(s.mode);
+
+    const st = await window.veronica.getStatus();
+    $('status').textContent =
+      `v${st.version} · backend ${st.healthy ? 'healthy' : 'down'}${st.port ? ' on :' + st.port : ''}`;
+
+    const model = (s.llmModel || '').toLowerCase();
+    $('modelWarn').textContent = /14b/.test(model)
+      ? ''
+      : 'This build ships pinned to Qwen2.5 14B — changing the model is unsupported.';
+  }
+
+  document.querySelectorAll('input[name=mode]').forEach((el) => {
+    el.addEventListener('change', (e) => setModeUI(e.target.value));
+  });
+
+  $('save').addEventListener('click', async () => {
+    const mode = document.querySelector('input[name=mode]:checked').value;
+    await window.veronica.saveSettings({
+      mode,
+      remoteBackendUrl: $('remoteBackendUrl').value.trim(),
+      port: parseInt($('port').value, 10) || 3001,
+      llmBaseUrl: $('llmBaseUrl').value.trim() || 'http://127.0.0.1:11434/v1',
+      llmModel: $('llmModel').value.trim() || 'qwen2.5-coder:14b',
+    });
+  });
+
+  $('open-runtime').addEventListener('click', () => window.veronica.openRuntime());
+  $('open-logs').addEventListener('click', () => window.veronica.openLogs());
+
+  load();
+</script>
+</body>
+</html>

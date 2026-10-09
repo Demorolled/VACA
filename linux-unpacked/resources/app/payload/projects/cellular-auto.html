@@ -1,0 +1,77 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Game of Life</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#ccc;min-height:100vh;padding:20px;display:flex;justify-content:center}.container{max-width:700px;width:100%;text-align:center}h1{color:#00d9ff;font-size:1.1rem;margin-bottom:4px}p.sub{color:#555;font-size:0.65rem;margin-bottom:12px}.controls{display:flex;gap:4px;justify-content:center;margin-bottom:10px;flex-wrap:wrap}.controls button,.controls select{padding:5px 10px;border:1px solid rgba(255,255,255,0.06);border-radius:4px;background:transparent;color:#888;cursor:pointer;font-size:0.5rem;font-family:inherit;transition:0.1s}.controls button:hover{border-color:#00d9ff;color:#ccc}.controls button.primary{background:rgba(0,217,255,0.1);color:#00d9ff;border-color:rgba(0,217,255,0.25)}#gameCanvas{border:1px solid rgba(255,255,255,0.06);border-radius:6px;cursor:pointer;margin:0 auto;display:block}.stats{display:flex;gap:16px;justify-content:center;margin-top:6px;font-size:0.5rem;color:#555}.stats .val{color:#00d9ff}</style></head><body>
+<div class="container"><h1>🧬 Game of Life</h1><p class="sub">Conway's Cellular Automaton — Draw, simulate, explore patterns</p>
+<div class="controls">
+<button onclick="toggleSim()" class="primary" id="simBtn">▶ Play</button>
+<button onclick="step()">👣 Step</button>
+<button onclick="clearGrid()">🗑️ Clear</button>
+<button onclick="randomGrid()">🎲 Random</button>
+<button onclick="loadPreset('glider')">🪶 Glider</button>
+<button onclick="loadPreset('pulsar')">⭐ Pulsar</button>
+<button onclick="loadPreset('gosper')">🚀 Gosper</button>
+<select id="ruleSelect" onchange="updateRule()">
+<option value="23/3">Conway (23/3)</option>
+<option value="125/36">HighLife</option>
+<option value="1358/357">Diamoeba</option>
+<option value="1/1">Seeds</option>
+<option value="2/2">2x2</option>
+</select>
+</div>
+<canvas id="gameCanvas"></canvas>
+<div class="stats"><span>Generation: <span class="val" id="genDisplay">0</span></span><span>Population: <span class="val" id="popDisplay">0</span></span><span>Rule: <span class="val" id="ruleDisplay">23/3</span></span></div></div>
+<script>
+const canvas=document.getElementById('gameCanvas'),ctx=canvas.getContext('2d');
+const COLS=60,ROWS=40,CELL=10;canvas.width=COLS*CELL;canvas.height=ROWS*CELL;
+let grid={},running=false,gen=0,timer=null,survive='23',birth='3',drawMode=true;
+
+function key(x,y){return`${x},${y}`}
+function get(x,y){return grid[key(x,y)]||0}
+function set(x,y,v){grid[key(x,y)]=v}
+
+function countNeighbors(x,y){let c=0;for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){if(dx===0&&dy===0)continue;if(get(x+dx,y+dy))c++}return c}
+
+function stepGen(){
+  const newGrid={},surviveArr=survive.split('').map(Number),birthArr=birth.split('').map(Number);
+  const cells=new Set();for(const k in grid)if(grid[k]){const[x,y]=k.split(',').map(Number);for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++)cells.add(key(x+dx,y+dy))}
+  for(const k of cells){const[x,y]=k.split(',').map(Number);const n=countNeighbors(x,y);const alive=get(x,y);if(alive&&surviveArr.includes(n))newGrid[k]=1;else if(!alive&&birthArr.includes(n))newGrid[k]=1}
+  grid=newGrid;gen++;draw();updateStats();saveToStorage()
+}
+
+function toggleSim(){running=!running;document.getElementById('simBtn').textContent=running?'⏸ Pause':'▶ Play';if(running){timer=setInterval(stepGen,100)}else{clearInterval(timer)}}
+function step(){if(!running)stepGen()}
+function clearGrid(){grid={};gen=0;draw();updateStats();saveToStorage()}
+function randomGrid(){clearGrid();for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++)if(Math.random()<0.25)set(x,y,1);draw();updateStats();saveToStorage()}
+function updateRule(){const val=document.getElementById('ruleSelect').value;const parts=val.split('/');survive=parts[0];birth=parts[1];document.getElementById('ruleDisplay').textContent=val;saveToStorage()}
+
+function loadPreset(p){
+  clearGrid();
+  const presets={
+    glider:[[1,0],[2,1],[0,2],[1,2],[2,2]],
+    pulsar:[[2,0],[3,0],[4,0],[8,0],[9,0],[10,0],[0,2],[5,2],[7,2],[12,2],[0,3],[5,3],[7,3],[12,3],[0,4],[5,4],[7,4],[12,4],[2,5],[3,5],[4,5],[8,5],[9,5],[10,5],[2,7],[3,7],[4,7],[8,7],[9,7],[10,7],[0,8],[5,8],[7,8],[12,8],[0,9],[5,9],[7,9],[12,9],[0,10],[5,10],[7,10],[12,10],[2,12],[3,12],[4,12],[8,12],[9,12],[10,12]],
+    gosper:[[24,0],[22,1],[24,1],[12,2],[13,2],[20,2],[21,2],[34,2],[35,2],[11,3],[15,3],[20,3],[21,3],[34,3],[35,3],[0,4],[1,4],[10,4],[16,4],[20,4],[21,4],[0,5],[1,5],[10,5],[14,5],[16,5],[17,5],[22,5],[24,5],[10,6],[16,6],[24,6],[11,7],[15,7],[12,8],[13,8]]
+  };
+  const pts=presets[p];if(!pts)return;
+  const offX=Math.floor((COLS-30)/2),offY=Math.floor((ROWS-15)/2);
+  for(const[dx,dy]of pts)set(offX+dx,offY+dy,1);
+  draw();updateStats();saveToStorage()
+}
+
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
+    if(get(x,y)){ctx.fillStyle='#00d9ff';ctx.fillRect(x*CELL+1,y*CELL+1,CELL-2,CELL-2)}
+  }
+  ctx.strokeStyle='rgba(255,255,255,0.02)';ctx.lineWidth=0.5;
+  for(let i=0;i<=COLS;i++){ctx.beginPath();ctx.moveTo(i*CELL,0);ctx.lineTo(i*CELL,ROWS*CELL);ctx.stroke()}
+  for(let i=0;i<=ROWS;i++){ctx.beginPath();ctx.moveTo(0,i*CELL);ctx.lineTo(COLS*CELL,i*CELL);ctx.stroke()}
+}
+
+canvas.onmousedown=e=>{const r=canvas.getBoundingClientRect(),x=Math.floor((e.clientX-r.left)/CELL),y=Math.floor((e.clientY-r.top)/CELL);if(x<0||x>=COLS||y<0||y>=ROWS)return;drawMode=!get(x,y);set(x,y,drawMode?1:0);draw();updateStats();saveToStorage()}
+canvas.onmousemove=e=>{if(e.buttons!==1)return;const r=canvas.getBoundingClientRect(),x=Math.floor((e.clientX-r.left)/CELL),y=Math.floor((e.clientY-r.top)/CELL);if(x<0||x>=COLS||y<0||y>=ROWS)return;set(x,y,drawMode?1:0);draw()}
+
+function updateStats(){document.getElementById('genDisplay').textContent=gen;document.getElementById('popDisplay').textContent=Object.values(grid).filter(Boolean).length}
+function saveToStorage(){try{localStorage.setItem('gol_grid',JSON.stringify({grid:Object.fromEntries(Object.entries(grid).filter(([,v])=>v)),gen,survive,birth}))}catch(e){}}
+function loadFromStorage(){try{const d=JSON.parse(localStorage.getItem('gol_grid'));if(d&&d.grid){grid=d.grid;gen=d.gen||0;survive=d.survive||'23';birth=d.birth||'3';return true}}catch(e){}return false}
+if(!loadFromStorage())loadPreset('glider');
+draw();updateStats();
+</script>
+</body></html>

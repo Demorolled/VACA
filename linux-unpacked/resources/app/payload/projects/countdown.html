@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html><head><title>Countdown</title><style>
+body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#1a1a2e;color:#fff}
+.cdown{text-align:center}
+h1{color:#00d9ff;margin-bottom:16px}
+.target{display:flex;gap:8px;justify-content:center;margin-bottom:20px;flex-wrap:wrap}
+.target input{padding:8px;background:#252542;border:1px solid #4a4a6a;color:#fff;font-size:14px}
+.target button{padding:8px 16px;background:#00d9ff;border:none;color:#0f0f1a;cursor:pointer;font-weight:600}
+.units{display:flex;gap:16px;justify-content:center;margin-bottom:16px}
+.unit{text-align:center}
+.unit .num{font-size:48px;font-family:monospace;color:#00d9ff}
+.unit .lbl{font-size:12px;color:#888;text-transform:uppercase;letter-spacing:1px}
+.event-name{font-size:14px;color:#aaa;margin-bottom:8px}
+.events{display:flex;gap:4px;justify-content:center;flex-wrap:wrap;margin-bottom:12px}
+.events button{padding:4px 10px;background:#252542;border:1px solid #4a4a6a;color:#aaa;cursor:pointer;font-size:11px}
+.events button:hover{border-color:#00d9ff}
+</style></head><body>
+<div class="cdown"><h1>⎔ Countdown</h1>
+<div class="events">
+<button onclick="setTarget('2025-12-25')">Christmas 2025</button>
+<button onclick="setTarget('2026-01-01')">New Year 2026</button>
+<button onclick="setTarget('2026-07-04')">July 4th</button>
+</div>
+<div class="target">
+<input type="date" id="dateInput"/>
+<input type="time" id="timeInput" value="00:00"/>
+<button onclick="startCountdown()">Set Date</button>
+</div>
+<div class="event-name" id="eventName">Countdown</div>
+<div class="units">
+<div class="unit"><div class="num" id="days">00</div><div class="lbl">Days</div></div>
+<div class="unit"><div class="num" id="hours">00</div><div class="lbl">Hours</div></div>
+<div class="unit"><div class="num" id="mins">00</div><div class="lbl">Minutes</div></div>
+<div class="unit"><div class="num" id="secs">00</div><div class="lbl">Seconds</div></div>
+</div>
+<div id="message" style="font-size:14px;color:#4ade80;font-weight:600;min-height:20px"></div>
+</div>
+<script>
+let target=null,interval=null
+function setTarget(d){document.getElementById('dateInput').value=d;startCountdown()}
+function startCountdown(){clearInterval(interval);const d=document.getElementById('dateInput').value
+const t=document.getElementById('timeInput').value;if(!d)return
+target=new Date(d+'T'+(t||'00:00'));if(isNaN(target))return
+interval=setInterval(update,1000);update()}
+function update(){if(!target)return;const now=Date.now(),diff=target-now
+if(diff<=0){clearInterval(interval);document.getElementById('days').textContent='00'
+document.getElementById('hours').textContent='00';document.getElementById('mins').textContent='00'
+document.getElementById('secs').textContent='00';document.getElementById('message').textContent='🎉 Time has arrived!';return}
+document.getElementById('message').textContent=''
+const s=Math.floor(diff/1000);const d=Math.floor(s/86400);const h=Math.floor((s%86400)/3600)
+const m=Math.floor((s%3600)/60);const sec=s%60
+document.getElementById('days').textContent=String(d).padStart(2,'0')
+document.getElementById('hours').textContent=String(h).padStart(2,'0')
+document.getElementById('mins').textContent=String(m).padStart(2,'0')
+document.getElementById('secs').textContent=String(sec).padStart(2,'0')}
+const tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1)
+document.getElementById('dateInput').value=tomorrow.toISOString().split('T')[0];startCountdown()
+</script></body></html>

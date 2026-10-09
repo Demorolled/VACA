@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html><head><title>Todo List</title><style>
+body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#1a1a2e;color:#fff}
+.todo{width:360px;text-align:center}
+h1{color:#00d9ff;margin-bottom:16px}
+.add-row{display:flex;gap:4px;margin-bottom:12px}
+.add-row input{flex:1;padding:8px;background:#252542;border:1px solid #4a4a6a;color:#fff;font-size:14px}
+.add-row button{padding:8px 16px;background:#00d9ff;border:none;color:#0f0f1a;cursor:pointer;font-weight:600}
+.list{text-align:left}
+.item{display:flex;align-items:center;gap:8px;padding:8px;border-bottom:1px solid #2a2a4a;font-size:14px}
+.item.done span{text-decoration:line-through;color:#555}
+.item input[type=checkbox]{accent-color:#00d9ff}
+.item .del{margin-left:auto;background:none;border:none;color:#f87171;cursor:pointer;font-size:16px}
+.count{margin-top:12px;font-size:12px;color:#888}
+</style></head><body>
+<div class="todo"><h1>⎔ Todo List</h1>
+<div class="add-row"><input id="input" placeholder="Add a task..." onkeydown="if(event.key==='Enter')add()"/><button onclick="add()">Add</button></div>
+<div class="list" id="list"></div>
+<div class="count" id="count">0 items</div>
+</div>
+<script>
+let todos=JSON.parse(localStorage.getItem('todos')||'[]')
+function render(){const l=document.getElementById('list');l.innerHTML='';todos.forEach((t,i)=>{const d=document.createElement('div');d.className='item'+(t.done?' done':'');
+d.innerHTML=`<input type=checkbox ${t.done?'checked':''} onchange="toggle(${i})"/>
+<span>${t.text}</span><button class="del" onclick="remove(${i})">✕</button>`
+l.appendChild(d)})
+document.getElementById('count').textContent=`${todos.filter(t=>!t.done).length} of ${todos.length} items remaining`
+localStorage.setItem('todos',JSON.stringify(todos))}
+function add(){const i=document.getElementById('input');if(!i.value.trim())return;todos.push({text:i.value,done:false});i.value='';render()}
+function toggle(i){todos[i].done=!todos[i].done;render()}
+function remove(i){todos.splice(i,1);render()}
+render()
+</script></body></html>

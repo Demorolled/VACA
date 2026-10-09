@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Finance Portfolio Tracker</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#ccc;min-height:100vh;padding:20px}
+.container{max-width:1100px;margin:0 auto}
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px}
+header h1{color:#00d9ff;font-size:1.3rem}header h1 small{color:#555;font-size:0.6rem;font-weight:400}
+.controls{display:flex;gap:6px;flex-wrap:wrap}
+.controls button,.controls select{padding:6px 14px;border:1px solid rgba(255,255,255,0.06);border-radius:4px;background:rgba(255,255,255,0.03);color:#888;cursor:pointer;font-size:0.7rem;font-family:inherit;transition:0.1s}
+.controls button:hover{border-color:#00d9ff;color:#ccc}
+.controls button.primary{background:rgba(0,217,255,0.1);border-color:rgba(0,217,255,0.2);color:#00d9ff}
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:16px}
+.card{background:linear-gradient(145deg,#1a1a2e,#1e1e3a);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:16px;position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.card:nth-child(1)::before{background:linear-gradient(90deg,#00d9ff,#0099ff)}
+.card:nth-child(2)::before{background:linear-gradient(90deg,#4ade80,#34d399)}
+.card:nth-child(3)::before{background:linear-gradient(90deg,#fbbf24,#f59e0b)}
+.card:nth-child(4)::before{background:linear-gradient(90deg,#f87171,#ef4444)}
+.card .label{font-size:0.6rem;color:#666;text-transform:uppercase;letter-spacing:0.3px}
+.card .value{font-size:1.5rem;font-weight:700;color:#e0e0f0;margin-top:2px;font-variant-numeric:tabular-nums}
+.card .change{font-size:0.7rem;margin-top:2px}
+.card .change.up{color:#4ade80}.card .change.down{color:#f87171}
+.main-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+@media(max-width:800px){.main-row{grid-template-columns:1fr}}
+.chart-card{background:#12121e;border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:16px}
+.chart-card h3{font-size:0.75rem;color:#888;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.3px}
+#portfolioChart{width:100%;height:220px}
+.holdings-table{width:100%;border-collapse:collapse;font-size:0.72rem;margin-top:8px}
+.holdings-table th{padding:6px 8px;text-align:left;color:#555;font-weight:400;text-transform:uppercase;font-size:0.55rem;border-bottom:1px solid rgba(255,255,255,0.06);letter-spacing:0.3px}
+.holdings-table td{padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.03);color:#aaa}
+.holdings-table tr:hover td{background:rgba(255,255,255,0.02);color:#ccc}
+.holdings-table .ticker{color:#00d9ff;font-weight:600}
+.holdings-table .pos{color:#4ade80}.holdings-table .neg{color:#f87171}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:none;align-items:center;justify-content:center;z-index:100}
+.modal.open{display:flex}
+.modal-content{background:#1a1a2e;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:24px;min-width:350px}
+.modal-content h2{color:#00d9ff;font-size:1rem;margin-bottom:12px}
+.modal-content label{font-size:0.65rem;color:#888;display:block;margin-top:8px;margin-bottom:2px}
+.modal-content input{width:100%;padding:8px 12px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.06);border-radius:6px;color:#ccc;font-size:0.85rem;font-family:inherit;outline:none}
+.modal-content input:focus{border-color:#00d9ff}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.btn{padding:8px 20px;border:none;border-radius:6px;background:linear-gradient(135deg,#00d9ff,#0099ff);color:#000;font-weight:600;cursor:pointer;font-family:inherit}
+.btn:hover{box-shadow:0 2px 10px rgba(0,217,255,0.3)}
+.btn-secondary{padding:8px 20px;border:1px solid rgba(255,255,255,0.08);border-radius:6px;background:transparent;color:#aaa;cursor:pointer;font-family:inherit}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+  <h1>📈 Portfolio Tracker <small>Live · Diversified · Analytics</small></h1>
+  <div class="controls">
+    <select onchange="changePeriod(this.value)"><option value="1w">1 Week</option><option value="1m" selected>1 Month</option><option value="3m">3 Months</option><option value="1y">1 Year</option></select>
+    <button onclick="showAddHolding()">➕ Add Holding</button>
+    <button onclick="refreshPrices()" class="primary">🔄 Refresh</button>
+  </div>
+</header>
+<div class="summary" id="summaryRow"></div>
+<div class="main-row">
+  <div class="chart-card"><h3>📊 Portfolio Value</h3><canvas id="portfolioChart"></canvas></div>
+  <div class="chart-card">
+    <h3>🥧 Allocation</h3>
+    <canvas id="allocationChart"></canvas>
+    <div id="allocationLegend" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px"></div>
+  </div>
+</div>
+<div class="chart-card" style="margin-top:14px">
+  <h3>📋 Holdings</h3>
+  <table class="holdings-table" id="holdingsTable"></table>
+</div>
+</div>
+
+<div class="modal" id="addHoldingModal">
+  <div class="modal-content">
+    <h2>➕ Add Holding</h2>
+    <label>Ticker Symbol</label>
+    <input id="newTicker" placeholder="e.g., AAPL" value="AAPL">
+    <label>Shares</label>
+    <input id="newShares" type="number" value="10" min="0.01" step="0.01">
+    <label>Buy Price ($)</label>
+    <input id="newPrice" type="number" value="150" min="0.01" step="0.01">
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="hideModal('addHoldingModal')">Cancel</button>
+      <button class="btn" onclick="addHolding()">Add</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const COLORS=['#00d9ff','#4ade80','#fbbf24','#f87171','#a78bfa','#f472b6','#34d399','#fb923c','#60a5fa','#e879f9'];
+let holdings=[],priceHistory=[],period='1m';
+
+const STOCKS={AAPL:{name:'Apple Inc.',price:198},MSFT:{name:'Microsoft Corp.',price:425},GOOGL:{name:'Alphabet Inc.',price:175},AMZN:{name:'Amazon.com Inc.',price:185},NVDA:{name:'NVIDIA Corp.',price:880},META:{name:'Meta Platforms',price:505},TSLA:{name:'Tesla Inc.',price:245},JPM:{name:'JPMorgan Chase',price:198},V:{name:'Visa Inc.',price:275},JNJ:{name:'Johnson & Johnson',price:158},WMT:{name:'Walmart Inc.',price:172},PG:{name:'Procter & Gamble',price:165},MA:{name:'Mastercard Inc.',price:465},UNH:{name:'UnitedHealth Group',price:530},HD:{name:'Home Depot Inc.',price:375},DIS:{name:'Walt Disney Co.',price:112},NFLX:{name:'Netflix Inc.',price:625},ADBE:{name:'Adobe Inc.',price:495},CRM:{name:'Salesforce Inc.',price:295},INTC:{name:'Intel Corp.',price:42}};
+
+function initDemo(){
+  const tickers=Object.keys(STOCKS);
+  const selected=tickers.sort(()=>Math.random()-0.5).slice(0,5+Math.floor(Math.random()*3));
+  holdings=selected.map((t,i)=>({ticker:t,shares:Math.round(5+Math.random()*25),buyPrice:STOCKS[t].price*(0.7+Math.random()*0.4)}));
+  generateHistory();
+  renderAll();
+}
+
+function generateHistory(){
+  priceHistory=[];
+  const total=holdings.reduce((s,h)=>s+h.shares*getCurrentPrice(h.ticker),0);
+  let val=total*0.9;
+  const days=period==='1w'?7:period==='1m'?30:period==='3m'?90:365;
+  for(let i=days;i>=0;i--){
+    val*=(1+(Math.random()-0.48)*0.02);
+    priceHistory.push({date:new Date(Date.now()-i*86400000),value:val});
+  }
+}
+
+function getCurrentPrice(ticker){const s=STOCKS[ticker];if(!s)return 100;return s.price*(0.95+Math.random()*0.1)}
+
+function refreshPrices(){generateHistory();renderAll()}
+function changePeriod(p){period=p;generateHistory();renderAll()}
+
+function renderAll(){
+  renderSummary();
+  renderChart();
+  renderAllocationChart();
+  renderHoldings();
+}
+
+function renderSummary(){
+  const totalValue=holdings.reduce((s,h)=>s+h.shares*getCurrentPrice(h.ticker),0);
+  const totalCost=holdings.reduce((s,h)=>s+h.shares*h.buyPrice,0);
+  const gain=totalValue-totalCost;
+  const gainPct=(gain/totalCost)*100;
+  const bestHolding=holdings.reduce((b,h)=>{const g=((getCurrentPrice(h.ticker)/h.buyPrice)-1)*100;return g>(b.g||-999)?{h,g}:b},{});
+  const worstHolding=holdings.reduce((b,h)=>{const g=((getCurrentPrice(h.ticker)/h.buyPrice)-1)*100;return g<(b.g||999)?{h,g}:b},{});
+  
+  document.getElementById('summaryRow').innerHTML=`
+    <div class="card"><div class="label">Total Value</div><div class="value">$${totalValue.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</div></div>
+    <div class="card"><div class="label">Total Gain/Loss</div><div class="value">${gain>=0?'+':''}${gain.toFixed(2)}</div><div class="change ${gain>=0?'up':'down'}">${gain>=0?'▲':'▼'} ${gainPct.toFixed(1)}%</div></div>
+    <div class="card"><div class="label">Best Performer</div><div class="value" style="color:#4ade80;font-size:1rem">${bestHolding.h?bestHolding.h.ticker:'N/A'}</div><div class="change up">+${bestHolding.g.toFixed(1)}%</div></div>
+    <div class="card"><div class="label">Worst Performer</div><div class="value" style="color:#f87171;font-size:1rem">${worstHolding.h?worstHolding.h.ticker:'N/A'}</div><div class="change down">${(worstHolding.g||0).toFixed(1)}%</div></div>
+  `;
+}
+
+function renderChart(){
+  const c=document.getElementById('portfolioChart');
+  const ctx=c.getContext('2d');
+  const rect=c.parentElement.getBoundingClientRect();
+  c.width=rect.width||600;c.height=220;
+  const w=c.width,h=c.height,pad={top:20,right:20,bottom:25,left:60};
+  const cw=w-pad.left-pad.right,ch=h-pad.top-pad.bottom;
+  
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle='#0a0a14';ctx.fillRect(0,0,w,h);
+  
+  const vals=priceHistory.map(d=>d.value);
+  const min=Math.min(...vals)*0.98,max=Math.max(...vals)*1.02;
+  const xScale=cw/(vals.length-1),yScale=ch/(max-min);
+  
+  // Grid
+  ctx.strokeStyle='rgba(255,255,255,0.03)';
+  ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){
+    const y=pad.top+(ch/4)*i;
+    ctx.beginPath();ctx.moveTo(pad.left,y);ctx.lineTo(w-pad.right,y);ctx.stroke();
+    ctx.fillStyle='#444';ctx.font='10px Arial';ctx.textAlign='right';
+    ctx.fillText('$'+(max-(max-min)/4*i).toFixed(0),pad.left-5,y+3);
+  }
+  
+  // Area
+  ctx.beginPath();
+  vals.forEach((v,i)=>{const x=pad.left+i*xScale,y=pad.top+ch-(v-min)*yScale;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)});
+  ctx.lineTo(pad.left+(vals.length-1)*xScale,pad.top+ch);
+  ctx.lineTo(pad.left,pad.top+ch);
+  ctx.closePath();
+  const grad=ctx.createLinearGradient(0,pad.top,0,pad.top+ch);
+  grad.addColorStop(0,'rgba(0,217,255,0.2)');
+  grad.addColorStop(1,'rgba(0,217,255,0)');
+  ctx.fillStyle=grad;ctx.fill();
+  
+  // Line
+  ctx.beginPath();
+  vals.forEach((v,i)=>{const x=pad.left+i*xScale,y=pad.top+ch-(v-min)*yScale;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)});
+  ctx.strokeStyle='#00d9ff';ctx.lineWidth=2.5;ctx.stroke();
+  
+  // Current value dot
+  const lastX=pad.left+(vals.length-1)*xScale,lastY=pad.top+ch-(vals[vals.length-1]-min)*yScale;
+  ctx.beginPath();ctx.arc(lastX,lastY,5,0,Math.PI*2);
+  ctx.fillStyle='#00d9ff';ctx.fill();
+  ctx.beginPath();ctx.arc(lastX,lastY,8,0,Math.PI*2);
+  ctx.strokeStyle='rgba(0,217,255,0.3)';ctx.lineWidth=2;ctx.stroke();
+}
+
+function renderAllocationChart(){
+  const c=document.getElementById('allocationChart');
+  const ctx=c.getContext('2d');
+  c.width=200;c.height=180;
+  const cx=100,cy=90,r=65;
+  
+  ctx.clearRect(0,0,200,180);
+  
+  const total=holdings.reduce((s,h)=>s+h.shares*getCurrentPrice(h.ticker),0);
+  let cumulative=0;
+  
+  holdings.forEach((h,i)=>{
+    const val=h.shares*getCurrentPrice(h.ticker);
+    const pct=val/total;
+    const startAngle=(cumulative/total)*2*Math.PI-Math.PI/2;
+    cumulative+=val;
+    const endAngle=(cumulative/total)*2*Math.PI-Math.PI/2;
+    
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,r,startAngle,endAngle);
+    ctx.closePath();
+    ctx.fillStyle=COLORS[i%COLORS.length];
+    ctx.fill();
+    
+    // Legend
+    const midAngle=(startAngle+endAngle)/2;
+    const lx=cx+Math.cos(midAngle)*r*0.6;
+    const ly=cy+Math.sin(midAngle)*r*0.6;
+    if(pct>0.05){
+      ctx.fillStyle='#fff';ctx.font='10px Arial';ctx.textAlign='center';
+      ctx.fillText((pct*100).toFixed(0)+'%',lx,ly+3);
+    }
+  });
+  
+  // Center hole (donut)
+  ctx.beginPath();ctx.arc(cx,cy,30,0,Math.PI*2);ctx.fillStyle='#12121e';ctx.fill();
+  
+  // Legend
+  document.getElementById('allocationLegend').innerHTML=holdings.map((h,i)=>
+    `<span style="display:flex;align-items:center;gap:4px;font-size:0.6rem;color:#888"><span style="width:8px;height:8px;border-radius:2px;background:${COLORS[i%COLORS.length]};flex-shrink:0"></span>${h.ticker}</span>`
+  ).join('');
+}
+
+function renderHoldings(){
+  const total=holdings.reduce((s,h)=>s+h.shares*getCurrentPrice(h.ticker),0);
+  document.getElementById('holdingsTable').innerHTML=`
+    <tr><th>Ticker</th><th>Shares</th><th>Price</th><th>Cost Basis</th><th>Value</th><th>Gain/Loss</th><th>Alloc</th><th>Action</th></tr>
+    ${holdings.map((h,i)=>{
+      const price=getCurrentPrice(h.ticker);
+      const value=h.shares*price;
+      const cost=h.shares*h.buyPrice;
+      const gain=value-cost;
+      const gainPct=((price/h.buyPrice)-1)*100;
+      const alloc=(value/total)*100;
+      return `<tr>
+        <td class="ticker">${h.ticker}</td>
+        <td>${h.shares}</td>
+        <td>$${price.toFixed(2)}</td>
+        <td>$${cost.toFixed(2)}</td>
+        <td>$${value.toFixed(2)}</td>
+        <td class="${gain>=0?'pos':'neg'}">${gain>=0?'+':''}$${gain.toFixed(2)} (${gainPct>=0?'+':''}${gainPct.toFixed(1)}%)</td>
+        <td>${alloc.toFixed(1)}%</td>
+        <td><button onclick="removeHolding(${i})" style="padding:2px 8px;border:1px solid rgba(248,113,113,0.2);border-radius:3px;background:transparent;color:#f87171;cursor:pointer;font-size:0.55rem;font-family:inherit">Sell</button></td>
+      </tr>`;
+    }).join('')}
+  `;
+}
+
+function showAddHolding(){document.getElementById('addHoldingModal').classList.add('open')}
+function hideModal(id){document.getElementById(id).classList.remove('open')}
+
+function addHolding(){
+  const ticker=document.getElementById('newTicker').value.toUpperCase();
+  const shares=parseFloat(document.getElementById('newShares').value);
+  const price=parseFloat(document.getElementById('newPrice').value);
+  if(!ticker||!shares||!price)return;
+  if(!STOCKS[ticker]){STOCKS[ticker]={name:ticker,price:price};}
+  holdings.push({ticker,shares,buyPrice:price});
+  hideModal('addHoldingModal');
+  generateHistory();
+  renderAll();
+}
+
+function removeHolding(idx){
+  holdings.splice(idx,1);
+  generateHistory();
+  renderAll();
+}
+
+initDemo();
+window.addEventListener('resize',renderAll);
+</script>
+</body>
+</html>

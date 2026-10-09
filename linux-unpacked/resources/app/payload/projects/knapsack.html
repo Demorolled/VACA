@@ -1,0 +1,66 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Knapsack Solver</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#ccc;min-height:100vh;padding:20px;display:flex;justify-content:center}.container{max-width:800px;width:100%;text-align:center}h1{color:#00d9ff;font-size:1.1rem;margin-bottom:4px}p.sub{color:#555;font-size:0.65rem;margin-bottom:12px}.controls{display:flex;gap:4px;justify-content:center;margin-bottom:10px;flex-wrap:wrap}.controls button{padding:5px 10px;border:1px solid rgba(255,255,255,0.06);border-radius:3px;background:transparent;color:#888;cursor:pointer;font-size:0.5rem;font-family:inherit;transition:0.1s}.controls button:hover{border-color:#00d9ff;color:#ccc}.controls button.primary{background:rgba(0,217,255,0.1);color:#00d9ff;border-color:rgba(0,217,255,0.25)}table{border-collapse:collapse;margin:0 auto;font-size:0.6rem;width:100%}td,th{border:1px solid rgba(255,255,255,0.04);padding:4px 8px;text-align:center;color:#888}th{color:#555;font-weight:400;background:#0e0e1a;font-size:0.5rem}.items{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:10px 0}.item-card{padding:8px 12px;background:#12121e;border:1px solid rgba(255,255,255,0.06);border-radius:6px;font-size:0.55rem;color:#aaa;cursor:pointer;transition:0.1s;min-width:80px}.item-card:hover{border-color:#00d9ff}.item-card.selected{border-color:#4ade80;background:rgba(74,222,128,0.05)}.item-card .iw{color:#fbbf24;font-weight:600}.item-card .iv{color:#4ade80;font-weight:600}.stats{font-size:0.55rem;color:#555;margin-top:8px}.stats .val{color:#00d9ff}.dp-table td.highlight{background:rgba(0,217,255,0.1);color:#00d9ff}.dp-table td.path{background:rgba(74,222,128,0.1);color:#4ade80}</style></head><body>
+<div class="container"><h1>🎒 Knapsack Solver</h1><p class="sub">0/1 Knapsack DP — Add items, set capacity, find optimal selection</p>
+<div class="items" id="itemsDisplay"></div>
+<div class="controls">
+<button onclick="addItem()">➕ Add Item</button>
+<button onclick="solve()" class="primary">🧠 Solve</button>
+<button onclick="stepSolve()">👣 Step</button>
+<button onclick="resetItems()">🔄 Reset</button>
+<span style="color:#555;font-size:0.5rem;align-self:center">Capacity: <input type="range" min="5" max="30" value="15" id="capSlider" style="width:80px;accent-color:#00d9ff;vertical-align:middle"> <span class="val" id="capDisplay">15</span></span>
+</div>
+<div style="overflow-x:auto"><table class="dp-table" id="dpTable"></table></div>
+<div class="stats"><span>Max Value: <span class="val" id="maxValDisplay">-</span></span><span>Selected: <span class="val" id="selectedDisplay">-</span></span><span>Steps: <span class="val" id="stepDisplay">0</span></span></div></div>
+<script>
+let items=[{w:3,v:7},{w:4,v:9},{w:5,v:12},{w:2,v:6},{w:6,v:14}],dp=[],selected=[],stepIdx=0;
+let cap=15,solving=false;
+
+function addItem(){const w=Math.floor(Math.random()*5)+2,v=Math.floor(Math.random()*10)+5;items.push({w,v});renderItems();saveToStorage()}
+function resetItems(){items=[{w:3,v:7},{w:4,v:9},{w:5,v:12},{w:2,v:6},{w:6,v:14}];dp=[];selected=[];render();saveToStorage()}
+document.getElementById('capSlider').oninput=function(){cap=parseInt(this.value);document.getElementById('capDisplay').textContent=cap;render();saveToStorage()}
+
+function solve(){
+  const n=items.length;dp=Array(n+1).fill(null).map(()=>Array(cap+1).fill(0));
+  for(let i=1;i<=n;i++)for(let w=0;w<=cap;w++){if(items[i-1].w<=w)dp[i][w]=Math.max(dp[i-1][w],dp[i-1][w-items[i-1].w]+items[i-1].v);else dp[i][w]=dp[i-1][w]}
+  // Backtrack
+  selected=[];let i=n,w=cap;
+  while(i>0&&w>0){if(dp[i][w]!==dp[i-1][w]){selected.push(i-1);w-=items[i-1].w}i--}
+  render();document.getElementById('stepDisplay').textContent=n*cap;document.getElementById('maxValDisplay').textContent=dp[n][cap];document.getElementById('selectedDisplay').textContent=selected.map(i=>`Item ${i+1}`).join(', ');saveToStorage()
+}
+
+function stepSolve(){
+  if(!solving){solving=true;stepIdx=0;dp=Array(items.length+1).fill(null).map(()=>Array(cap+1).fill(0));selected=[]}
+  const n=items.length;
+  for(let s=0;s<5&&stepIdx<n*(cap+1);s++){
+    const i=Math.floor(stepIdx/(cap+1))+1,w=stepIdx%(cap+1);
+    if(i<=n&&w<=cap){if(items[i-1].w<=w)dp[i][w]=Math.max(dp[i-1][w],dp[i-1][w-items[i-1].w]+items[i-1].v);else dp[i][w]=dp[i-1][w]}
+    stepIdx++;
+  }
+  if(stepIdx>=n*(cap+1)){solving=false;document.getElementById('stepDisplay').textContent=stepIdx;document.getElementById('maxValDisplay').textContent=dp[n][cap];saveToStorage()}
+  render();
+}
+
+function renderItems(){
+  document.getElementById('itemsDisplay').innerHTML=items.map((it,i)=>`<div class="item-card${selected.includes(i)?' selected':''}"><div>Item ${i+1}</div><div><span class="iw">W:${it.w}</span> · <span class="iv">V:${it.v}</span></div></div>`).join('');
+}
+
+function render(){
+  renderItems();const n=items.length;
+  if(dp.length===0){document.getElementById('dpTable').innerHTML='<div style="padding:20px;color:#555;font-size:0.6rem">Click Solve to run the DP algorithm</div>';return}
+  let html='<tr><th></th>'+Array.from({length:cap+1},(_,w)=>`<th>${w}</th>`).join('')+'</tr>';
+  for(let i=0;i<=n;i++){
+    html+=`<tr><th>${i===0?'0':`${i}:${items[i-1].w}/${items[i-1].v}`}</th>`;
+    for(let w=0;w<=cap;w++){
+      const isHighlight=stepIdx>0&&i===Math.floor((stepIdx-1)/(cap+1))+1&&w===(stepIdx-1)%(cap+1);
+      const isPath=i>0&&selected.includes(i-1)&&w>0&&dp[i][w]>dp[i-1][w];
+      html+=`<td class="${isHighlight?'highlight':''}${isPath?' path':''}">${dp[i][w]}</td>`;
+    }
+    html+='</tr>';
+  }
+  document.getElementById('dpTable').innerHTML=html;
+  if(selected.length>0)document.getElementById('selectedDisplay').textContent=selected.map(i=>`Item ${i+1}`).join(', ');
+}
+function saveToStorage(){try{localStorage.setItem('knapsack_data',JSON.stringify({items,cap}))}catch(e){}}
+function loadFromStorage(){try{const d=JSON.parse(localStorage.getItem('knapsack_data'));if(d&&d.items){items=d.items;cap=d.cap||15;document.getElementById('capSlider').value=cap;document.getElementById('capDisplay').textContent=cap;return true}}catch(e){}return false}
+if(!loadFromStorage()){cap=15}render();
+</script>
+</body></html>

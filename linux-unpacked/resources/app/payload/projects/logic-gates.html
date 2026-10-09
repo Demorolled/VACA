@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Logic Gate Simulator</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#ccc;min-height:100vh;padding:20px;display:flex;justify-content:center}
+.container{max-width:900px;width:100%}
+h1{color:#00d9ff;font-size:1.1rem;text-align:center;margin-bottom:4px}p.sub{color:#555;font-size:0.65rem;text-align:center;margin-bottom:12px}
+.layout{display:flex;gap:16px;flex-wrap:wrap}
+.canvas-wrap{flex:1;min-width:400px;background:#0e0e1a;border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:10px;position:relative}
+#gateCanvas{width:100%;height:400px;cursor:pointer}
+.sidebar{width:280px;background:#12121e;border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px;font-size:0.6rem;flex-shrink:0}
+.sidebar h3{font-size:0.65rem;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.3px}
+.gate-palette{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:10px}
+.gate-btn{padding:6px;border:1px solid rgba(255,255,255,0.06);border-radius:4px;background:transparent;color:#888;cursor:pointer;font-size:0.5rem;font-family:inherit;transition:0.1s;text-align:center}
+.gate-btn:hover{border-color:#00d9ff;color:#ccc}.gate-btn.active{border-color:#00d9ff;color:#00d9ff;background:rgba(0,217,255,0.05)}
+.truth-table{width:100%;border-collapse:collapse;font-size:0.6rem;margin-top:8px}
+.truth-table th{padding:4px 6px;border:1px solid rgba(255,255,255,0.06);color:#555;font-weight:400}
+.truth-table td{padding:4px 6px;border:1px solid rgba(255,255,255,0.04);text-align:center;color:#aaa}
+.truth-table td.high{color:#4ade80;font-weight:600}.truth-table td.low{color:#f87171}
+.io-controls{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.io-btn{padding:6px 12px;border:1px solid rgba(255,255,255,0.06);border-radius:4px;background:transparent;color:#888;cursor:pointer;font-size:0.55rem;font-family:inherit;transition:0.1s}
+.io-btn:hover{border-color:#00d9ff;color:#ccc}.io-btn.on{border-color:#4ade80;color:#4ade80;background:rgba(74,222,128,0.05)}
+.io-btn.off{border-color:#f87171;color:#f87171}
+.result{text-align:center;padding:8px;border-radius:6px;margin-top:8px;font-size:0.75rem}
+.result.high{background:rgba(74,222,128,0.1);color:#4ade80;border:1px solid rgba(74,222,128,0.2)}
+.result.low{background:rgba(248,113,113,0.1);color:#f87171;border:1px solid rgba(248,113,113,0.2)}</style>
+</head>
+<body>
+<div class="container">
+  <h1>🔌 Logic Gate Simulator</h1>
+  <p class="sub">AND · OR · NOT · NAND · NOR · XOR · XNOR — Interactive simulation</p>
+  <div class="layout">
+    <div class="canvas-wrap"><canvas id="gateCanvas"></canvas></div>
+    <div class="sidebar">
+      <h3>🔧 Gates</h3>
+      <div class="gate-palette">
+        <button class="gate-btn" onclick="setActiveGate('AND')" data-gate="AND">AND</button>
+        <button class="gate-btn" onclick="setActiveGate('OR')" data-gate="OR">OR</button>
+        <button class="gate-btn" onclick="setActiveGate('NOT')" data-gate="NOT">NOT</button>
+        <button class="gate-btn" onclick="setActiveGate('NAND')" data-gate="NAND">NAND</button>
+        <button class="gate-btn" onclick="setActiveGate('NOR')" data-gate="NOR">NOR</button>
+        <button class="gate-btn" onclick="setActiveGate('XOR')" data-gate="XOR">XOR</button>
+        <button class="gate-btn" onclick="setActiveGate('XNOR')" data-gate="XNOR">XNOR</button>
+      </div>
+      <h3>🔘 Inputs</h3>
+      <div class="io-controls">
+        <button class="io-btn off" id="inputA" onclick="toggleInput('A')">Input A: OFF</button>
+        <button class="io-btn off" id="inputB" onclick="toggleInput('B')">Input B: OFF</button>
+      </div>
+      <div class="result low" id="result">Output: 0 (LOW)</div>
+      <h3>📊 Truth Table</h3>
+      <table class="truth-table" id="truthTable"></table>
+    </div>
+  </div>
+</div>
+<script>
+const canvas=document.getElementById('gateCanvas'),ctx=canvas.getContext('2d');
+let activeGate='AND',inputA=false,inputB=false;
+const GATE_COLORS={AND:'#00d9ff',OR:'#4ade80',NOT:'#fbbf24',NAND:'#f87171',NOR:'#a78bfa',XOR:'#f472b6',XNOR:'#34d399'};
+
+function gateOutput(gate,a,b){
+  switch(gate){
+    case'AND':return a&&b;
+    case'OR':return a||b;
+    case'NOT':return!a;
+    case'NAND':return!(a&&b);
+    case'NOR':return!(a||b);
+    case'XOR':return a!==b;
+    case'XNOR':return a===b;
+    default:return false;
+  }
+}
+
+function setActiveGate(gate){activeGate=gate;document.querySelectorAll('.gate-btn').forEach(b=>b.classList.toggle('active',b.dataset.gate===gate));draw();updateUI()}
+function toggleInput(name){if(name==='A'){inputA=!inputA;document.getElementById('inputA').textContent=`Input A: ${inputA?'ON':'OFF'}`;document.getElementById('inputA').className=`io-btn ${inputA?'on':'off'}`}else{inputB=!inputB;document.getElementById('inputB').textContent=`Input B: ${inputB?'ON':'OFF'}`;document.getElementById('inputB').className=`io-btn ${inputB?'on':'off'}`}draw();updateUI()}
+function updateUI(){
+  const out=gateOutput(activeGate,inputA,inputB);
+  const r=document.getElementById('result');
+  r.textContent=`Output: ${out?1:0} (${out?'HIGH':'LOW'})`;
+  r.className=`result ${out?'high':'low'}`;
+  renderTruthTable();
+}
+
+function renderTruthTable(){
+  const gates=activeGate==='NOT'?['NOT']:[activeGate];
+  const table=document.getElementById('truthTable');
+  if(activeGate==='NOT'){
+    table.innerHTML='<tr><th>A</th><th>NOT</th></tr>';
+    for(const a of[false,true])table.innerHTML+=`<tr><td class="${a?'high':'low'}">${a?1:0}</td><td class="${gateOutput('NOT',a)?'high':'low'}">${gateOutput('NOT',a)?1:0}</td></tr>`;
+  }else{
+    const vals=[false,true];
+    table.innerHTML='<tr><th>A</th><th>B</th><th>'+activeGate+'</th></tr>';
+    for(const a of vals)for(const b of vals)
+      table.innerHTML+=`<tr><td class="${a?'high':'low'}">${a?1:0}</td><td class="${b?'high':'low'}">${b?1:0}</td><td class="${gateOutput(activeGate,a,b)?'high':'low'}">${gateOutput(activeGate,a,b)?1:0}</td></tr>`;
+  }
+}
+
+function draw(){
+  const w=canvas.width=canvas.parentElement.clientWidth,h=canvas.height=400;
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle='#0e0e1a';ctx.fillRect(0,0,w,h);
+  
+  // Grid
+  ctx.strokeStyle='rgba(255,255,255,0.02)';ctx.lineWidth=0.5;
+  for(let x=0;x<w;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke()}
+  for(let y=0;y<h;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke()}
+  
+  const cx=w/2,cy=h/2,gw=160,gh=100;
+  const color=GATE_COLORS[activeGate]||'#fff';
+  
+  // Gate body
+  ctx.fillStyle=color+'22';ctx.strokeStyle=color;ctx.lineWidth=3;
+  ctx.beginPath();
+  if(activeGate==='NOT'){
+    ctx.moveTo(cx-gw/2,cy-gh/2);ctx.lineTo(cx+gw/4,cy-gh/2);
+    ctx.lineTo(cx+gw/4,cy+gh/2);ctx.lineTo(cx-gw/2,cy+gh/2);ctx.closePath();ctx.fill();ctx.stroke();
+    // Triangle
+    ctx.beginPath();ctx.moveTo(cx+gw/4,cy-gh/2);ctx.lineTo(cx+gw/2,cy);
+    ctx.lineTo(cx+gw/4,cy+gh/2);ctx.closePath();ctx.fillStyle=color+'44';ctx.fill();ctx.stroke();
+    // Bubble
+    ctx.beginPath();ctx.arc(cx+gw/2+10,cy,8,0,Math.PI*2);ctx.fillStyle=color+'44';ctx.fill();ctx.stroke();
+  }else{
+    ctx.moveTo(cx-gw/2,cy-gh/2);ctx.lineTo(cx-gw/2+20,cy-gh/2);
+    ctx.quadraticCurveTo(cx+gw/2,cy-gh/2,cx+gw/2,cy);
+    ctx.quadraticCurveTo(cx+gw/2,cy+gh/2,cx-gw/2+20,cy+gh/2);
+    ctx.lineTo(cx-gw/2,cy+gh/2);ctx.closePath();ctx.fill();ctx.stroke();
+  }
+  
+  // Gate label
+  ctx.fillStyle=color;ctx.font='bold 20px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(activeGate,cx-10,cy);
+  
+  // Input A line
+  const aColor=inputA?'#4ade80':'#f87171';
+  ctx.strokeStyle=aColor;ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(20,cy-30);ctx.lineTo(cx-gw/2,cy-30);ctx.stroke();
+  ctx.fillStyle=aColor;ctx.beginPath();ctx.arc(20,cy-30,6,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#fff';ctx.font='10px Arial';ctx.textAlign='center';ctx.fillText('A',20,cy-30);
+  
+  // Input B line (skip for NOT)
+  if(activeGate!=='NOT'){
+    const bColor=inputB?'#4ade80':'#f87171';
+    ctx.strokeStyle=bColor;ctx.lineWidth=3;
+    ctx.beginPath();ctx.moveTo(20,cy+30);ctx.lineTo(cx-gw/2,cy+30);ctx.stroke();
+    ctx.fillStyle=bColor;ctx.beginPath();ctx.arc(20,cy+30,6,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fff';ctx.font='10px Arial';ctx.textAlign='center';ctx.fillText('B',20,cy+30);
+  }
+  
+  // Output line
+  const out=gateOutput(activeGate,inputA,inputB);
+  const oColor=out?'#4ade80':'#f87171';
+  ctx.strokeStyle=oColor;ctx.lineWidth=3;
+  const outX=activeGate==='NOT'?cx+gw/2+18:cx+gw/2;
+  ctx.beginPath();ctx.moveTo(outX,cy);ctx.lineTo(w-20,cy);ctx.stroke();
+  ctx.fillStyle=oColor;ctx.beginPath();ctx.arc(w-20,cy,6,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#fff';ctx.font='10px Arial';ctx.textAlign='center';ctx.fillText(out?'1':'0',w-20,cy);
+  
+  // Animated signal dots
+  const time=Date.now()/1000;
+  for(let i=0;i<5;i++){
+    const t=((time*2+i*0.3)%1);
+    const lx=(w-20-outX)*t+outX;
+    ctx.fillStyle=oColor+Math.floor((1-Math.abs(t-0.5)*2)*100).toString(16).padStart(2,'0');
+    ctx.beginPath();ctx.arc(lx,cy,3,0,Math.PI*2);ctx.fill();
+  }
+}
+
+setActiveGate('AND');
+updateUI();
+setInterval(draw,100);
+window.addEventListener('resize',draw);
+</script>
+</body>
+</html>

@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>VACA Claims Audit — Round 7 (extended) · 213/250 (85%)</title>
+<style>
+  :root { --bg:#0d1117; --panel:#161b22; --border:#30363d; --text:#e6edf3; --muted:#8b949e; --accent:#58a6ff; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); }
+  .wrap { max-width:1100px; margin:0 auto; padding:32px 20px 60px; }
+  h1 { font-size:26px; margin:0 0 6px; }
+  .sub { color:var(--muted); margin-bottom:22px; font-size:14px; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:28px; }
+  .card { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:16px 18px; }
+  .card .big { font-size:30px; font-weight:700; }
+  .card .lbl { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.5px; margin-top:4px; }
+  .card.green .big { color:#2ecc71; } .card.blue .big { color:var(--accent); } .card.amber .big { color:#e3b341; }
+  table { width:100%; border-collapse:collapse; background:var(--panel); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+  th { text-align:left; padding:10px 12px; background:#1c2128; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.6px; border-bottom:1px solid var(--border); }
+  td { padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top; font-size:13px; }
+  tr:last-child td { border-bottom:none; }
+  td.claim { font-weight:600; min-width:220px; }
+  td.probe { color:var(--muted); min-width:200px; }
+  td.status { width:70px; }
+  .badge { color:#fff; font-size:11px; font-weight:700; padding:3px 8px; border-radius:20px; }
+  td.score { width:150px; }
+  .bar { background:#21262d; border-radius:6px; height:8px; width:100%; margin-top:6px; overflow:hidden; }
+  .fill { height:100%; }
+  .num { font-size:12px; color:var(--muted); }
+  td.detail { color:var(--muted); font-size:12px; word-break:break-word; }
+  .new { display:inline-block; background:#1f3a2a; color:#56d364; border:1px solid #2ea043; border-radius:4px; font-size:10px; padding:1px 6px; margin-left:6px; vertical-align:middle; }
+  h2 { font-size:17px; margin:34px 0 12px; border-bottom:1px solid var(--border); padding-bottom:8px; }
+  h2 .count { color:var(--muted); font-weight:400; }
+  a { color:var(--accent); text-decoration:none; }
+  a:hover { text-decoration:underline; }
+  .btn { display:inline-block; background:linear-gradient(135deg,#00d9ff,#4a9eff); color:#06121f; font-weight:700; font-size:14px;
+    padding:10px 20px; border-radius:8px; text-decoration:none; margin-bottom:18px; transition:transform .12s, box-shadow .12s; }
+  .btn:hover { transform:translateY(-1px); box-shadow:0 4px 14px rgba(0,217,255,.25); text-decoration:none; }
+  .btn .sub { display:block; font-size:11px; font-weight:500; opacity:.75; }
+  .foot { color:var(--muted); font-size:12px; margin-top:26px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🛡 VACA Claims Audit — Round 7 <span style="color:var(--muted);font-weight:400">(extended)</span></h1>
+  <div class="sub">Live against :3001 · round-7 tuned model (Qwen2.5-7B, 87.15% acc) · generated 2026-08-08T20:43:21Z</div>
+
+  <a class="btn" href="/projects/claims-audit.html">🚀 Test now — interactive audit
+    <span class="sub">Run quick or full live probes (incl. the 8-step workflow) in the browser</span></a>
+
+  <div class="cards">
+    <div class="card green"><div class="big">213/250</div><div class="lbl">Overall score · 85%</div></div>
+    <div class="card blue"><div class="big">25</div><div class="lbl">Claims audited</div></div>
+    <div class="card"><div class="big">25</div><div class="lbl">Passed</div></div>
+    <div class="card amber"><div class="big">8</div><div class="lbl">New workflow steps</div></div>
+  </div>
+
+  <h2>Core claims <span class="count">· 17</span></h2>
+  <table><thead><tr><th>Claim</th><th>Probe</th><th>Status</th><th>Score</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr>
+      <td class="claim">read named files </td>
+      <td class="probe">read backend/src/index.ts</td>
+      <td class="status"><span class="badge" style="background:#2ecc71">PASS</span></td>
+      <td class="score">
+        <div class="bar"><div class="fill" style="width:90%;background:#2ecc71"></div></div>
+        <span class="num">9/10</span>
+      </td>
+      <td class="detail">response[:200]: import express from &#x27;express&#x27;;
+import cors from &#x27;cors&#x27;;
+import dotenv from &#x27;dotenv&#x27;;
+import http from &#x27;http&#x27;;
+import path from &#x27;path&#x27;;
+import { spawn, execSync, execFileSync, ChildProcess } from &#x27;chil</td>
+    </tr>
+    <tr>
+      <td class="claim">search codebase </td>
+      <td class="probe">search for sessionMemory</td>
+      <td class="status"><span class="badge" style="background:#2ecc71">PASS</span></td>
+      <td class="score">
+        <div class="bar"><div class="fill" style="width:90%;background:#2ecc71"></div></div>
+        <span class="num">9/10</span>
+      </td>
+      <td class="detail">response[:220]: Here&#x27;s a list of the files where the term &quot;sessionMemory&quot; appears in the codebase:
+
+- [database/sessionMemory.d.ts](https://github.com/your-repo/backend/tree/master/dist/database/sessionMemory.d.ts)
+- [database/sessionMe</td>
+    </tr>
+    <tr>
+      <td class="claim">create file in chat-files </td>
+      <td class="probe">create audit-test file</td>
+      <td class="status"><span class="badge" style="background:#2ecc71">PASS</span></td>
+      <td class="score">
+        <div class="bar"><div class="fill" style="width:90%;background:#2ecc71"></div></div>
+        <span class="num">9/10</span>
+      </td>
+      <td class="detail">files: [&#x27;data/chat-files/audit-test-fc.txt&#x27;] (attempt 1) | resp: ✅ Created &quot;audit-test-fc.txt&quot; — done for real this time.
+• File: /home/final-flash1/Desktop/visual-ai-architect/data/chat-files/audit-test-fc.txt  (11</td>
+    </tr>
+    <tr>
+      <td class="claim">write memory </td>
+      <td class="probe">remember favorite color teal</td>
+      <td class="status"><span class="badge" style="background:#2ecc71">PASS</span></td>
+      <td class="score">
+        <div class="bar"><div class="fill" style="width:90%;background:#2ecc71"></div></div>
+        <span class="num">9/10</span>
+      </td>
+      <td class="detail">notes matching &#x27;teal&#x27;: True | resp: ✅ Saved to my memory — done for real this time.
+• File: data/session-memory.json  |  Note: &quot;my favorite color is teal&quot; (3 total)
+• It&#x27;s now part of my</td>
+    </tr>
+    <tr>
+      <td class="claim">recall memory </td>
+      <td class="probe">what is my favorite color?</td>
+      <td class="status"><span class="badge" style="background:#2ecc71">PASS</span></td>
+      <td class="score">
+        <div class="bar"><div class="fill" style="width:80%;background:#2ecc71"></div></div>
+        <span class="num">8/10</span>
+      </td>
+      <td class="detail">resp: Your favorite color is teal. I can tell because you mentioned it before.</td>
+    </tr>
+    <tr>
+      <td class="claim">code generation </td>
+      <td class="probe">fibonacci python function</td>
+      <td class="status"><span class="badge" style="background:#2ecc71">PASS</span></td>
+      <td class="score">
+        <div class="bar"><div class="fill" style="width:80%;background:#2ecc71"></div></div>
+        <span class="num">8/10</span>
+      </td>
+      <td class="detail">resp[:200]: def fibonacci_memo(n, memo={}):
+    if n in memo:
+        return memo[n]
+    if n &lt;= 1:
+        return n
+    memo[n] = fibonacci_memo(n - 1, memo) + fibonacci_memo(n - 2, memo)
+    return memo[n]</td>
+    </tr>
+    <tr>
+      <td class="claim">write-code files array </td>
+      <td class="probe">/write-code returns files[] of written {path,content}</td>
+      <td class="status"><span class="badge" style="background:#2ecc71">PASS</span></td>
+      <td class="score">
+        <div class="bar"><div class="fill" style="width:90%;background:#2ecc71"></div></div>
+        <span class="num">9/10</span>
+      </td>
+      <td class="detail">files: [&#x27;src/main.ts&#x27;, &#x27;src/todo.ts&#x27;, &#x27;src/storage.ts&#x27;] | written-ok: [&#x27;src/main.ts&#x27;, &#x27;src/todo.ts&#x27;, &#x27;src/storage.ts&#x27;] | resp keys: [&#x27;contractViolations&#x27;, &#x27;exportDir&#x27;, &#x27;files&#x27;, &#x27;mode&#x27;, &#x27;repairRounds&#x27;, &#x27;success&#x27;, &#x27;summary&#x27;, &#x27;totalFiles&#x27;, &#x27;tscErrors&#x27;, &#x27;written&#x27;]</td>
+    </tr>
+    <tr>
+      <td class="claim">blueprint generation </td>
+      <td class="probe">build todo blueprint (wiring + edges reference real modules/nodes)</td>
+      <td class="status"><span class="badge" style="background:#2ecc71">PASS</span></td>
+      <td class="score">
+        <div class="bar"><div class="fill" style="width:90%;background:#2ecc71"></div></div>
+        <span class="num">9/10</span>
+      </td>
+      <td class="detail">checklist=5 wiring=4 dangleMod=0 nodes=6 edges=4 dangleEdge=0 | matchedBy=semantic err=</td>
+    </tr>
+    <tr>
+      <td class="claim">self-analysis </td>
+      <td class="probe">read own source + explain</td>
+      <td class="status"><span class="badge" style="background:#2ecc71">PASS</span></td>
+      <td class="score">
+        <div class="bar"><div class="fill" style="width:80%;background:#2ecc71"></div></div>
+        <span class="num">8/10</span>
+      </td>
+      <td class="detail">resp[:250]: The getSoulPromptModifier function is responsible for generating a personality prompt modifier based on the current soul config. It takes the personality traits from the soul object and builds a descriptor string that can be injected into the LLM sys</td>
+    </tr>
+    <tr>
+      <td class="claim">LLM integration </td>
+      <td class="probe">/api/health llm block</td>
+      <td class="status"><span class="badge" style="background:#2ecc71">PASS</span></td>
+      <td class="score">
+        <div class="bar"><div class="fill" style="width:80%;background:#2ecc71"></div></div>
+        <span class="num">8/10</span>
+      </td>
+      <td class="detail">health llm: {&quot;up&quot;: true, &quot;model&quot;: &quot;qwen2.5-7b-instruct-uncensored-dspark&quot;}</td>
+    </tr>
+    <tr>
+      <td class="claim">WebSocket </td>
+      <td class="probe">socket.io polling handshake</td>
+      <td class="status"><span class="badge" style="background:#2ecc71">PASS</span></td>
+      <td class="score">
+        <div class="bar"><div class="fill" style="width:80%;background:#2ecc71"></div></div>
+        <span class="num">8/10</span>
+      </td>
+      <td class="detail">handshake: HTTP/1.1 200 OK
+X-Powered-By: Express
+Vary: Origin
+Access-Control-Allow-Credentials: true
+Accept-Ranges: bytes
+Cach</td>
+    </tr>
+    <tr>
+      <td class="claim">live codegen progress stream </td>
+      <td class="probe">generation_progress events over /ws during write-code</td>
+      <td class="status"><span class="badge" style="background:#2ecc71">PASS</span></td>
+      <td class="score">
+        <div class="bar"><div class="fill" style="width:90%;background:#2ecc71"></div></div>
+        <span class="num">9/10</span>
+      </td>
+      <td class="detail">events: 14 | generating:8% → generating:17% → generating:42% → generating:45% → generating:51% → generating:57% → validating:70% → validating:76% → validating:87% → validating:94% → validating:100% → validating:100% → validating:95% → done:100%</td>
+    </tr>
+    <tr>
+      <td class="claim">TTS </td>
+      <td class="probe">voices list + real MP3 synthesis</td>
+      <td class="status"><span class="badge" style="background:#2ecc71">PASS</span></td>
+      <td class="score">
+        <div class="bar"><div class="fill" style="width:100%;background:#2ecc71"></div></div>
+        <span class="num">10/10</span>
+      </td>
+      <td class="detail">voices: 12 | synth: HTTP 200, 16992 bytes, audio/mpeg, magic=True</td>
+    </tr>
+    <tr>
+      <td class="claim">emotional response </td>
+      <td class="probe">stressed user message</td>
+      <td class="status"><span class="badge" style="background:#2ecc71">PASS</span></td>
+      <td class="score">
+        <div class="bar"><div class="fill" style="width:80%;background:#2ecc71"></div></div>
+        <span class="num">8/10</span>
+      </td>
+      <td class="detail">resp[:250]: I can imagine how overwhelming it feels to have everything piling up like that. Take a deep breath and try to focus on one thing at a time; sometimes breaking it down helps make things feel more manageable.</td>
+    </tr>
+    <tr>
+      <td class="claim">emotional continuity </td>
+      <td class="probe">turn-2 worse news → warm + references turn 1</td>
+      <td class="status"><span class="badge" style="background:#2ecc71">PASS</span></td>
+      <td class="score">
+        <div class="bar"><div class="fill" style="width:80%;background:#2ecc71"></div></div>
+        <span class="num">8/10</span>
+      </td>
+      <td class="detail">turn2 warm=True referencesTurn1=True | resp[:220]: That&#x27;s a lot on top of the deadline you&#x27;re already stressing about. I&#x27;m so sorry for the extra setback; that must feel incredibly frustrating. Let&#x27;s see if we can try to recover the work or at least get an extension if i</td>
+    </tr>
+    <tr>
+      <td class="claim">emotion </td>
+      <td class="probe">soul.json emotional_state history freshness</td>
+      <td class="status"><span class="badge" style="background:#2ecc71">PASS</span></td>
+      <td class="score">
+        <div class="bar"><div class="fill" style="width:80%;background:#2ecc71"></div></div>
+        <span class="num">8/10</span>
+      </td>
+      <td class="detail">dominant: neutral | entries: 25 | last_ts: 2026-08-09T00:39:34.995Z (was stale pre-P2: Jul 4)</td>
+    </tr>
+    <tr>
+      <td class="claim">project mgmt </td>
+      <td class="probe">save/load/export/import round-trip + disk persistence</td>
+      <td class="status"><span class="badge" style="background:#2ecc71">PASS</span></td>
+      <td class="score">
+        <div class="bar"><div class="fill" style="width:100%;background:#2ecc71"></div></div>
+        <span class="num">10/10</span>
+      </td>
+      <td class="detail">create:201 | get:200 | update:200 | export:200 | import:201 | delete:200/gone:404 | disk=True</td>
+    </tr></tbody></table>
+
+  <h2>8-step development workflow <span class="count">· 8 new entries</span></h2>
+  <table><thead><tr><th>Step</th><th>Probe</th><th>Status</th><th>Score</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr>
+      <td class="claim">workflow: define the idea <span class='new'>NEW · workflow</span></td>
+      <td class="probe">blueprint description states the core functionality/problem</td>
+      <td class="status"><span class="badge" style="background:#2ecc71">PASS</span></td>
+      <td class="score">
+        <div class="bar"><div class="fill" style="width:80%;background:#2ecc71"></div></div>
+        <span class="num">8/10</span>
+      </td>
+      <td class="detail">desc[:200]: Todo List. ⎔ Todo List</td>
+    </tr>
+    <tr>
+      <td class="claim">workflow: sketch the architecture <span class='new'>NEW · workflow</span></td>
+      <td class="probe">blueprint wiring_graph nodes+edges (no dangling refs)</td>
+      <td class="status"><span class="badge" style="background:#2ecc71">PASS</span></td>
+      <td class="score">
+        <div class="bar"><div class="fill" style="width:90%;background:#2ecc71"></div></div>
+        <span class="num">9/10</span>
+      </td>
+      <td class="detail">wiring=4 nodes=6 edges=4 dangleMod=0 dangleEdge=0</td>
+    </tr>
+    <tr>
+      <td class="claim">workflow: choose a language <span class='new'>NEW · workflow</span></td>
+      <td class="probe">blueprint target_stack names concrete technologies per layer</td>
+      <td class="status"><span class="badge" style="background:#2ecc71">PASS</span></td>
+      <td class="score">
+        <div class="bar"><div class="fill" style="width:90%;background:#2ecc71"></div></div>
+        <span class="num">9/10</span>
+      </td>
+      <td class="detail">stack: {&quot;frontend&quot;: &quot;React&quot;, &quot;backend&quot;: &quot;Node.js Express&quot;, &quot;database&quot;: &quot;SQLite&quot;}</td>
+    </tr>
+    <tr>
+      <td class="claim">workflow: core-first (core separate from UI) <span class='new'>NEW · workflow</span></td>
+      <td class="probe">write-code emits core/business-logic files separate from UI files</td>
+      <td class="status"><span class="badge" style="background:#2ecc71">PASS</span></td>
+      <td class="score">
+        <div class="bar"><div class="fill" style="width:80%;background:#2ecc71"></div></div>
+        <span class="num">8/10</span>
+      </td>
+      <td class="detail">core=True ui=True | files: [&#x27;src/types.ts&#x27;, &#x27;src/core.ts&#x27;, &#x27;src/routes.ts&#x27;, &#x27;src/db.ts&#x27;, &#x27;src/handlers.ts&#x27;, &#x27;src/index.ts&#x27;, &#x27;src/ui.tsx&#x27;, &#x27;src/app.tsx&#x27;, &#x27;tests/core.spec.ts&#x27;, &#x27;Dockerfile&#x27;, &#x27;index.html&#x27;]</td>
+    </tr>
+    <tr>
+      <td class="claim">workflow: UI design <span class='new'>NEW · workflow</span></td>
+      <td class="probe">write-code emits UI/component files (or ui_screens in blueprint checklist)</td>
+      <td class="status"><span class="badge" style="background:#2ecc71">PASS</span></td>
+      <td class="score">
+        <div class="bar"><div class="fill" style="width:80%;background:#2ecc71"></div></div>
+        <span class="num">8/10</span>
+      </td>
+      <td class="detail">ui=True checklist_has_ui_screens=True | files: [&#x27;src/types.ts&#x27;, &#x27;src/core.ts&#x27;, &#x27;src/routes.ts&#x27;, &#x27;src/db.ts&#x27;, &#x27;src/handlers.ts&#x27;, &#x27;src/index.ts&#x27;, &#x27;src/ui.tsx&#x27;, &#x27;src/app.tsx&#x27;, &#x27;tests/core.spec.ts&#x27;, &#x27;Dockerfile&#x27;, &#x27;index.html&#x27;]</td>
+    </tr>
+    <tr>
+      <td class="claim">workflow: wire up the UI <span class='new'>NEW · workflow</span></td>
+      <td class="probe">UI connected to core (wiring edge ui→api and/or UI+API files in one write)</td>
+      <td class="status"><span class="badge" style="background:#2ecc71">PASS</span></td>
+      <td class="score">
+        <div class="bar"><div class="fill" style="width:80%;background:#2ecc71"></div></div>
+        <span class="num">8/10</span>
+      </td>
+      <td class="detail">wireEdge=False uiAndApiFiles=True | files: [&#x27;src/types.ts&#x27;, &#x27;src/core.ts&#x27;, &#x27;src/routes.ts&#x27;, &#x27;src/db.ts&#x27;, &#x27;src/handlers.ts&#x27;, &#x27;src/index.ts&#x27;, &#x27;src/ui.tsx&#x27;, &#x27;src/app.tsx&#x27;, &#x27;tests/core.spec.ts&#x27;, &#x27;Dockerfile&#x27;, &#x27;index.html&#x27;]</td>
+    </tr>
+    <tr>
+      <td class="claim">workflow: testing <span class='new'>NEW · workflow</span></td>
+      <td class="probe">write-code emits unit/integration test files</td>
+      <td class="status"><span class="badge" style="background:#2ecc71">PASS</span></td>
+      <td class="score">
+        <div class="bar"><div class="fill" style="width:80%;background:#2ecc71"></div></div>
+        <span class="num">8/10</span>
+      </td>
+      <td class="detail">tests=True | files: [&#x27;src/types.ts&#x27;, &#x27;src/core.ts&#x27;, &#x27;src/routes.ts&#x27;, &#x27;src/db.ts&#x27;, &#x27;src/handlers.ts&#x27;, &#x27;src/index.ts&#x27;, &#x27;src/ui.tsx&#x27;, &#x27;src/app.tsx&#x27;, &#x27;tests/core.spec.ts&#x27;, &#x27;Dockerfile&#x27;, &#x27;index.html&#x27;]</td>
+    </tr>
+    <tr>
+      <td class="claim">workflow: deployment <span class='new'>NEW · workflow</span></td>
+      <td class="probe">write-code emits deployment artifacts (Dockerfile/scripts)</td>
+      <td class="status"><span class="badge" style="background:#2ecc71">PASS</span></td>
+      <td class="score">
+        <div class="bar"><div class="fill" style="width:80%;background:#2ecc71"></div></div>
+        <span class="num">8/10</span>
+      </td>
+      <td class="detail">deploy=True | files: [&#x27;src/types.ts&#x27;, &#x27;src/core.ts&#x27;, &#x27;src/routes.ts&#x27;, &#x27;src/db.ts&#x27;, &#x27;src/handlers.ts&#x27;, &#x27;src/index.ts&#x27;, &#x27;src/ui.tsx&#x27;, &#x27;src/app.tsx&#x27;, &#x27;tests/core.spec.ts&#x27;, &#x27;Dockerfile&#x27;, &#x27;index.html&#x27;]</td>
+    </tr></tbody></table>
+
+  <div class="foot">
+    Runner: <code>python3 scripts/audit-claims.py</code> · Raw data: <code>data/claims-audit.json</code> ·
+    Markdown report: <code>data/claims-audit-report-round7.md</code>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Geometry Dash</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#ccc;min-height:100vh;display:flex;align-items:center;justify-content:center}
+.game-wrapper{background:#0e0e1a;border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:16px}
+#gameCanvas{display:block;border-radius:8px;cursor:pointer}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+header h1{color:#00d9ff;font-size:1rem}header h1 small{color:#555;font-size:0.55rem;font-weight:400}
+.controls{display:flex;gap:4px}
+.controls button{padding:5px 12px;border:1px solid rgba(255,255,255,0.06);border-radius:4px;background:transparent;color:#888;cursor:pointer;font-size:0.6rem;font-family:inherit;transition:0.1s}
+.controls button:hover{border-color:#00d9ff;color:#ccc}
+.controls button.primary{background:rgba(0,217,255,0.1);border-color:rgba(0,217,255,0.2);color:#00d9ff}
+.info{display:flex;gap:16px;margin-top:8px;font-size:0.65rem;color:#555;justify-content:center}
+.info span{display:flex;align-items:center;gap:4px}
+.info .val{color:#00d9ff;font-weight:600}
+</style>
+</head>
+<body>
+<div class="game-wrapper">
+<header>
+  <h1>🔷 Geometry Dash <small>Auto-scrolling · Jump · Obstacles</small></h1>
+  <div class="controls">
+    <button onclick="startGame()" class="primary" id="startBtn">▶ Start</button>
+    <button onclick="toggleEditor()" id="editorBtn">✏️ Editor</button>
+    <button onclick="selectLevel(1)">Level 1</button>
+    <button onclick="selectLevel(2)">Level 2</button>
+    <button onclick="selectLevel(3)">Level 3</button>
+  </div>
+</header>
+<canvas id="gameCanvas" width="800" height="450"></canvas>
+<div class="info">
+  <span>Score: <span class="val" id="scoreDisplay">0</span></span>
+  <span>High Score: <span class="val" id="highScoreDisplay">0</span></span>
+  <span>Progress: <span class="val" id="progressDisplay">0%</span></span>
+  <span>Status: <span class="val" id="statusDisplay">Ready</span></span>
+</div>
+</div>
+
+<script>
+const canvas=document.getElementById('gameCanvas'),ctx=canvas.getContext('2d');
+const W=800,H=450,FLOOR_Y=380,PLAYER_SIZE=22;
+
+let gameState='menu',score=0,highScore=0,scrollSpeed=4;
+let player={x:120,y:FLOOR_Y-PLAYER_SIZE,vy:0,size:PLAYER_SIZE,rot:0,color:'#00d9ff'};
+let obstacles=[],particles=[],trail=[];
+
+const LEVELS={
+  1:{name:'First Steps',speed:4,obstacles:[300,500,700,950,1200,1500,1800,2100,2500,2800].map(x=>({x,type:'spike',width:30,height:35}))},
+  2:{name:'Speed Run',speed:6,obstacles:[400,600,850,1100,1400,1700,2000,2400,2700,3100,3500].map(x=>({x,type:'spike',width:25,height:30})).concat([{x:1500,type:'block',width:80,height:30},{x:2800,type:'block',width:60,height:30}])},
+  3:{name:'The Gauntlet',speed:7,obstacles:[350,550,750,950,1200,1400,1600,1850,2100,2400,2700,3000,3300,3600,3900].map(x=>({x,type:'spike',width:28,height:32})).concat([{x:1000,type:'block',width:100,height:25},{x:2200,type:'block',width:80,height:25},{x:3500,type:'block',width:120,height:25}])}
+};
+
+let currentLevel=1,cameraX=0,maxProgress=0;
+let editorMode=false,editorObstacles=[];
+
+function startGame(){
+  gameState='playing';
+  score=0;cameraX=0;maxProgress=0;
+  player.y=FLOOR_Y-PLAYER_SIZE;player.vy=0;player.rot=0;
+  obstacles=LEVELS[currentLevel].obstacles.map(o=>({...o}));
+  scrollSpeed=LEVELS[currentLevel].speed;
+  particles=[];trail=[];
+  document.getElementById('startBtn').textContent='▶ Playing';
+  document.getElementById('statusDisplay').textContent='▶ Playing';
+}
+
+function gameOver(){
+  gameState='menu';
+  if(score>highScore)highScore=score;
+  document.getElementById('startBtn').textContent='▶ Retry';
+  document.getElementById('statusDisplay').textContent='💀 Game Over';
+  document.getElementById('highScoreDisplay').textContent=highScore;
+}
+
+function jump(){if(gameState==='playing'&&player.y>=FLOOR_Y-PLAYER_SIZE-2){player.vy=-12;}}
+
+canvas.addEventListener('click',()=>{if(gameState==='playing')jump();else if(gameState==='menu')startGame()});
+document.addEventListener('keydown',e=>{if(e.key===' '||e.key==='ArrowUp'||e.key==='w'){e.preventDefault();if(gameState==='playing')jump();else if(gameState==='menu')startGame()}});
+
+function update(){
+  if(gameState!=='playing')return;
+  
+  // Physics
+  const gravity=0.6;
+  player.vy+=gravity;
+  player.y+=player.vy;
+  player.rot+=player.vy*3;
+  
+  // Floor
+  if(player.y>FLOOR_Y-PLAYER_SIZE){player.y=FLOOR_Y-PLAYER_SIZE;player.vy=0;player.rot=0}
+  
+  // Scroll
+  cameraX+=scrollSpeed;
+  score=Math.floor(cameraX/10);
+  maxProgress=Math.max(maxProgress,cameraX);
+  
+  // Trail
+  trail.push({x:player.x-cameraX+W/2,y:player.y+PLAYER_SIZE/2});
+  if(trail.length>50)trail.shift();
+  
+  // Particles
+  if(Math.random()<0.3){
+    particles.push({x:player.x-cameraX+W/2+Math.random()*10-5,y:player.y+PLAYER_SIZE,vx:(Math.random()-0.5)*2,vy:Math.random()*2+1,life:30,color:player.color});
+  }
+  
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i];p.x+=p.vx;p.y+=p.vy;p.life--;
+    if(p.life<=0)particles.splice(i,1);
+  }
+  
+  // Check obstacles
+  for(let i=0;i<obstacles.length;i++){
+    const o=obstacles[i];
+    const screenX=o.x-cameraX+W/2-player.x+120;
+    if(screenX<0){obstacles.splice(i,1);i--;score+=10;continue}
+    if(screenX<40&&screenX>-40){
+      // Collision check
+      const pTop=player.y,pBottom=player.y+PLAYER_SIZE;
+      const pLeft=player.x-PLAYER_SIZE/2,pRight=player.x+PLAYER_SIZE/2;
+      const oTop=FLOOR_Y-o.height,oBottom=FLOOR_Y;
+      const oLeft=screenX+W/2-player.x+120-o.width/2,oRight=oLeft+o.width;
+      if(pBottom>oTop&&pTop<oBottom&&pRight>oLeft&&pLeft<oRight){
+        gameOver();break;
+      }
+    }
+  }
+  
+  // Progress
+  const totalLength=4000;
+  const progress=Math.min(100,Math.round((cameraX/totalLength)*100));
+  document.getElementById('scoreDisplay').textContent=score;
+  document.getElementById('progressDisplay').textContent=progress+'%';
+  document.getElementById('statusDisplay').textContent=progress>=100?'🎉 Complete':'▶ Playing';
+  
+  if(progress>=100){gameState='menu';if(score>highScore)highScore=score;document.getElementById('highScoreDisplay').textContent=highScore;document.getElementById('startBtn').textContent='▶ Next Level'}
+}
+
+function draw(){
+  // Background
+  const grad=ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0,'#0a0a2e');grad.addColorStop(0.5,'#0e0e1a');grad.addColorStop(1,'#0a0a14');
+  ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
+  
+  // Grid
+  ctx.strokeStyle='rgba(255,255,255,0.02)';ctx.lineWidth=0.5;
+  for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
+  for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+  
+  // Floor
+  ctx.fillStyle='rgba(255,255,255,0.04)';
+  ctx.fillRect(0,FLOOR_Y,W,2);
+  ctx.fillStyle='rgba(255,255,255,0.02)';
+  ctx.fillRect(0,FLOOR_Y+2,W,H-FLOOR_Y+2);
+  
+  // Trail
+  for(const t of trail){
+    ctx.fillStyle='rgba(0,217,255,0.1)';ctx.beginPath();ctx.arc(t.x,t.y,3,0,Math.PI*2);ctx.fill();
+  }
+  
+  // Obstacles
+  for(const o of obstacles){
+    const screenX=o.x-cameraX+W/2-player.x+120;
+    if(screenX<-100||screenX>W+100)continue;
+    ctx.save();ctx.translate(screenX,FLOOR_Y);
+    if(o.type==='spike'){
+      ctx.fillStyle='#f87171';
+      ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-o.width/2,-o.height);ctx.lineTo(o.width/2,-o.height);ctx.closePath();ctx.fill();
+      ctx.strokeStyle='rgba(248,113,113,0.5)';ctx.lineWidth=1;ctx.stroke();
+    }else{
+      ctx.fillStyle='#fbbf24';ctx.fillRect(-o.width/2,-o.height,o.width,o.height);
+      ctx.fillStyle='#f59e0b';ctx.fillRect(-o.width/2,-o.height,o.width,3);
+      ctx.strokeStyle='rgba(251,191,36,0.3)';ctx.lineWidth=1;ctx.strokeRect(-o.width/2,-o.height,o.width,o.height);
+    }
+    ctx.restore();
+  }
+  
+  // Player
+  const px=120,py=player.y;
+  ctx.save();ctx.translate(px+PLAYER_SIZE/2,py+PLAYER_SIZE/2);ctx.rotate(player.rot*Math.PI/180);
+  
+  // Glow
+  const glow=ctx.createRadialGradient(0,0,0,0,0,PLAYER_SIZE*1.5);
+  glow.addColorStop(0,'rgba(0,217,255,0.2)');glow.addColorStop(1,'rgba(0,217,255,0)');
+  ctx.fillStyle=glow;ctx.beginPath();ctx.arc(0,0,PLAYER_SIZE*1.5,0,Math.PI*2);ctx.fill();
+  
+  // Cube
+  ctx.fillStyle=player.color;
+  const sz=PLAYER_SIZE/2;
+  ctx.fillRect(-sz,-sz,PLAYER_SIZE,PLAYER_SIZE);
+  ctx.strokeStyle='rgba(255,255,255,0.3)';ctx.lineWidth=1;ctx.strokeRect(-sz,-sz,PLAYER_SIZE,PLAYER_SIZE);
+  
+  // Icon face
+  ctx.fillStyle='rgba(255,255,255,0.8)';
+  ctx.beginPath();ctx.arc(-4,-4,4,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(4,-4,4,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='rgba(0,0,0,0.5)';ctx.beginPath();ctx.arc(-4,-4,2,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(4,-4,2,0,Math.PI*2);ctx.fill();
+  
+  ctx.restore();
+  
+  // Particles
+  for(const p of particles){
+    ctx.globalAlpha=p.life/30;
+    ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.life/15,0,Math.PI*2);ctx.fill();
+  }
+  ctx.globalAlpha=1;
+  
+  // Editor mode overlay
+  if(editorMode){
+    ctx.fillStyle='rgba(0,217,255,0.05)';ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='rgba(0,217,255,0.5)';ctx.font='12px Arial';ctx.textAlign='center';
+    ctx.fillText('✏️ EDITOR MODE — Click to place obstacles',W/2,20);
+  }
+}
+
+function gameLoop(){
+  update();
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+function selectLevel(lvl){
+  currentLevel=lvl;
+  document.getElementById('statusDisplay').textContent=`Level ${lvl}: ${LEVELS[lvl].name}`;
+  startGame();
+}
+
+function toggleEditor(){
+  editorMode=!editorMode;
+  document.getElementById('editorBtn').textContent=editorMode?'✏️ Editing':'✏️ Editor';
+  if(editorMode){
+    gameState='menu';
+    obstacles=[];
+    canvas.onclick=(e)=>{
+      if(!editorMode)return;
+      const rect=canvas.getBoundingClientRect();
+      const x=e.clientX-rect.left+cameraX;
+      obstacles.push({x,type:'spike',width:30,height:35});
+    };
+  }else{canvas.onclick=()=>{if(gameState==='playing')jump()}}
+}
+
+// Fix the player y initial
+player.y=FLOOR_Y-PLAYER_SIZE;
+
+// Persistence
+function saveHighScore(){try{localStorage.setItem('gd_highScore',String(highScore))}catch(e){}}
+
+// Override gameOver to save
+const _origGameOver=gameOver;
+gameOver=function(){_origGameOver();saveHighScore()};
+
+gameLoop();
+document.getElementById('highScoreDisplay').textContent=localStorage.getItem('gd_highScore')||0;
+selectLevel(1);
+</script>
+</body>
+</html>

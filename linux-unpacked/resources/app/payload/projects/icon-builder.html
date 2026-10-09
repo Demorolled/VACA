@@ -1,0 +1,186 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Icon Builder</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#ccc;min-height:100vh;padding:12px;display:flex;justify-content:center}.container{max-width:1000px;width:100%}h1{color:#00d9ff;font-size:1rem;margin-bottom:2px;text-align:center}p.sub{color:#555;font-size:0.6rem;margin-bottom:8px;text-align:center}.flex{display:flex;gap:10px}.sidebar{width:200px;flex-shrink:0}.main{flex:1}.panel{background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:8px;margin-bottom:6px}.panel-title{color:#888;font-size:0.5rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px}.prop-row{display:flex;align-items:center;gap:6px;margin:3px 0;flex-wrap:wrap}.prop-row label{font-size:0.45rem;color:#555;min-width:60px}.prop-row input[type=color]{width:28px;height:22px;border:none;border-radius:3px;cursor:pointer;padding:0}.prop-row input[type=color]::-webkit-color-swatch-wrapper{padding:0}.prop-row input[type=color]::-webkit-color-swatch{border:1px solid rgba(255,255,255,0.1);border-radius:3px}.prop-row input[type=number]{width:50px;padding:3px 4px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem;font-family:inherit;text-align:center}.prop-row input[type=number]:focus{outline:none;border-color:#00d9ff}.prop-row select{flex:1;padding:3px 4px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem;font-family:inherit}.prop-row select:focus{outline:none;border-color:#00d9ff}.btn{padding:4px 10px;border:1px solid rgba(255,255,255,0.06);border-radius:4px;background:transparent;color:#888;cursor:pointer;font-size:0.5rem;font-family:inherit;transition:0.1s}.btn:hover{border-color:#00d9ff;color:#ccc}.btn.primary{background:rgba(0,217,255,0.08);border-color:rgba(0,217,255,0.2);color:#00d9ff}.btn.active{background:rgba(0,217,255,0.08);border-color:#00d9ff;color:#00d9ff}#iconCanvas{border:2px solid rgba(255,255,255,0.06);border-radius:8px;display:block;margin:0 auto;cursor:crosshair}.icon-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(40px,1fr));gap:6px;margin:4px 0}.icon-thumb{padding:6px;border:1px solid rgba(255,255,255,0.04);border-radius:4px;text-align:center;cursor:pointer;transition:0.1s;font-size:1.2rem}.icon-thumb:hover{border-color:#00d9ff;background:rgba(0,217,255,0.04)}.icon-thumb.active{border-color:#00d9ff;background:rgba(0,217,255,0.08)}.val{color:#00d9ff}.tool-box{display:flex;gap:3px;flex-wrap:wrap;margin:4px 0}</style></head><body><div class="container">
+<h1>🎨 Icon Builder</h1><p class="sub">Design custom pixel icons · Export as SVG or Data URL</p>
+<div class="flex">
+<div class="sidebar">
+<div class="panel">
+<div class="panel-title">Icon Library</div>
+<div class="icon-grid" id="iconGrid"></div>
+<button class="btn" onclick="newIcon()" style="width:100%;margin-top:4px">➕ New Icon</button>
+</div>
+<div class="panel">
+<div class="panel-title">Size</div>
+<div class="prop-row"><label>Grid</label><select onchange="resizeGrid(parseInt(this.value))"><option value="8">8×8</option><option value="12">12×12</option><option value="16" selected>16×16</option><option value="24">24×24</option><option value="32">32×32</option></select></div>
+<div class="prop-row"><label>Preview</label><select id="zoomSelect" onchange="updateZoom(parseInt(this.value))"><option value="16">16px</option><option value="20" selected>20px</option><option value="24">24px</option><option value="32">32px</option></select></div>
+</div>
+<div class="panel">
+<div class="panel-title">Tools</div>
+<div class="tool-box">
+<button class="btn active" id="pencilBtn" onclick="setTool('pencil')">✏️ Draw</button>
+<button class="btn" id="eraserBtn" onclick="setTool('eraser')">🧹 Erase</button>
+<button class="btn" id="fillBtn" onclick="setTool('fill')">🪣 Fill</button>
+<button class="btn" id="eyedropperBtn" onclick="setTool('eyedropper')">💉 Eyedrop</button>
+</div>
+</div>
+<div class="panel">
+<div class="panel-title">Colors</div>
+<div class="prop-row"><label>Primary</label><input type="color" id="primaryColor" value="#00d9ff" onchange="updatePrimary(this.value)"></div>
+<div class="prop-row"><label>Secondary</label><input type="color" id="secondaryColor" value="#4ade80" onchange="updateSecondary(this.value)"></div>
+<div class="tool-box" id="colorPalette"></div>
+</div>
+<div class="panel">
+<div class="panel-title">Actions</div>
+<button class="btn primary" onclick="exportSVG()" style="width:100%;margin-bottom:2px">📋 Copy SVG</button>
+<button class="btn" onclick="clearIcon()" style="width:100%">🗑️ Clear</button>
+</div>
+</div>
+<div class="main">
+<div class="panel">
+<div class="panel-title">Editor</div>
+<canvas id="iconCanvas"></canvas>
+</div>
+<div class="panel">
+<div class="panel-title">Preview</div>
+<div style="display:flex;gap:12px;align-items:center;padding:8px;background:rgba(255,255,255,0.02);border-radius:4px;flex-wrap:wrap">
+<div id="iconPreview" style="display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.06);border-radius:4px;padding:6px">⬡</div>
+<div><div class="val" style="font-size:0.5rem">Icon name: <span id="iconName">icon</span></div></div>
+<div style="font-size:0.45rem;color:#555">Click to copy SVG</div>
+</div>
+</div>
+</div></div></div>
+<script>
+const canvas=document.getElementById('iconCanvas'),ctx=canvas.getContext('2d');
+let gridSize=16,cellSize=20,pixels=[],tool='pencil',mouseDown=false;
+let currentIcon={name:'icon',pixels:[]},icons=[];
+let primaryColor='#00d9ff',secondaryColor='#4ade80';
+
+const PALETTE=['#00d9ff','#4ade80','#f87171','#facc15','#c084fc','#22d3ee','#fb923c','#f472b6','#e0e0e0','#888','#555','#1a1a2e','#0a0a14','#000'];
+
+function init(){
+  resizeGrid(16);
+  loadIcons();
+  renderIconGrid();
+  setupCanvas();
+}
+
+function resizeGrid(n){
+  gridSize=n;
+  cellSize=parseInt(document.getElementById('zoomSelect').value)||20;
+  canvas.width=gridSize*cellSize;
+  canvas.height=gridSize*cellSize;
+  if(pixels.length!==gridSize*gridSize){
+    const newPixels=Array(gridSize*gridSize).fill(false);
+    const oldSize=Math.round(Math.sqrt(pixels.length));
+    for(let y=0;y<Math.min(oldSize,gridSize);y++)for(let x=0;x<Math.min(oldSize,gridSize);x++){
+      newPixels[y*gridSize+x]=pixels[y*oldSize+x]||false;
+    }
+    pixels=newPixels;
+  }
+  drawGrid();
+}
+
+function setTool(t){tool=t;document.querySelectorAll('.tool-box .active').forEach(b=>b.classList.remove('active'));const ids={pencil:'pencilBtn',eraser:'eraserBtn',fill:'fillBtn',eyedropper:'eyedropperBtn'};document.getElementById(ids[t])?.classList.add('active')}
+
+function updatePrimary(c){primaryColor=c;document.getElementById('primaryColor').value=c}
+function updateSecondary(c){secondaryColor=c;document.getElementById('secondaryColor').value=c}
+
+function setupCanvas(){
+  canvas.onmousedown=e=>{mouseDown=true;handlePixel(e)};
+  canvas.onmousemove=e=>{if(mouseDown)handlePixel(e)};
+  canvas.onmouseup=()=>{mouseDown=false;updatePreview()};
+  canvas.onmouseleave=()=>{mouseDown=false};
+}
+
+function handlePixel(e){
+  const r=canvas.getBoundingClientRect(),x=Math.floor((e.clientX-r.left)/cellSize),y=Math.floor((e.clientY-r.top)/cellSize);
+  if(x<0||x>=gridSize||y<0||y>=gridSize)return;
+  const i=y*gridSize+x;
+  if(tool==='pencil'){pixels[i]=primaryColor;drawGrid()}
+  else if(tool==='eraser'){pixels[i]=false;drawGrid()}
+  else if(tool==='fill'){floodFill(x,y,primaryColor);drawGrid()}
+  else if(tool==='eyedropper'){if(pixels[i])primaryColor=pixels[i];document.getElementById('primaryColor').value=primaryColor;drawGrid()}
+}
+
+function floodFill(sx,sy,color){
+  const target=pixels[sy*gridSize+sx];
+  if(target===color)return;
+  const queue=[[sx,sy]],visited=new Set();
+  while(queue.length>0){
+    const [x,y]=queue.shift(),k=`${x},${y}`;
+    if(x<0||x>=gridSize||y<0||y>=gridSize||visited.has(k))continue;
+    const i=y*gridSize+x;
+    if(pixels[i]!==target)continue;
+    visited.add(k);pixels[i]=color;
+    queue.push([x-1,y],[x+1,y],[x,y-1],[x,y+1]);
+  }
+}
+
+function drawGrid(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle='#0a0a14';ctx.fillRect(0,0,canvas.width,canvas.height);
+  for(let y=0;y<gridSize;y++)for(let x=0;x<gridSize;x++){
+    const c=pixels[y*gridSize+x];if(c){ctx.fillStyle=c;ctx.fillRect(x*cellSize,y*cellSize,cellSize,cellSize)}
+  }
+  ctx.strokeStyle='rgba(255,255,255,0.04)';ctx.lineWidth=0.5;
+  for(let i=0;i<=gridSize;i++){ctx.beginPath();ctx.moveTo(i*cellSize,0);ctx.lineTo(i*cellSize,gridSize*cellSize);ctx.stroke();ctx.beginPath();ctx.moveTo(0,i*cellSize);ctx.lineTo(gridSize*cellSize,i*cellSize);ctx.stroke()}
+}
+
+function clearIcon(){pixels=Array(gridSize*gridSize).fill(false);drawGrid();updatePreview()}
+function newIcon(){
+  clearIcon();
+  const name=prompt('Icon name:','icon_'+Math.floor(Math.random()*1000));
+  currentIcon={name:name||'icon',pixels:[...pixels],gridSize};
+  saveIcons();
+}
+
+function saveIcon(){const existing=icons.findIndex(i=>i.name===currentIcon.name);if(existing>=0)icons[existing]={...currentIcon,pixels:[...pixels],gridSize};else icons.push({...currentIcon,name:currentIcon.name,pixels:[...pixels],gridSize});saveIcons();renderIconGrid()}
+
+function deleteIcon(name){icons=icons.filter(i=>i.name!==name);saveIcons();renderIconGrid()}
+
+function loadIcon(icon){
+  currentIcon=icon;
+  gridSize=icon.gridSize||16;
+  pixels=[...icon.pixels];
+  cellSize=parseInt(document.getElementById('zoomSelect').value)||20;
+  document.getElementById('iconName').textContent=icon.name;
+  canvas.width=gridSize*cellSize;
+  canvas.height=gridSize*cellSize;
+  drawGrid();
+  updatePreview();
+}
+
+function renderIconGrid(){
+  const grid=document.getElementById('iconGrid');
+  if(!icons.length){grid.innerHTML='<div style="color:#555;font-size:0.45rem;padding:8px;text-align:center">No saved icons</div>';return}
+  grid.innerHTML=icons.map((ic,i)=>`<div class="icon-thumb${ic.name===currentIcon.name?' active':''}" onclick="loadIcon(icons[${i}])" title="${escapeHTML(ic.name)}">${ic.pixels.some(p=>p)?'⬡':'⬡'}</div>`).join('');
+}
+
+function updatePreview(){
+  const svg=generateSVG();
+  document.getElementById('iconPreview').innerHTML=svg;
+  // Also update the icon name
+  const counts=pixels.filter(p=>p).length;
+  document.getElementById('iconName').textContent=currentIcon.name+` (${counts}px)`;
+  saveIcon();
+}
+
+function generateSVG(){
+  let minX=gridSize,maxX=0,minY=gridSize,maxY=0;
+  for(let y=0;y<gridSize;y++)for(let x=0;x<gridSize;x++){if(pixels[y*gridSize+x]){minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y)}}
+  if(maxX<minX)return '<svg width="24" height="24" viewBox="0 0 24 24"><rect fill="none"/></svg>';
+  const w=maxX-minX+1,h=maxY-minY+1;
+  let rects='';
+  for(let y=0;y<gridSize;y++)for(let x=0;x<gridSize;x++){const c=pixels[y*gridSize+x];if(c){rects+=`<rect x="${x-minX}" y="${y-minY}" width="1" height="1" fill="${c}"/>`}}
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w*24}" height="${h*24}" viewBox="0 0 ${w} ${h}">${rects}</svg>`;
+}
+
+function exportSVG(){const svg=generateSVG();navigator.clipboard.writeText(svg).then(()=>showToast('SVG copied!'))}
+function showToast(m){const t=document.createElement('div');t.textContent=m;Object.assign(t.style,{position:'fixed',bottom:20,left:'50%',transform:'translateX(-50%)',background:'rgba(0,217,255,0.15)',color:'#00d9ff',padding:'6px 16px',borderRadius:'4px',fontSize:'0.55rem',zIndex:999,transition:'opacity 0.2s',border:'1px solid rgba(0,217,255,0.2)'});document.body.appendChild(t);setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),300)},2000)}
+function updateZoom(v){cellSize=v;canvas.width=gridSize*cellSize;canvas.height=gridSize*cellSize;drawGrid()}
+function escapeHTML(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function saveToStorage(){try{localStorage.setItem('iconbuilder_data',JSON.stringify({icons,currentIcon,pixels,gridSize,primaryColor,secondaryColor}))}catch(e){}}
+function loadFromStorage(){try{const d=JSON.parse(localStorage.getItem('iconbuilder_data'));if(d&&d.icons){icons=d.icons;if(d.currentIcon)currentIcon=d.currentIcon;if(d.pixels)pixels=d.pixels;if(d.gridSize)gridSize=d.gridSize;if(d.primaryColor)primaryColor=d.primaryColor;if(d.secondaryColor)secondaryColor=d.secondaryColor;return true}}catch(e){}return false}
+function saveIcons(){saveToStorage()}
+function loadIcons(){/* loaded via loadFromStorage */}
+if(!loadFromStorage()){icons=[];currentIcon={name:'icon',pixels:Array(256).fill(false),gridSize:16};pixels=Array(256).fill(false)}
+init();
+</script></body></html>

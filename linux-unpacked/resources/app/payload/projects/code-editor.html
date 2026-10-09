@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Code Editor</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+  min-height: 100vh;
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+.container { max-width: 1100px; width: 100%; }
+h1 { color: #00d9ff; font-size: 1.5rem; text-align: center; margin-bottom: 4px; }
+.subtitle { color: #666; font-size: 0.8rem; text-align: center; margin-bottom: 12px; }
+.layout { display: flex; gap: 12px; height: 600px; }
+@media (max-width: 700px) { .layout { flex-direction: column; height: auto; } }
+/* Sidebar */
+.sidebar {
+  width: 200px;
+  background: linear-gradient(145deg, #15152a, #1a1a30);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.sidebar h3 { color: #888; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+.file-list { flex: 1; overflow-y: auto; }
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: #888;
+  transition: 0.1s;
+  margin-bottom: 2px;
+}
+.file-item:hover { background: rgba(255,255,255,0.04); color: #ccc; }
+.file-item.active { background: rgba(0,217,255,0.08); color: #00d9ff; }
+.file-item .icon { font-size: 0.9rem; }
+.file-item .fname { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-item .close-btn {
+  background: none; border: none; color: #444;
+  cursor: pointer; font-size: 0.65rem; padding: 2px;
+  opacity: 0; transition: 0.1s;
+}
+.file-item:hover .close-btn { opacity: 1; }
+.file-item .close-btn:hover { color: #f87171; }
+.sidebar .btn {
+  width: 100%;
+  padding: 6px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px;
+  background: rgba(255,255,255,0.04);
+  color: #aaa;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-family: inherit;
+  margin-top: 4px;
+  transition: 0.15s;
+}
+.sidebar .btn:hover { border-color: #00d9ff; color: #00d9ff; }
+/* Editor area */
+.editor-area {
+  flex: 1;
+  background: linear-gradient(145deg, #1a1a2e, #1e1e3a);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.editor-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: rgba(0,0,0,0.15);
+  flex-shrink: 0;
+}
+.editor-header .tabs {
+  display: flex;
+  gap: 2px;
+  flex: 1;
+  overflow-x: auto;
+}
+.editor-header .tab {
+  padding: 4px 12px;
+  font-size: 0.75rem;
+  color: #666;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: 0.1s;
+}
+.editor-header .tab:hover { color: #aaa; }
+.editor-header .tab.active { background: rgba(0,217,255,0.08); color: #00d9ff; }
+.editor-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  position: relative;
+}
+.line-numbers {
+  padding: 12px 8px;
+  background: rgba(0,0,0,0.15);
+  color: #444;
+  font-size: 0.78rem;
+  font-family: 'Fira Code', 'Consolas', 'Courier New', monospace;
+  text-align: right;
+  min-width: 40px;
+  user-select: none;
+  overflow: hidden;
+  line-height: 1.6;
+}
+.editor-textarea {
+  flex: 1;
+  position: relative;
+  overflow: auto;
+}
+.editor-textarea pre {
+  margin: 0;
+  padding: 12px;
+  font-size: 0.78rem;
+  font-family: 'Fira Code', 'Consolas', 'Courier New', monospace;
+  line-height: 1.6;
+  color: #ccc;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  min-height: 100%;
+}
+.editor-textarea textarea {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  padding: 12px;
+  border: none;
+  background: transparent;
+  color: transparent;
+  caret-color: #00d9ff;
+  font-size: 0.78rem;
+  font-family: 'Fira Code', 'Consolas', 'Courier New', monospace;
+  line-height: 1.6;
+  resize: none;
+  outline: none;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  tab-size: 2;
+}
+/* Footer */
+.editor-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 12px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  background: rgba(0,0,0,0.15);
+  font-size: 0.65rem;
+  color: #555;
+  flex-shrink: 0;
+}
+.editor-footer .lang-badge {
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: rgba(0,217,255,0.1);
+  color: #00d9ff;
+  font-size: 0.6rem;
+}
+/* Preview */
+.btn-preview {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #00d9ff, #0099ff);
+  color: #0f0f1a;
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-family: inherit;
+}
+.btn-preview:hover { transform: translateY(-1px); }
+.preview-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.8);
+  display: none;
+  z-index: 100;
+  backdrop-filter: blur(4px);
+}
+.preview-overlay.open { display: flex; align-items: center; justify-content: center; }
+.preview-overlay iframe {
+  width: 90%; height: 90%;
+  border: none;
+  border-radius: 8px;
+  background: #fff;
+}
+.preview-close {
+  position: fixed; top: 20px; right: 30px;
+  background: none; border: none; color: #fff;
+  font-size: 2rem; cursor: pointer; z-index: 101;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>💻 Code Editor</h1>
+  <p class="subtitle">Edit code with syntax highlighting and live preview</p>
+  <div class="layout">
+    <div class="sidebar">
+      <h3>📁 Files</h3>
+      <div class="file-list" id="fileList"></div>
+      <button class="btn" onclick="newFile()">+ New File</button>
+      <button class="btn" onclick="exportAll()">📤 Export</button>
+    </div>
+    <div class="editor-area">
+      <div class="editor-header">
+        <div class="tabs" id="tabs"></div>
+        <button class="btn-preview" onclick="previewHTML()">▶ Run</button>
+        <button class="btn-preview" style="background:rgba(255,255,255,0.06);color:#aaa;" onclick="formatCode()">Format</button>
+      </div>
+      <div class="editor-body">
+        <div class="line-numbers" id="lineNumbers">1</div>
+        <div class="editor-textarea" id="editorContainer">
+          <pre id="highlightedCode"><span style="color:#888">Start coding...</span></pre>
+          <textarea id="codeEditor" spellcheck="false" oninput="onCodeChange()" onscroll="syncScroll()" onkeydown="handleKeydown(event)"></textarea>
+        </div>
+      </div>
+      <div class="editor-footer">
+        <span id="cursorPos">Ln 1, Col 1</span>
+        <span class="lang-badge" id="langBadge">JavaScript</span>
+        <span id="fileSize">0 chars</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="preview-overlay" id="previewOverlay">
+  <button class="preview-close" onclick="closePreview()">✕</button>
+  <iframe id="previewFrame"></iframe>
+</div>
+
+<script>
+let files = [];
+let currentFileId = null;
+
+const DEFAULT_FILES = [
+  { id: '1', name: 'index.html', lang: 'html', content: '<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n  <title>My App</title>\n  <style>\n    body {\n      font-family: Arial, sans-serif;\n      background: #0f0f1a;\n      color: #e0e0f0;\n      display: flex;\n      justify-content: center;\n      align-items: center;\n      min-height: 100vh;\n      margin: 0;\n    }\n    .card {\n      background: #1a1a2e;\n      border-radius: 16px;\n      padding: 40px;\n      text-align: center;\n      border: 1px solid rgba(255,255,255,0.08);\n    }\n    h1 { color: #00d9ff; }\n    p { color: #888; }\n  </style>\n</head>\n<body>\n  <div class="card">\n    <h1>Hello, World!</h1>\n    <p>Edit this file to see live changes</p>\n  </div>\n</body>\n</html>'},
+  { id: '2', name: 'app.js', lang: 'javascript', content: '// JavaScript playground\nfunction greet(name) {\n  return `Hello, ${name}!`;\n}\n\nconst users = ["Alice", "Bob", "Charlie"];\nusers.forEach(u => console.log(greet(u)));\n\nconsole.log("Ready!");\n' },
+  { id: '3', name: 'style.css', lang: 'css', content: '/* Styles */\n:root {\n  --primary: #00d9ff;\n  --bg: #0f0f1a;\n  --card: #1a1a2e;\n  --text: #e0e0f0;\n}\n\n* { margin: 0; padding: 0; box-sizing: border-box; }\nbody {\n  font-family: "Segoe UI", sans-serif;\n  background: var(--bg);\n  color: var(--text);\n}\n' }
+];
+
+function loadData() {
+  try {
+    const d = localStorage.getItem('ce-files');
+    if (d) { files = JSON.parse(d); return; }
+  } catch {}
+  files = JSON.parse(JSON.stringify(DEFAULT_FILES));
+  currentFileId = files[0].id;
+}
+
+function saveData() { localStorage.setItem('ce-files', JSON.stringify(files)); }
+
+function getFile(id) { return files.find(f => f.id === id); }
+function currentFile() { return getFile(currentFileId); }
+
+function generateId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+function escapeHTML(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+const SYNTAX_KEYWORDS = { javascript: '\\b(const|let|var|function|return|if|else|for|while|do|switch|case|break|continue|new|this|class|import|export|from|async|await|try|catch|throw|typeof|instanceof|of|in|true|false|null|undefined|NaN|console|Array|Object|String|Number|Promise)\\b', html: '\\b(<\\/?\\w+[^>]*>|&\\w+;)\\b', css: '\\b(color|background|font-size|font-family|margin|padding|border|display|flex|grid|position|top|left|right|bottom|width|height|min-height|max-width|overflow|text-align|text-decoration|list-style|opacity|transition|transform|animation|box-shadow|border-radius|important)\\b' };
+
+function highlightCode(code, lang) {
+  let html = escapeHTML(code);
+  // Comments
+  html = html.replace(/(\/\/.*)/g, '<span style="color:#6a737d">$1</span>');
+  html = html.replace(/\/\*[\s\S]*?\*\//g, m => '<span style="color:#6a737d">' + escapeHTML(m) + '</span>');
+  // Strings
+  html = html.replace(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`)/g, '<span style="color:#9ecbff">$1</span>');
+  // Numbers
+  html = html.replace(/\b(\d+\.?\d*)\b/g, '<span style="color:#f5a623">$1</span>');
+  // Keywords
+  if (lang === 'javascript') {
+    html = html.replace(/\b(const|let|var|function|return|if|else|for|while|do|switch|case|break|continue|new|this|class|import|export|from|async|await|try|catch|throw|typeof|instanceof|of|in|true|false|null|undefined|NaN)\b/g, '<span style="color:#c678dd">$1</span>');
+    html = html.replace(/\b(console|Array|Object|String|Number|Promise|setTimeout|setInterval|fetch|JSON|Math)\b/g, '<span style="color:#e5c07b">$1</span>');
+  } else if (lang === 'html') {
+    html = html.replace(/(&lt;\/?)(\w+)/g, '$1<span style="color:#e06c75">$2</span>');
+    html = html.replace(/(\b\w+)(=)&quot;/g, '<span style="color:#56b6c2">$1</span>$2');
+  } else if (lang === 'css') {
+    html = html.replace(/([\w-]+)(?=\s*:)/g, '<span style="color:#e06c75">$1</span>');
+    html = html.replace(/:(#[\da-fA-F]{3,8}|[\w-]+)/g, '<span style="color:#56b6c2">:$1</span>');
+  }
+  // Braces
+  html = html.replace(/([{}[\]()])/g, '<span style="color:#abb2bf">$1</span>');
+  return html || '<span style="color:#888">Start coding...</span>';
+}
+
+function render() {
+  const file = currentFile();
+  if (!file) { document.getElementById('codeEditor').value = ''; document.getElementById('highlightedCode').innerHTML = ''; return; }
+  
+  // Update tabs
+  const tabs = document.getElementById('tabs');
+  tabs.innerHTML = files.map(f =>
+    `<div class="tab ${f.id === currentFileId ? 'active' : ''}" onclick="switchFile('${f.id}')">${f.name}</div>`
+  ).join('');
+  
+  // Update sidebar
+  const fileList = document.getElementById('fileList');
+  fileList.innerHTML = files.map(f =>
+    `<div class="file-item ${f.id === currentFileId ? 'active' : ''}" onclick="switchFile('${f.id}')">
+      <span class="icon">${f.lang === 'html' ? '📄' : f.lang === 'css' ? '🎨' : '📜'}</span>
+      <span class="fname">${escapeHTML(f.name)}</span>
+      <button class="close-btn" onclick="event.stopPropagation();closeFile('${f.id}')">✕</button>
+    </div>`
+  ).join('');
+  
+  // Update editor
+  const editor = document.getElementById('codeEditor');
+  const highlighted = document.getElementById('highlightedCode');
+  if (editor.value !== file.content) editor.value = file.content;
+  highlighted.innerHTML = highlightCode(file.content, file.lang);
+  updateLineNumbers();
+  updateFooter();
+}
+
+function onCodeChange() {
+  const file = currentFile();
+  if (!file) return;
+  file.content = document.getElementById('codeEditor').value;
+  document.getElementById('highlightedCode').innerHTML = highlightCode(file.content, file.lang);
+  updateLineNumbers();
+  updateFooter();
+  saveData();
+}
+
+function updateLineNumbers() {
+  const lines = document.getElementById('codeEditor').value.split('\n').length;
+  document.getElementById('lineNumbers').textContent = Array.from({length: lines}, (_, i) => i + 1).join('\n');
+}
+
+function updateFooter() {
+  const file = currentFile();
+  if (!file) return;
+  const editor = document.getElementById('codeEditor');
+  const cursorPos = editor.selectionStart;
+  const text = editor.value;
+  const before = text.substring(0, cursorPos);
+  const line = before.split('\n').length;
+  const col = before.length - before.lastIndexOf('\n');
+  document.getElementById('cursorPos').textContent = `Ln ${line}, Col ${col}`;
+  document.getElementById('langBadge').textContent = file.lang.toUpperCase();
+  document.getElementById('fileSize').textContent = file.content.length + ' chars';
+}
+
+function syncScroll() {
+  const editor = document.getElementById('codeEditor');
+  const highlighted = document.getElementById('highlightedCode').parentElement;
+  highlighted.scrollTop = editor.scrollTop;
+  highlighted.scrollLeft = editor.scrollLeft;
+  document.getElementById('lineNumbers').scrollTop = editor.scrollTop;
+  updateFooter();
+}
+
+function handleKeydown(e) {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const editor = document.getElementById('codeEditor');
+    const start = editor.selectionStart;
+    const end = editor.selectionEnd;
+    editor.value = editor.value.substring(0, start) + '  ' + editor.value.substring(end);
+    editor.selectionStart = editor.selectionEnd = start + 2;
+    onCodeChange();
+  }
+  setTimeout(updateFooter, 0);
+}
+
+function switchFile(id) {
+  currentFileId = id;
+  render();
+}
+
+function closeFile(id) {
+  files = files.filter(f => f.id !== id);
+  if (currentFileId === id) currentFileId = files.length > 0 ? files[files.length - 1].id : null;
+  saveData();
+  render();
+}
+
+function newFile() {
+  const name = prompt('File name:', 'script.js');
+  if (!name) return;
+  const ext = name.split('.').pop().toLowerCase();
+  const lang = ext === 'html' ? 'html' : ext === 'css' ? 'css' : 'javascript';
+  const id = generateId();
+  files.push({ id, name, lang, content: '' });
+  currentFileId = id;
+  saveData();
+  render();
+  setTimeout(() => document.getElementById('codeEditor').focus(), 50);
+}
+
+function formatCode() {
+  const file = currentFile();
+  if (!file) return;
+  // Simple formatting: clean up whitespace
+  file.content = file.content.replace(/\t/g, '  ').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  onCodeChange();
+}
+
+function previewHTML() {
+  const htmlFile = files.find(f => f.name.endsWith('.html'));
+  if (!htmlFile) { alert('No HTML file found to preview'); return; }
+  const iframe = document.getElementById('previewFrame');
+  iframe.srcdoc = htmlFile.content;
+  document.getElementById('previewOverlay').classList.add('open');
+}
+
+function closePreview() { document.getElementById('previewOverlay').classList.remove('open'); }
+
+function exportAll() {
+  const zip = [];
+  files.forEach(f => zip.push({ name: f.name, content: f.content }));
+  const blob = new Blob([JSON.stringify(zip, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'code-export.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+loadData();
+render();
+</script>
+</body>
+</html>

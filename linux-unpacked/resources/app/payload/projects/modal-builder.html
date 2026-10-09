@@ -1,0 +1,137 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Modal Builder</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#ccc;min-height:100vh;padding:12px;display:flex;justify-content:center}.container{max-width:960px;width:100%}h1{color:#00d9ff;font-size:1rem;margin-bottom:2px;text-align:center}p.sub{color:#555;font-size:0.6rem;margin-bottom:8px;text-align:center}.flex{display:flex;gap:10px}.sidebar{width:230px;flex-shrink:0}.main{flex:1}.panel{background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:8px;margin-bottom:6px}.panel-title{color:#888;font-size:0.5rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px}.prop-row{display:flex;align-items:center;gap:6px;margin:3px 0;flex-wrap:wrap}.prop-row label{font-size:0.45rem;color:#555;min-width:60px}.prop-row input[type=color]{width:28px;height:22px;border:none;border-radius:3px;cursor:pointer;padding:0;background:none}.prop-row input[type=color]::-webkit-color-swatch{border:1px solid rgba(255,255,255,0.1);border-radius:3px}.prop-row input[type=number]{width:46px;padding:3px 4px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem;text-align:center;font-family:inherit}.prop-row input[type=text]{flex:1;padding:3px 6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem;font-family:inherit}.prop-row textarea{flex:1;padding:3px 6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem;font-family:inherit;resize:vertical;min-height:50px}.prop-row select{flex:1;padding:3px 4px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem;font-family:inherit}.prop-row input[type=range]{flex:1;-webkit-appearance:none;height:3px;background:rgba(255,255,255,0.08);border-radius:2px;outline:none}.prop-row input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:#00d9ff;cursor:pointer}.btn{padding:4px 10px;border:1px solid rgba(255,255,255,0.06);border-radius:4px;background:transparent;color:#888;cursor:pointer;font-size:0.5rem;font-family:inherit;transition:0.1s}.btn:hover{border-color:#00d9ff;color:#ccc}.btn.primary{background:rgba(0,217,255,0.08);border-color:rgba(0,217,255,0.2);color:#00d9ff}.modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:var(--overlay-bg,rgba(0,0,0,0.6));display:none;align-items:center;justify-content:center;z-index:1000;backdrop-filter:var(--backdrop-blur,blur(4px))}.modal-overlay.open{display:flex}.modal-dialog{background:var(--modal-bg,#1a1a2e);border:1px solid var(--modal-border,rgba(255,255,255,0.08));border-radius:var(--modal-radius,8px);padding:var(--modal-padding,24px);min-width:var(--modal-width,360px);max-width:90vw;box-shadow:0 12px 40px rgba(0,0,0,0.5);animation:fadeScaleIn 0.2s ease;position:relative}.modal-dialog .modal-close{position:absolute;top:10px;right:12px;background:none;border:none;color:#555;font-size:0.7rem;cursor:pointer}.modal-dialog .modal-close:hover{color:#f87171}@keyframes fadeScaleIn{from{opacity:0;transform:scale(0.95)}to{opacity:1;transform:scale(1)}}.modal-dialog h2{font-size:0.7rem;color:var(--modal-title-color,#e0e0e0);margin-bottom:8px;padding-right:20px}.modal-dialog .modal-body{font-size:0.5rem;color:var(--modal-text-color,#888);line-height:1.6;margin-bottom:16px}.modal-dialog .modal-footer{display:flex;gap:8px;justify-content:flex-end;border-top:1px solid rgba(255,255,255,0.06);padding-top:12px}.overlay-bg{width:40px;height:30px;border-radius:4px;border:1px solid rgba(255,255,255,0.08);cursor:pointer}.css-out{font-family:'Courier New',monospace;font-size:0.45rem;color:#666;padding:6px;background:rgba(255,255,255,0.02);border-radius:4px;max-height:100px;overflow:auto;white-space:pre-wrap}.preset-btn{padding:3px 8px;border:1px solid rgba(255,255,255,0.04);border-radius:3px;background:transparent;color:#666;cursor:pointer;font-size:0.45rem;font-family:inherit;margin:1px}.preset-btn:hover{border-color:#00d9ff;color:#ccc}.val{color:#00d9ff;font-size:0.5rem;min-width:18px}</style></head><body><div class="container">
+<h1>🪟 Modal Builder</h1><p class="sub">Design modal/dialog components with live preview and CSS export</p>
+<div class="flex">
+<div class="sidebar">
+<div class="panel"><div class="panel-title">Presets</div>
+<button class="preset-btn" onclick="loadPreset('default')">Default</button>
+<button class="preset-btn" onclick="loadPreset('glass')">Glass</button>
+<button class="preset-btn" onclick="loadPreset('centered')">Centered</button>
+<button class="preset-btn" onclick="loadPreset('wide')">Wide</button>
+<button class="preset-btn" onclick="loadPreset('compact')">Compact</button>
+</div>
+<div class="panel"><div class="panel-title">Content</div>
+<div class="prop-row"><label>Title</label><input type="text" id="modalTitle" value="Confirm Action" onchange="renderModal()"></div>
+<div class="prop-row"><label style="align-self:flex-start">Body</label><textarea id="modalBody" onchange="renderModal()">Are you sure you want to proceed? This action cannot be undone.</textarea></div>
+</div>
+<div class="panel"><div class="panel-title">Style</div>
+<div class="prop-row"><label>Modal Bg</label><input type="color" id="modalBg" value="#1a1a2e" onchange="renderModal()"></div>
+<div class="prop-row"><label>Border</label><input type="color" id="modalBorder" value="rgba(255,255,255,0.08)" onchange="renderModal()"></div>
+<div class="prop-row"><label>Title Color</label><input type="color" id="titleColor" value="#e0e0e0" onchange="renderModal()"></div>
+<div class="prop-row"><label>Text Color</label><input type="color" id="textColor" value="#888" onchange="renderModal()"></div>
+<div class="prop-row"><label>Radius</label><input type="range" id="modalRadius" min="0" max="20" value="8" oninput="renderModal()"><span class="val" id="radiusVal">8</span></div>
+<div class="prop-row"><label>Padding</label><input type="number" id="modalPad" value="24" onchange="renderModal()">px</div>
+<div class="prop-row"><label>Width</label><input type="text" id="modalWidth" value="400px" onchange="renderModal()" style="flex:1"></div>
+</div>
+<div class="panel"><div class="panel-title">Overlay</div>
+<div class="prop-row"><label>Color</label><input type="color" id="overlayColor" value="#000000" onchange="renderModal()"></div>
+<div class="prop-row"><label>Opacity</label><input type="range" id="overlayOp" min="10" max="80" value="50" oninput="renderModal()"><span class="val" id="overlayVal">50%</span></div>
+<div class="prop-row"><label>Blur</label><input type="checkbox" id="backdropBlur" checked onchange="renderModal()" style="accent-color:#00d9ff"></div>
+</div>
+<div class="panel"><button class="btn primary" onclick="openPreview()" style="width:100%;margin-bottom:2px">👁️ Preview Modal</button>
+<button class="btn" onclick="copyCSS()" style="width:100%">📋 Copy CSS</button></div>
+</div>
+<div class="main">
+<div class="panel"><div class="panel-title">Editor Preview</div><div style="background:rgba(255,255,255,0.02);border-radius:6px;min-height:260px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden">
+<div id="miniPreview" style="background:var(--modal-bg,#1a1a2e);border:1px solid var(--modal-border,rgba(255,255,255,0.08));border-radius:var(--modal-radius,8px);padding:var(--modal-padding,24px);width:380px;max-width:90%;transition:all 0.2s">
+<h2 id="miniTitle" style="font-size:0.7rem;margin-bottom:8px">Confirm Action</h2>
+<div id="miniBody" style="font-size:0.5rem;line-height:1.6;margin-bottom:12px">Are you sure?</div>
+<div style="display:flex;gap:6px;justify-content:flex-end;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px">
+<button class="btn" style="font-size:0.5rem">Cancel</button>
+<button class="btn primary" style="font-size:0.5rem">Confirm</button>
+</div></div></div></div>
+<div class="panel"><div class="panel-title">Generated CSS</div><pre class="css-out" id="cssOutput">/* Modal CSS */</pre></div></div></div>
+<div class="modal-overlay" id="liveModal"><div class="modal-dialog" id="liveDialog"><button class="modal-close" onclick="closeModal()">✕</button><h2 id="liveTitle">Title</h2><div class="modal-body" id="liveBody">Body</div><div class="modal-footer"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary">Confirm</button></div></div></div>
+<script>
+function renderModal(){
+  const bg=document.getElementById('modalBg').value;
+  const border=document.getElementById('modalBorder').value;
+  const titleC=document.getElementById('titleColor').value;
+  const textC=document.getElementById('textColor').value;
+  const radius=parseInt(document.getElementById('modalRadius').value);
+  const pad=parseInt(document.getElementById('modalPad').value);
+  const width=document.getElementById('modalWidth').value;
+  const title=escapeHTML(document.getElementById('modalTitle').value);
+  const body=escapeHTML(document.getElementById('modalBody').value);
+  document.getElementById('radiusVal').textContent=radius;
+
+  const mini=document.getElementById('miniPreview');
+  mini.style.setProperty('--modal-bg',bg);
+  mini.style.setProperty('--modal-border',border);
+  mini.style.setProperty('--modal-radius',radius+'px');
+  mini.style.setProperty('--modal-padding',pad+'px');
+  mini.style.width=width;mini.style.background=bg;mini.style.borderColor=border;mini.style.borderRadius=radius+'px';mini.style.padding=pad+'px';
+  document.getElementById('miniTitle').style.color=titleC;
+  document.getElementById('miniTitle').textContent=title;
+  document.getElementById('miniBody').style.color=textC;
+  document.getElementById('miniBody').textContent=body;
+  updateCSS();saveToStorage();
+}
+
+function updateCSS(){
+  const bg=document.getElementById('modalBg').value;
+  const border=document.getElementById('modalBorder').value;
+  const titleC=document.getElementById('titleColor').value;
+  const textC=document.getElementById('textColor').value;
+  const radius=document.getElementById('modalRadius').value;
+  const pad=document.getElementById('modalPad').value;
+  const width=document.getElementById('modalWidth').value;
+  const overlayC=document.getElementById('overlayColor').value;
+  const overlayOp=parseInt(document.getElementById('overlayOp').value);
+  const blur=document.getElementById('backdropBlur').checked;
+  document.getElementById('cssOutput').textContent=
+`.modal-overlay {\n  position: fixed;\n  inset: 0;\n  background: ${overlayC}${overlayOp<10?'0'+overlayOp:overlayOp};\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  ${blur?'backdrop-filter: blur(4px);':''}\n  z-index: 1000;\n}\n\n.modal {\n  background: ${bg};\n  border: 1px solid ${border};\n  border-radius: ${radius}px;\n  padding: ${pad}px;\n  width: ${width};\n  max-width: 90vw;\n  box-shadow: 0 12px 40px rgba(0,0,0,0.5);\n  animation: modalIn 0.2s ease;\n}\n\n@keyframes modalIn {\n  from { opacity: 0; transform: scale(0.95); }\n  to { opacity: 1; transform: scale(1); }\n}\n\n.modal-title {\n  color: ${titleC};\n  font-size: 1.125rem;\n  margin-bottom: 8px;\n}\n\n.modal-body {\n  color: ${textC};\n  line-height: 1.6;\n  margin-bottom: 16px;\n}`;
+}
+
+function openPreview(){
+  const modal=document.getElementById('liveModal');
+  const dialog=document.getElementById('liveDialog');
+  const bg=document.getElementById('modalBg').value;
+  const border=document.getElementById('modalBorder').value;
+  const titleC=document.getElementById('titleColor').value;
+  const textC=document.getElementById('textColor').value;
+  const radius=parseInt(document.getElementById('modalRadius').value);
+  const pad=parseInt(document.getElementById('modalPad').value);
+  const width=document.getElementById('modalWidth').value;
+  const overlayC=document.getElementById('overlayColor').value;
+  const overlayOp=parseInt(document.getElementById('overlayOp').value);
+  const blur=document.getElementById('backdropBlur').checked;
+  modal.style.background=`${overlayC}${overlayOp<10?'0'+overlayOp:overlayOp}`;
+  modal.style.backdropFilter=blur?'blur(4px)':'none';
+  dialog.style.background=bg;dialog.style.borderColor=border;dialog.style.borderRadius=radius+'px';dialog.style.padding=pad+'px';dialog.style.width=width;
+  document.getElementById('liveTitle').textContent=document.getElementById('modalTitle').value;
+  document.getElementById('liveTitle').style.color=titleC;
+  document.getElementById('liveBody').textContent=document.getElementById('modalBody').value;
+  document.getElementById('liveBody').style.color=textC;
+  modal.classList.add('open');
+}
+function closeModal(){document.getElementById('liveModal').classList.remove('open')}
+
+function copyCSS(){navigator.clipboard.writeText(document.getElementById('cssOutput').textContent).then(()=>showToast('CSS copied!'))}
+function showToast(m){const t=document.createElement('div');t.textContent=m;Object.assign(t.style,{position:'fixed',bottom:20,left:'50%',transform:'translateX(-50%)',background:'rgba(0,217,255,0.15)',color:'#00d9ff',padding:'6px 16px',borderRadius:'4px',fontSize:'0.55rem',zIndex:999,transition:'opacity 0.2s',border:'1px solid rgba(0,217,255,0.2)'});document.body.appendChild(t);setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),300)},2000)}
+function escapeHTML(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+function loadPreset(name){
+  const presets={
+    default:{modalBg:'#1a1a2e',modalBorder:'rgba(255,255,255,0.08)',titleColor:'#e0e0e0',textColor:'#888',modalRadius:8,modalPad:24,modalWidth:'400px',overlayColor:'#000000',overlayOp:50,backdropBlur:true},
+    glass:{modalBg:'rgba(255,255,255,0.04)',modalBorder:'rgba(255,255,255,0.08)',titleColor:'#fff',textColor:'#aaa',modalRadius:16,modalPad:28,modalWidth:'400px',overlayColor:'#000000',overlayOp:60,backdropBlur:true},
+    centered:{modalBg:'#1a1a2e',modalBorder:'rgba(0,217,255,0.1)',titleColor:'#00d9ff',textColor:'#888',modalRadius:8,modalPad:24,modalWidth:'360px',overlayColor:'#000000',overlayOp:40,backdropBlur:false},
+    wide:{modalBg:'#1a1a2e',modalBorder:'rgba(255,255,255,0.06)',titleColor:'#e0e0e0',textColor:'#888',modalRadius:8,modalPad:28,modalWidth:'560px',overlayColor:'#000000',overlayOp:50,backdropBlur:true},
+    compact:{modalBg:'#1a1a2e',modalBorder:'rgba(255,255,255,0.06)',titleColor:'#e0e0e0',textColor:'#666',modalRadius:6,modalPad:16,modalWidth:'300px',overlayColor:'#000000',overlayOp:50,backdropBlur:false}
+  };
+  const p=presets[name];if(!p)return;
+  Object.entries(p).forEach(([k,v])=>{const el=document.getElementById(k);if(el.type==='checkbox')el.checked=v;else el.value=v});
+  renderModal();saveToStorage();
+}
+
+function saveToStorage(){try{localStorage.setItem('modalbuilder_data',JSON.stringify({
+  modalBg:document.getElementById('modalBg').value,modalBorder:document.getElementById('modalBorder').value,
+  titleColor:document.getElementById('titleColor').value,textColor:document.getElementById('textColor').value,
+  modalRadius:document.getElementById('modalRadius').value,modalPad:document.getElementById('modalPad').value,
+  modalWidth:document.getElementById('modalWidth').value,
+  overlayColor:document.getElementById('overlayColor').value,overlayOp:document.getElementById('overlayOp').value,
+  backdropBlur:document.getElementById('backdropBlur').checked,
+  modalTitle:document.getElementById('modalTitle').value,modalBody:document.getElementById('modalBody').value
+}))}catch(e){}}
+function loadFromStorage(){try{const d=JSON.parse(localStorage.getItem('modalbuilder_data'));if(d&&d.modalBg){Object.entries(d).forEach(([k,v])=>{const el=document.getElementById(k);if(el){if(el.type==='checkbox')el.checked=v;else el.value=v}});return true}}catch(e){}return false}
+if(!loadFromStorage())renderModal();else renderModal()
+</script></body></html>

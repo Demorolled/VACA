@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dungeon Crawler</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#ccc;min-height:100vh;padding:20px;display:flex;justify-content:center}
+.container{max-width:1000px;width:100%;display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
+header{width:100%;display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+header h1{color:#00d9ff;font-size:1.2rem}header h1 small{color:#555;font-size:0.6rem;font-weight:400}
+header button{padding:6px 14px;border:1px solid rgba(255,255,255,0.06);border-radius:4px;background:rgba(255,255,255,0.03);color:#888;cursor:pointer;font-family:inherit;font-size:0.7rem}
+header button:hover{border-color:#00d9ff;color:#ccc}
+.game-panel{position:relative}
+#gameCanvas{border:2px solid rgba(255,255,255,0.1);border-radius:8px;image-rendering:pixelated;cursor:pointer}
+.side-panel{flex:1;min-width:280px;max-width:360px;background:#12121e;border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px}
+.side-panel h3{font-size:0.75rem;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.3px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px}
+.stat{padding:8px;background:rgba(255,255,255,0.02);border-radius:6px;text-align:center}
+.stat .lbl{font-size:0.55rem;color:#555}
+.stat .val{font-size:0.9rem;color:#e0e0f0;font-weight:600}
+.stat .val.hp{color:#4ade80}.stat .val.hp-loss{color:#f87171}
+.inventory{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:12px}
+.inv-slot{padding:6px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:4px;text-align:center;font-size:0.55rem;color:#555;cursor:pointer;min-height:36px;display:flex;align-items:center;justify-content:center}
+.inv-slot.has-item{border-color:rgba(0,217,255,0.2);color:#aaa;font-size:0.6rem}
+.inv-slot.weapon{border-color:rgba(248,113,113,0.2)}
+.inv-slot.potion{border-color:rgba(74,222,128,0.2)}
+.log{height:120px;overflow-y:auto;font-size:0.6rem;color:#666;padding:6px;background:rgba(0,0,0,0.2);border-radius:6px;margin-bottom:8px;line-height:1.5}
+.log .msg{color:#888}.log .dmg{color:#f87171}.log .heal{color:#4ade80}.log .loot{color:#fbbf24}.log .info{color:#00d9ff}
+.enemy-info{padding:8px;background:rgba(248,113,113,0.05);border:1px solid rgba(248,113,113,0.1);border-radius:6px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.enemy-info .e-name{color:#f87171;font-size:0.7rem;font-weight:600}
+.enemy-info .e-hp{color:#888;font-size:0.6rem}
+.action-bar{display:flex;gap:4px;flex-wrap:wrap}
+.action-bar button{padding:6px 12px;border:1px solid rgba(255,255,255,0.06);border-radius:4px;background:rgba(255,255,255,0.03);color:#888;cursor:pointer;font-family:inherit;font-size:0.6rem;transition:0.1s;flex:1;min-width:60px}
+.action-bar button:hover{border-color:#00d9ff;color:#ccc}
+.action-bar button.attack{border-color:rgba(248,113,113,0.2);color:#f87171}
+.action-bar button.attack:hover{border-color:#f87171}
+.action-bar button:disabled{opacity:0.3;cursor:default}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+  <h1>⚔️ Dungeon Crawler <small>Procedural · Turn-based · RPG</small></h1>
+  <div><button onclick="newGame()">🔄 New Game</button><button onclick="regenerateDungeon()" style="margin-left:4px">🏗️ Regenerate</button></div>
+</header>
+<div class="game-panel"><canvas id="gameCanvas" width="480" height="480"></canvas></div>
+<div class="side-panel">
+  <h3>⚔️ Hero</h3>
+  <div class="stats">
+    <div class="stat"><div class="lbl">HP</div><div class="val hp" id="hpDisplay">20/20</div></div>
+    <div class="stat"><div class="lbl">ATK</div><div class="val" id="atkDisplay">5</div></div>
+    <div class="stat"><div class="lbl">DEF</div><div class="val" id="defDisplay">2</div></div>
+    <div class="stat"><div class="lbl">LVL</div><div class="val" id="lvlDisplay">1</div></div>
+  </div>
+  <h3>🎒 Inventory</h3>
+  <div class="inventory" id="inventory"></div>
+  <div id="enemyPanel" class="enemy-info" style="display:none">
+    <span class="e-name" id="enemyName">Goblin</span>
+    <span class="e-hp" id="enemyHP">HP: 8/8</span>
+  </div>
+  <div class="action-bar">
+    <button class="attack" onclick="attackAction()" id="attackBtn">⚔️ Attack</button>
+    <button onclick="defendAction()" id="defendBtn">🛡️ Defend</button>
+    <button onclick="usePotion()" id="potionBtn">🧪 Potion</button>
+    <button onclick="restAction()" id="restBtn">💤 Rest</button>
+    <button onclick="descendAction()" id="descendBtn" style="display:none">⬇ Descend</button>
+  </div>
+  <div class="log" id="log">Welcome to the dungeon! Use arrow keys or WASD to move.⚔️ Attack enemies, collect loot, descend deeper.</div>
+</div></div>
+<script>
+const canvas=document.getElementById('gameCanvas'),ctx=canvas.getContext('2d');
+const TILE=48,COLS=10,ROWS=10;
+let dungeon,depth=1,player,enemies=[],items=[],stairs=null,gameState='explore',turnCount=0,messageLog=[];
+const FLOOR_COLORS=['#1a1a2e','#1e1e3a','#16213e','#0f2a3e','#1a1a3e'];
+const WALL_COLORS=['#2a2a4e','#3a3a5e','#2e2e4e','#252545','#303050'];
+
+function rand(min,max){return Math.floor(Math.random()*(max-min+1))+min}
+function pick(arr){return arr[rand(0,arr.length-1)]}
+
+function generateDungeon(){
+  dungeon=Array(ROWS).fill(null).map(()=>Array(COLS).fill(1));
+  // Carve rooms
+  const rooms=[];
+  for(let i=0;i<8;i++){
+    const w=rand(3,5),h=rand(3,5),x=rand(1,COLS-w-1),y=rand(1,ROWS-h-1);
+    let overlap=false;
+    for(const r of rooms){if(x<r.x+r.w+1&&x+w+1>r.x&&y<r.y+r.h+1&&y+h+1>r.y){overlap=true;break}}
+    if(!overlap){
+      rooms.push({x,y,w,h});
+      for(let ry=y;ry<y+h;ry++)for(let rx=x;rx<x+w;rx++)dungeon[ry][rx]=0;
+    }
+  }
+  // Corridors
+  for(let i=1;i<rooms.length;i++){
+    const r1=rooms[i-1],r2=rooms[i];
+    const cx1=rand(r1.x,r1.x+r1.w-1),cy1=rand(r1.y,r1.y+r1.h-1);
+    const cx2=rand(r2.x,r2.x+r2.w-1),cy2=rand(r2.y,r2.y+r2.h-1);
+    let cx=cx1,cy=cy1;
+    while(cx!==cx2){dungeon[cy][cx]=0;cx+=cx<cx2?1:-1}
+    while(cy!==cy2){dungeon[cy][cx]=0;cy+=cy<cy2?1:-1}
+  }
+  // Player start
+  const startRoom=rooms[0];
+  player={x:Math.floor(startRoom.x+startRoom.w/2),y:Math.floor(startRoom.y+startRoom.h/2),hp:20,maxHp:20,atk:5,def:2,lvl:1,xp:0,xpNext:20,inventory:[],gold:0};
+  // Stairs
+  const lastRoom=rooms[rooms.length-1];
+  stairs={x:Math.floor(lastRoom.x+lastRoom.w/2),y:Math.floor(lastRoom.y+lastRoom.h/2)};
+  // Enemies
+  enemies=[];
+  for(let i=1;i<rooms.length;i++){
+    if(Math.random()<0.6){
+      const r=rooms[i];
+      const ex=rand(r.x,r.x+r.w-1),ey=rand(r.y,r.y+r.h-1);
+      if(ex!==player.x||ey!==player.y){
+        const types=depth<=3?['goblin','rat','skeleton']:depth<=6?['skeleton','orc','wraith']:['orc','demon','dragon'];
+        const t=pick(types);
+        const mult=1+(depth-1)*0.15;
+        enemies.push({x:ex,y:ey,type:t,hp:Math.round((t==='dragon'?20:t==='demon'?14:t==='orc'?10:t==='wraith'?8:t==='skeleton'?7:t==='goblin'?6:4)*mult),maxHp:Math.round((t==='dragon'?20:t==='demon'?14:t==='orc'?10:t==='wraith'?8:t==='skeleton'?7:t==='goblin'?6:4)*mult),atk:Math.round((t==='dragon'?10:t==='demon'?7:t==='orc'?6:t==='wraith'?5:t==='skeleton'?4:t==='goblin'?3:2)*mult),def:Math.round((t==='dragon'?8:t==='demon'?5:t==='orc'?4:t==='wraith'?3:t==='skeleton'?3:t==='goblin'?1:0)*mult),xp:Math.round(([15,5,8,12,20,10][['goblin','rat','skeleton','orc','dragon','demon','wraith'].indexOf(t)]||5)*mult),gold:rand(2,8)});
+      }
+    }
+  }
+  // Items
+  items=[];
+  for(let i=0;i<rand(2,4);i++){
+    const r=rooms[rand(0,rooms.length-1)];
+    const ix=rand(r.x,r.x+r.w-1),iy=rand(r.y,r.y+r.h-1);
+    if(ix!==player.x||iy!==player.y){items.push({x:ix,y:iy,type:pick(['potion','potion','sword','shield','gold','potion','ring'])});}
+  }
+  gameState='explore';turnCount=0;
+  clearEnemyPanel();
+  render();
+  addLog(`🧭 Descended to depth ${depth}`,`info`);
+}
+
+function regenerateDungeon(){if(gameState==='explore'){depth=1;generateDungeon();addLog('🔄 Dungeon regenerated','info')}}
+function newGame(){depth=1;generateDungeon();addLog('⚔️ A new adventure begins!','info')}
+
+function movePlayer(dx,dy){
+  if(gameState!=='explore')return;
+  const nx=player.x+dx,ny=player.y+dy;
+  if(nx<0||nx>=COLS||ny<0||ny>=ROWS)return;
+  if(dungeon[ny][nx]===1)return;
+  // Check enemy
+  const enemy=enemies.find(e=>e.x===nx&&e.y===ny);
+  if(enemy){addLog(`🧌 ${enemy.type} blocks your way!`,`dmg`);return}
+  player.x=nx;player.y=ny;
+  turnCount++;
+  // Check items
+  const itemIdx=items.findIndex(i=>i.x===nx&&i.y===ny);
+  if(itemIdx!==-1){
+    const item=items[itemIdx];
+    if(item.type==='potion'){player.hp=Math.min(player.maxHp,player.hp+rand(4,8));addLog(`🧪 Found a potion! +${Math.min(8,player.maxHp-player.hp)} HP`,`heal`)}
+    else if(item.type==='sword'){player.atk+=2;addLog(`⚔️ Found a sword! ATK +2`,`loot`)}
+    else if(item.type==='shield'){player.def+=1;addLog(`🛡️ Found a shield! DEF +1`,`loot`)}
+    else if(item.type==='ring'){player.maxHp+=5;player.hp+=5;addLog(`💍 Found a ring of health! Max HP +5`,`loot`)}
+    else if(item.type==='gold'){const g=rand(3,10);player.gold+=g;addLog(`💰 Found ${g} gold!`,`loot`)}
+    items.splice(itemIdx,1);
+  }
+  // Check stairs
+  if(stairs&&nx===stairs.x&&ny===stairs.y){document.getElementById('descendBtn').style.display='block';addLog('⬇ Stairs found! Press Descend to go deeper','info')}
+  else{document.getElementById('descendBtn').style.display='none'}
+  render();
+}
+
+function attackAction(){
+  if(gameState!=='explore')return;
+  const enemy=enemies.find(e=>Math.abs(e.x-player.x)<=1&&Math.abs(e.y-player.y)<=1);
+  if(!enemy){addLog('No enemy nearby!','msg');return}
+  const dmg=Math.max(1,player.atk+rand(-1,2)-enemy.def);
+  enemy.hp-=dmg;
+  addLog(`⚔️ You hit ${enemy.type} for ${dmg} damage!`,`dmg`);
+  if(enemy.hp<=0){
+    addLog(`💀 ${enemy.type} defeated! +${enemy.xp} XP +${enemy.gold} gold`,`loot`);
+    player.xp+=enemy.xp;player.gold+=enemy.gold;
+    enemies=enemies.filter(e=>e!==enemy);
+    if(player.xp>=player.xpNext){
+      player.lvl++;player.xp=0;player.xpNext=Math.floor(player.xpNext*1.5);
+      player.maxHp+=4;player.hp=Math.min(player.maxHp,player.hp+4);
+      player.atk+=1;player.def+=1;
+      addLog(`⬆️ Level up! You are now level ${player.lvl}!`,`heal`);
+    }
+    checkAllEnemiesDead();
+    render();updateUI();return;
+  }
+  enemyAttack(enemy);
+  render();updateUI();
+}
+
+function enemyAttack(enemy){
+  const dmg=Math.max(1,enemy.atk+rand(-1,1)-player.def);
+  player.hp-=dmg;
+  addLog(`🧌 ${enemy.type} hits you for ${dmg} damage!`,`dmg`);
+  if(player.hp<=0){
+    player.hp=0;gameState='dead';
+    addLog(`💀 You have been slain! Game over...`,`dmg`);
+    updateUI();render();return;
+  }
+}
+
+function defendAction(){
+  if(gameState!=='explore')return;
+  const enemy=enemies.find(e=>Math.abs(e.x-player.x)<=1&&Math.abs(e.y-player.y)<=1);
+  if(!enemy){addLog('You brace yourself. Nothing happens.','msg');return}
+  const blocked=Math.floor(player.def*1.5);
+  const dmg=Math.max(0,enemy.atk+rand(-1,1)-blocked);
+  player.hp-=dmg;
+  addLog(`🛡️ You defend! Blocked ${blocked} damage. Took ${dmg} damage.`,dmg>0?'dmg':'heal');
+  if(player.hp<=0){player.hp=0;gameState='dead';addLog(`💀 You have been slain!`,`dmg`);updateUI();render();return}
+  addLog(`⚔️ Counterattack! You deal ${Math.max(1,Math.floor(player.atk*0.5))} damage.`,`dmg`);
+  enemy.hp-=Math.max(1,Math.floor(player.atk*0.5));
+  if(enemy.hp<=0){enemies=enemies.filter(e=>e!==enemy);addLog(`💀 ${enemy.type} defeated!`,`loot`);checkAllEnemiesDead()}
+  updateUI();render();
+}
+
+function usePotion(){
+  if(gameState!=='explore')return;
+  const potion=player.inventory.findIndex(i=>i==='potion');
+  if(potion===-1){addLog('No potions!','msg');return}
+  player.inventory.splice(potion,1);
+  const heal=rand(6,12);player.hp=Math.min(player.maxHp,player.hp+heal);
+  addLog(`🧪 Used potion! +${heal} HP`,`heal`);
+  updateUI();render();
+}
+
+function restAction(){
+  if(gameState!=='explore')return;
+  const enemyNear=enemies.some(e=>Math.abs(e.x-player.x)<=2&&Math.abs(e.y-player.y)<=2);
+  if(enemyNear){addLog('Enemies nearby! Can\'t rest.','msg');return}
+  const heal=rand(3,6);player.hp=Math.min(player.maxHp,player.hp+heal);
+  turnCount++;
+  addLog(`💤 Rested. +${heal} HP`,`heal`);
+  updateUI();render();
+}
+
+function descendAction(){
+  if(gameState!=='explore')return;
+  depth++;document.getElementById('descendBtn').style.display='none';
+  generateDungeon();updateUI();render();
+}
+
+function checkAllEnemiesDead(){
+  if(enemies.length===0){addLog('🎉 Room cleared! All enemies defeated.','info')}
+}
+
+function clearEnemyPanel(){document.getElementById('enemyPanel').style.display='none'}
+
+function updateUI(){
+  document.getElementById('hpDisplay').textContent=`${player.hp}/${player.maxHp}`;
+  document.getElementById('hpDisplay').className=`val ${player.hp<player.maxHp*0.3?'hp-loss':'hp'}`;
+  document.getElementById('atkDisplay').textContent=player.atk;
+  document.getElementById('defDisplay').textContent=player.def;
+  document.getElementById('lvlDisplay').textContent=player.lvl;
+  // Inventory
+  const inv=document.getElementById('inventory');
+  inv.innerHTML='';
+  for(let i=0;i<8;i++){
+    const slot=document.createElement('div');slot.className='inv-slot';
+    const item=player.inventory[i]||null;
+    if(item){slot.classList.add(item==='potion'?'potion':'weapon');slot.textContent=item==='potion'?'🧪':item==='sword'?'⚔️':item==='shield'?'🛡️':'💍'}
+    else{slot.textContent='▢';slot.style.color='#333'}
+    inv.appendChild(slot);
+  }
+  // Enemy panel
+  const enemy=enemies.find(e=>Math.abs(e.x-player.x)<=1&&Math.abs(e.y-player.y)<=1);
+  const ep=document.getElementById('enemyPanel');
+  if(enemy){ep.style.display='flex';document.getElementById('enemyName').textContent=enemy.type;document.getElementById('enemyHP').textContent=`HP: ${enemy.hp}/${enemy.maxHp}`}
+  else{ep.style.display='none'}
+  // Attack button
+  document.getElementById('attackBtn').disabled=!enemy;
+}
+
+function addLog(text,cls='msg'){
+  messageLog.push({text,cls});
+  if(messageLog.length>50)messageLog.shift();
+  const log=document.getElementById('log');
+  log.innerHTML=messageLog.map(m=>`<div class="${m.cls}">${m.text}</div>`).join('');
+  log.scrollTop=log.scrollHeight;
+}
+
+// ── RENDER ──
+function render(){
+  ctx.clearRect(0,0,480,480);
+  // Floor color
+  const floorColor=FLOOR_COLORS[(depth-1)%FLOOR_COLORS.length];
+  const wallColor=WALL_COLORS[(depth-1)%WALL_COLORS.length];
+  
+  for(let y=0;y<ROWS;y++){for(let x=0;x<COLS;x++){
+    const px=x*TILE,py=y*TILE;
+    if(dungeon[y][x]===1){
+      ctx.fillStyle=wallColor;
+      ctx.fillRect(px,py,TILE,TILE);
+      ctx.fillStyle='rgba(255,255,255,0.02)';
+      ctx.fillRect(px+2,py+2,TILE-4,TILE-4);
+    }else{
+      ctx.fillStyle=floorColor;
+      ctx.fillRect(px,py,TILE,TILE);
+      // Floor texture
+      ctx.fillStyle='rgba(255,255,255,0.02)';
+      ctx.fillRect(px+4,py+4,2,2);ctx.fillRect(px+TILE-8,py+TILE-8,2,2);
+    }
+  }}
+  
+  // Items
+  for(const item of items){
+    const px=item.x*TILE,py=item.y*TILE;
+    ctx.font='20px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.globalAlpha=0.7+Math.sin(Date.now()/500)*0.3;
+    ctx.fillText(item.type==='potion'?'🧪':item.type==='sword'?'⚔️':item.type==='shield'?'🛡️':item.type==='ring'?'💍':'💰',px+TILE/2,py+TILE/2);
+    ctx.globalAlpha=1;
+  }
+  
+  // Stairs
+  if(stairs){
+    const px=stairs.x*TILE,py=stairs.y*TILE;
+    ctx.fillStyle='rgba(0,217,255,0.15)';ctx.fillRect(px,py,TILE,TILE);
+    ctx.font='24px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('⬇',px+TILE/2,py+TILE/2);
+  }
+  
+  // Enemies
+  for(const e of enemies){
+    const px=e.x*TILE,py=e.y*TILE;
+    ctx.fillStyle='rgba(248,113,113,0.1)';ctx.fillRect(px,py,TILE,TILE);
+    ctx.font='28px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
+    const icons={goblin:'👺',rat:'🐀',skeleton:'💀',orc:'👹',wraith:'👻',demon:'😈',dragon:'🐉'};
+    ctx.fillText(icons[e.type]||'👾',px+TILE/2,py+TILE/2);
+    // HP bar
+    const hpPct=e.hp/e.maxHp;
+    ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(px+4,py+TILE-8,TILE-8,4);
+    ctx.fillStyle=hpPct>0.5?'#4ade80':hpPct>0.25?'#fbbf24':'#f87171';
+    ctx.fillRect(px+4,py+TILE-8,(TILE-8)*hpPct,4);
+  }
+  
+  // Player
+  ctx.fillStyle='rgba(0,217,255,0.08)';ctx.fillRect(player.x*TILE+2,player.y*TILE+2,TILE-4,TILE-4);
+  ctx.font='30px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('🧙',player.x*TILE+TILE/2,player.y*TILE+TILE/2);
+  
+  // Fog of war (simplified - darken unseen)
+  // Draw sight radius
+  ctx.fillStyle='rgba(0,0,0,0.3)';
+  for(let y=0;y<ROWS;y++){for(let x=0;x<COLS;x++){
+    if(Math.abs(x-player.x)+Math.abs(y-player.y)>5&&dungeon[y][x]===0){
+      ctx.fillRect(x*TILE,y*TILE,TILE,TILE);
+    }
+  }}
+  
+  // Game over overlay
+  if(gameState==='dead'){
+    ctx.fillStyle='rgba(0,0,0,0.6)';ctx.fillRect(0,0,480,480);
+    ctx.fillStyle='#f87171';ctx.font='bold 36px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('💀 GAME OVER',240,240);
+  }
+}
+
+// ── INPUT ──
+document.addEventListener('keydown',e=>{
+  if(gameState==='dead')return;
+  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
+  switch(e.key){
+    case 'ArrowUp':case 'w':case 'W':e.preventDefault();movePlayer(0,-1);break;
+    case 'ArrowDown':case 's':case 'S':e.preventDefault();movePlayer(0,1);break;
+    case 'ArrowLeft':case 'a':case 'A':e.preventDefault();movePlayer(-1,0);break;
+    case 'ArrowRight':case 'd':case 'D':e.preventDefault();movePlayer(1,0);break;
+    case ' ':e.preventDefault();attackAction();break;
+    case 'h':e.preventDefault();usePotion();break;
+    case 'r':e.preventDefault();restAction();break;
+  }
+});
+
+function saveToStorage(){
+  try{localStorage.setItem('dungeon_data',JSON.stringify({
+    dungeon,depth,player,enemies,items,stairs,
+    gameState,turnCount,messageLog
+  }))}catch(e){}
+}
+function loadFromStorage(){
+  try{
+    const d=JSON.parse(localStorage.getItem('dungeon_data'));
+    if(d&&d.dungeon&&d.player){
+      dungeon=d.dungeon;depth=d.depth;player=d.player;
+      enemies=d.enemies||[];items=d.items||[];stairs=d.stairs||null;
+      gameState=d.gameState||'explore';turnCount=d.turnCount||0;
+      messageLog=d.messageLog||[];
+      return true;
+    }
+  }catch(e){}
+  return false;
+}
+
+function addAutoSave(){
+  const btns=document.querySelectorAll('.action-bar button,.side-panel button,header button');
+  btns.forEach(b=>{
+    const oc=b.getAttribute('onclick');
+    if(oc){b.setAttribute('onclick',oc+';setTimeout(saveToStorage,50)')}
+  });
+}
+
+// ── INIT ──
+if(!loadFromStorage()){generateDungeon()}else{render();}
+updateUI();
+addAutoSave();
+</script></body></html>

@@ -1,0 +1,46 @@
+{
+  "_comment": "Ship-time LLM config — pinned to ONE model: Qwen2.5 14B. No dspark key, so backend/src/index.ts + translator.ts resolve provider to 'ollama'. Rewritten at launch by main.js from the user's Settings (host + model).",
+  "provider": "ollama",
+  "ollama": {
+    "provider": "ollama",
+    "model": "qwen2.5-coder:14b",
+    "baseUrl": "http://127.0.0.1:11434/v1",
+    "apiKey": "ollama",
+    "nCtx": 16384
+  },
+  "primary": {
+    "provider": "ollama",
+    "model": "qwen2.5-coder:14b",
+    "baseUrl": "http://127.0.0.1:11434/v1",
+    "apiKey": "ollama",
+    "nCtx": 16384
+  },
+  "secondary": {
+    "provider": "ollama",
+    "model": "qwen2.5-coder:14b",
+    "baseUrl": "http://127.0.0.1:11434/v1",
+    "apiKey": "ollama",
+    "nCtx": 16384
+  },
+  "fastChat": {
+    "provider": "ollama",
+    "model": "qwen2.5-coder:14b",
+    "baseUrl": "http://127.0.0.1:11434/v1",
+    "apiKey": "ollama",
+    "nCtx": 16384
+  },
+  "roles": {
+    "reasoning": {
+      "provider": "ollama",
+      "model": "qwen2.5-coder:14b",
+      "baseUrl": "http://127.0.0.1:11434/v1",
+      "apiKey": "ollama"
+    },
+    "coding": {
+      "provider": "ollama",
+      "model": "qwen2.5-coder:14b",
+      "baseUrl": "http://127.0.0.1:11434/v1",
+      "apiKey": "ollama"
+    }
+  }
+}

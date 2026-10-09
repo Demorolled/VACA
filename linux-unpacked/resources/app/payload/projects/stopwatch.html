@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html><head><title>Stopwatch</title><style>
+body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#1a1a2e;color:#fff}
+.swatch{text-align:center}
+h1{color:#00d9ff;margin-bottom:16px}
+.display{font-size:64px;font-family:monospace;color:#fff;margin:24px 0;letter-spacing:4px}
+.lap-times{font-size:13px;color:#aaa;max-height:150px;overflow-y:auto;margin-top:12px}
+.lap-times div{padding:3px 0;border-bottom:1px solid #2a2a4a}
+.controls{display:flex;gap:8px;justify-content:center}
+.controls button{padding:10px 24px;font-size:14px;border:none;cursor:pointer;font-weight:600}
+.start{background:#4ade80;color:#0f0f1a}.lap{background:#252542;border:1px solid #4a4a6a!important;color:#aaa;border:1px solid}
+.reset{background:#f87171;color:#fff}
+</style></head><body>
+<div class="swatch"><h1>⎔ Stopwatch</h1>
+<div class="display" id="display">00:00.0</div>
+<div class="controls">
+<button class="start" id="startBtn" onclick="toggle()">▶ Start</button>
+<button class="lap" onclick="lap()">⏱ Lap</button>
+<button class="reset" onclick="reset()">↻ Reset</button>
+</div>
+<div class="lap-times" id="laps"></div>
+</div>
+<script>
+let ms=0,running=false,interval=null,laps=[],startTime=0
+function fmt(){const d=new Date(ms);const m=String(d.getUTCMinutes()).padStart(2,'0')
+const s=String(d.getUTCSeconds()).padStart(2,'0');const c=Math.floor(d.getUTCMilliseconds()/100)
+return m+':'+s+'.'+c}
+function render(){document.getElementById('display').textContent=fmt();const l=document.getElementById('laps')
+l.innerHTML=laps.map((t,i)=>`<div>Lap ${i+1}: ${t}</div>`).join('')}
+function toggle(){if(running){clearInterval(interval);running=false;document.getElementById('startBtn').textContent='▶ Resume';return}
+running=true;startTime=Date.now()-ms;document.getElementById('startBtn').textContent='⏸ Pause'
+interval=setInterval(()=>{ms=Date.now()-startTime;render()},100)}
+function lap(){if(!running)return;laps.push(fmt());render()}
+function reset(){clearInterval(interval);running=false;ms=0;laps=[];document.getElementById('startBtn').textContent='▶ Start';render()}
+render()
+</script></body></html>

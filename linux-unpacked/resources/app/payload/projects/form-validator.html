@@ -1,0 +1,160 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Form Validator Builder</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#ccc;min-height:100vh;padding:12px;display:flex;justify-content:center}.container{max-width:1060px;width:100%}h1{color:#00d9ff;font-size:1rem;margin-bottom:2px;text-align:center}p.sub{color:#555;font-size:0.6rem;margin-bottom:8px;text-align:center}.flex{display:flex;gap:10px}.rules-col{width:300px;flex-shrink:0}.preview-col{flex:1}.panel{background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:8px;margin-bottom:6px}.panel-title{color:#888;font-size:0.5rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px}.prop-row{display:flex;align-items:center;gap:6px;margin:3px 0;flex-wrap:wrap}.prop-row label{font-size:0.45rem;color:#555;min-width:55px}.prop-row input[type=text]{flex:1;padding:3px 6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem;font-family:inherit}.prop-row select{flex:1;padding:3px 4px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem;font-family:inherit}.btn{padding:4px 10px;border:1px solid rgba(255,255,255,0.06);border-radius:4px;background:transparent;color:#888;cursor:pointer;font-size:0.5rem;font-family:inherit;transition:0.1s}.btn:hover{border-color:#00d9ff;color:#ccc}.btn.primary{background:rgba(0,217,255,0.08);border-color:rgba(0,217,255,0.2);color:#00d9ff}.btn.danger{background:rgba(248,113,113,0.08);border-color:rgba(248,113,113,0.2);color:#f87171}.btn.accent{background:rgba(74,222,128,0.08);border-color:rgba(74,222,128,0.2);color:#4ade80}.rule-card{background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:4px;padding:6px 8px;margin:3px 0;display:flex;align-items:center;gap:6px;font-size:0.45rem;transition:0.1s}.rule-card:hover{border-color:rgba(0,217,255,0.1)}.rule-card .rule-type{color:#00d9ff;font-weight:600;min-width:50px}.rule-card .rule-msg{color:#888;flex:1}.rule-card .rule-del{background:none;border:none;color:#444;cursor:pointer;font-size:0.5rem}.rule-card .rule-del:hover{color:#f87171}.test-input{width:100%;padding:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:4px;color:#ccc;font-size:0.5rem;font-family:inherit}.test-input:focus{outline:none;border-color:#00d9ff}.test-input.valid{border-color:rgba(74,222,128,0.3)}.test-input.invalid{border-color:rgba(248,113,113,0.3)}.val-result{font-size:0.45rem;padding:4px 0}.val-result.pass{color:#4ade80}.val-result.fail{color:#f87171}.css-out{font-family:'Courier New',monospace;font-size:0.45rem;color:#666;padding:6px;background:rgba(255,255,255,0.02);border-radius:4px;max-height:120px;overflow:auto;white-space:pre-wrap}.preset-btn{padding:3px 8px;border:1px solid rgba(255,255,255,0.04);border-radius:3px;background:transparent;color:#666;cursor:pointer;font-size:0.45rem;font-family:inherit;margin:1px}.preset-btn:hover{border-color:#00d9ff;color:#ccc}.val{color:#00d9ff;font-size:0.45rem}</style></head><body><div class="container">
+<h1>✅ Form Validator Builder</h1><p class="sub">Define validation rules and test them live</p>
+<div class="flex">
+<div class="rules-col">
+<div class="panel"><div class="panel-title">Add Rule</div>
+<div class="prop-row"><label>Type</label><select id="ruleType">
+<option value="required">Required</option>
+<option value="email">Email Format</option>
+<option value="minLength">Min Length</option>
+<option value="maxLength">Max Length</option>
+<option value="pattern">Regex Pattern</option>
+<option value="match">Match Field</option>
+</select></div>
+<div class="prop-row"><label>Value</label><input type="text" id="ruleValue" placeholder="e.g. 8 for min length"></div>
+<div class="prop-row"><label style="align-self:flex-start;min-width:40px">Message</label><input type="text" id="ruleMessage" placeholder="Custom error message"></div>
+<button class="btn primary" onclick="addRule()" style="width:100%">➕ Add Rule</button>
+</div>
+<div class="panel"><div class="panel-title">Presets</div>
+<button class="preset-btn" onclick="loadPreset('register')">Registration</button>
+<button class="preset-btn" onclick="loadPreset('login')">Login</button>
+<button class="preset-btn" onclick="loadPreset('contact')">Contact</button>
+<button class="preset-btn" onclick="loadPreset('password')">Password</button>
+</div>
+<div class="panel"><div class="panel-title">Rules (<span id="ruleCount">0</span>)</div>
+<div id="ruleList"></div>
+<button class="btn" onclick="clearRules()" style="width:100%;margin-top:4px">🗑️ Clear All</button>
+</div>
+</div>
+<div class="preview-col">
+<div class="panel"><div class="panel-title">Test Input</div>
+<input type="text" class="test-input" id="testInput" placeholder="Type something to validate..." oninput="validateInput()" autocomplete="off">
+<div id="validationResults"></div></div>
+<div class="panel"><div class="panel-title">Match Field (for "match" rule)</div>
+<input type="text" class="test-input" id="matchField" placeholder="Match value..." oninput="validateInput()" style="font-size:0.5rem" autocomplete="off">
+<div style="font-size:0.4rem;color:#444;margin-top:2px">Enter the value that the test input should match</div>
+</div>
+<div class="panel"><div class="panel-title">Generated Validation Logic</div>
+<pre class="css-out" id="cssOutput">// Validation rules will appear here</pre>
+<button class="btn primary" onclick="copyJS()" style="margin-top:4px">📋 Copy JS</button>
+</div>
+</div></div></div>
+<script>
+let rules=[];
+
+function addRule(){
+  const type=document.getElementById('ruleType').value;
+  const value=document.getElementById('ruleValue').value;
+  const message=document.getElementById('ruleMessage').value||getDefaultMessage(type,value);
+  rules.push({id:Date.now()+Math.random(),type,value,message});
+  document.getElementById('ruleValue').value='';
+  document.getElementById('ruleMessage').value='';
+  renderRules();
+  updateCode();
+  validateInput();
+  saveToStorage();
+}
+
+function removeRule(id){rules=rules.filter(r=>r.id!==id);renderRules();updateCode();validateInput();saveToStorage()}
+function clearRules(){rules=[];renderRules();updateCode();document.getElementById('validationResults').innerHTML='';document.getElementById('testInput').value='';saveToStorage()}
+
+function getDefaultMessage(type,val){
+  const msgs={required:'This field is required',email:'Invalid email format',minLength:`Minimum ${val||'N'} characters`,maxLength:`Maximum ${val||'N'} characters`,pattern:'Invalid format',match:'Fields do not match'};
+  return msgs[type]||'Invalid';
+}
+
+function renderRules(){
+  const list=document.getElementById('ruleList');
+  document.getElementById('ruleCount').textContent=rules.length;
+  if(!rules.length){list.innerHTML='<div style="color:#555;font-size:0.45rem;padding:8px">No rules yet. Add one above.</div>';return}
+  list.innerHTML=rules.map(r=>{
+    const typeLabels={required:'❗ Required',email:'📧 Email',minLength:'📏 Min Length',maxLength:'📐 Max Length',pattern:'🔤 Pattern',match:'🔗 Match'};
+    return `<div class="rule-card"><span class="rule-type">${typeLabels[r.type]||r.type}</span><span class="rule-msg">${r.value?escapeHTML(r.value)+' — ':''}${escapeHTML(r.message)}</span><button class="rule-del" onclick="removeRule(${r.id})">✕</button></div>`;
+  }).join('');
+}
+
+function validateInput(){
+  const val=document.getElementById('testInput').value;
+  const matchVal=document.getElementById('matchField').value;
+  const results=document.getElementById('validationResults');
+  const input=document.getElementById('testInput');
+  if(!rules.length){results.innerHTML='';input.className='test-input';return}
+  let allPass=true,html='';
+  for(const r of rules){
+    let pass=true,msg=r.message;
+    switch(r.type){
+      case 'required':pass=val.trim().length>0;break;
+      case 'email':pass=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);break;
+      case 'minLength':pass=val.length>=parseInt(r.value||1);msg=r.message||`Must be at least ${r.value} characters`;break;
+      case 'maxLength':pass=val.length<=parseInt(r.value||999);msg=r.message||`Must be at most ${r.value} characters`;break;
+      case 'pattern':try{pass=new RegExp(r.value).test(val)}catch(e){pass=false;msg='Invalid regex pattern'}break;
+      case 'match':pass=val===matchVal;msg=r.message||'Fields do not match';break;
+    }
+    if(!pass)allPass=false;
+    html+=`<div class="val-result ${pass?'pass':'fail'}">${pass?'✓':'✗'} ${escapeHTML(msg)}</div>`;
+  }
+  results.innerHTML=html;
+  input.className='test-input '+(allPass?'valid':rules.length?'invalid':'');
+}
+
+function updateCode(){
+  const funcs=rules.map(r=>{
+    switch(r.type){
+      case 'required':return`  if (!value || !value.trim()) return '${escapeJS(r.message)}';`;
+      case 'email':return`  if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(value)) return '${escapeJS(r.message)}';`;
+      case 'minLength':return`  if (value.length < ${parseInt(r.value||0)}) return '${escapeJS(r.message)}';`;
+      case 'maxLength':return`  if (value.length > ${parseInt(r.value||0)}) return '${escapeJS(r.message)}';`;
+      case 'pattern':return`  if (!/${escapeJSRegex(r.value||'')}/.test(value)) return '${escapeJS(r.message)}';`;
+      case 'match':return`  if (value !== matchValue) return '${escapeJS(r.message)}';`;
+      default:return'';
+    }
+  }).filter(Boolean).join('\n');
+  const hasMatch=rules.some(r=>r.type==='match');
+  document.getElementById('cssOutput').textContent=
+`/**\n * Form Validation Rules\n * ${rules.length} rule(s) defined\n */\n\nfunction validate(value${hasMatch?', matchValue':''}) {\n${funcs}\n  return null; // valid\n}`;
+}
+
+function escapeJS(s){return String(s).replace(/'/g,"\\'").replace(/\n/g,'\\n')}
+function escapeJSRegex(s){return String(s).replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}
+function escapeHTML(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function copyJS(){navigator.clipboard.writeText(document.getElementById('cssOutput').textContent).then(()=>showToast('Validation logic copied!'))}
+function showToast(m){const t=document.createElement('div');t.textContent=m;Object.assign(t.style,{position:'fixed',bottom:20,left:'50%',transform:'translateX(-50%)',background:'rgba(0,217,255,0.15)',color:'#00d9ff',padding:'6px 16px',borderRadius:'4px',fontSize:'0.55rem',zIndex:999,transition:'opacity 0.2s',border:'1px solid rgba(0,217,255,0.2)'});document.body.appendChild(t);setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),300)},2000)}
+
+function loadPreset(name){
+  const presets={
+    register:[
+      {type:'required',value:'',message:'Username is required'},
+      {type:'minLength',value:'3',message:'Username must be at least 3 characters'},
+      {type:'required',value:'',message:'Email is required'},
+      {type:'email',value:'',message:'Enter a valid email address'},
+      {type:'required',value:'',message:'Password is required'},
+      {type:'minLength',value:'8',message:'Password must be at least 8 characters'},
+      {type:'match',value:'',message:'Passwords do not match'}
+    ],
+    login:[
+      {type:'required',value:'',message:'Email is required'},
+      {type:'email',value:'',message:'Enter a valid email address'},
+      {type:'required',value:'',message:'Password is required'}
+    ],
+    contact:[
+      {type:'required',value:'',message:'Name is required'},
+      {type:'required',value:'',message:'Email is required'},
+      {type:'email',value:'',message:'Enter a valid email'},
+      {type:'maxLength',value:'500',message:'Message must be under 500 characters'}
+    ],
+    password:[
+      {type:'required',value:'',message:'Password is required'},
+      {type:'minLength',value:'8',message:'Minimum 8 characters'},
+      {type:'maxLength',value:'128',message:'Maximum 128 characters'},
+      {id:Date.now()+4,type:'pattern',value:'(?=.*[A-Z])(?=.*[a-z])(?=.*\\d)',message:'Must contain uppercase, lowercase, and a number'},
+      {type:'match',value:'',message:'Passwords do not match'}
+    ]
+  };
+  rules=presets[name].map(r=>({...r,id:Date.now()+Math.random()}));
+  renderRules();updateCode();validateInput();saveToStorage();
+}
+
+function saveToStorage(){try{localStorage.setItem('formvalidator_data',JSON.stringify(rules.map(r=>({type:r.type,value:r.value,message:r.message}))))}catch(e){}}
+function loadFromStorage(){try{const d=JSON.parse(localStorage.getItem('formvalidator_data'));if(d&&d.length){rules=d.map(r=>({id:Date.now()+Math.random(),...r}));return true}}catch(e){}return false}
+if(!loadFromStorage())loadPreset('register');else{renderRules();updateCode();validateInput()}
+</script></body></html>

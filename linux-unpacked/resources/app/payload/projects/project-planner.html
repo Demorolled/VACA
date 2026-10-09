@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project Planner</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+  min-height: 100vh;
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+.container { max-width: 1100px; width: 100%; }
+h1 { color: #00d9ff; font-size: 1.5rem; text-align: center; margin-bottom: 4px; }
+.subtitle { color: #666; font-size: 0.8rem; text-align: center; margin-bottom: 12px; }
+/* Top bar */
+.top-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  background: linear-gradient(145deg, #1a1a2e, #1e1e3a);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  align-items: center;
+}
+.top-bar .project-name {
+  font-size: 1rem;
+  color: #e0e0f0;
+  font-weight: 600;
+  flex: 1;
+  min-width: 150px;
+}
+.top-bar .project-name input {
+  background: transparent;
+  border: none;
+  color: #e0e0f0;
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: inherit;
+  outline: none;
+  width: 100%;
+}
+.top-bar .project-name input:focus { border-bottom: 1px solid #00d9ff; }
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: 0.2s;
+  white-space: nowrap;
+}
+.btn-primary { background: linear-gradient(135deg, #00d9ff, #0099ff); color: #0f0f1a; }
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(0,217,255,0.3); }
+.btn-secondary { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); color: #aaa; }
+.btn-secondary:hover { background: rgba(255,255,255,0.1); }
+.btn-danger { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.2); color: #f87171; }
+.btn-danger:hover { background: rgba(248,113,113,0.2); }
+/* Layout */
+.layout { display: flex; gap: 12px; }
+@media (max-width: 750px) { .layout { flex-direction: column; } }
+/* Sidebar - phases */
+.phase-panel {
+  width: 220px;
+  background: linear-gradient(145deg, #1a1a2e, #1e1e3a);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 14px;
+  flex-shrink: 0;
+  max-height: 550px;
+  overflow-y: auto;
+}
+.phase-panel h3 { color: #888; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+.phase-item {
+  padding: 8px 10px;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: 0.1s;
+}
+.phase-item:hover { border-color: rgba(0,217,255,0.2); }
+.phase-item.active { border-color: #00d9ff; background: rgba(0,217,255,0.05); }
+.phase-item .phase-name { font-size: 0.82rem; color: #ccc; font-weight: 500; }
+.phase-item .phase-meta { font-size: 0.65rem; color: #555; margin-top: 2px; display: flex; gap: 8px; }
+.phase-item .phase-progress {
+  height: 3px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 2px;
+  margin-top: 6px;
+  overflow: hidden;
+}
+.phase-item .phase-progress .fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00d9ff, #4ade80);
+  border-radius: 2px;
+  transition: width 0.3s;
+}
+/* Main content */
+.content-area { flex: 1; }
+.phase-detail {
+  background: linear-gradient(145deg, #1a1a2e, #1e1e3a);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 20px;
+  min-height: 450px;
+}
+.phase-detail .phase-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.phase-detail .phase-header h2 { color: #e0e0f0; font-size: 1.1rem; }
+/* Tasks */
+.task-stats { display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+.task-stats .stat { font-size: 0.7rem; color: #666; padding: 4px 10px; background: rgba(255,255,255,0.03); border-radius: 6px; }
+.task-stats .stat span { color: #00d9ff; font-weight: 600; }
+.task-stats .stat .done { color: #4ade80; }
+.task-stats .stat .overdue { color: #f87171; }
+.task-list { display: flex; flex-direction: column; gap: 6px; }
+.task-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px;
+  transition: 0.1s;
+}
+.task-item:hover { border-color: rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); }
+.task-item.overdue { border-left: 3px solid #f87171; }
+.task-item.done { opacity: 0.6; }
+.task-check {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  border: 2px solid #444;
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  transition: 0.15s;
+}
+.task-check:hover { border-color: #4ade80; }
+.task-check.done { border-color: #4ade80; background: #4ade80; color: #0f0f1a; }
+.task-info { flex: 1; min-width: 0; }
+.task-title { font-size: 0.85rem; color: #ddd; }
+.task-title.done-text { text-decoration: line-through; color: #666; }
+.task-meta { font-size: 0.65rem; color: #555; margin-top: 2px; display: flex; gap: 8px; flex-wrap: wrap; }
+.task-assignee { padding: 1px 6px; border-radius: 3px; background: rgba(0,217,255,0.08); color: #00d9ff; }
+.task-priority { padding: 1px 6px; border-radius: 3px; font-weight: 500; }
+.priority-high { background: rgba(248,113,113,0.12); color: #f87171; }
+.priority-med { background: rgba(251,191,36,0.12); color: #fbbf24; }
+.priority-low { background: rgba(74,222,128,0.12); color: #4ade80; }
+.task-date { color: #555; }
+.task-date.overdue { color: #f87171; }
+.task-actions { display: flex; gap: 4px; }
+.task-actions .btn-xs {
+  padding: 3px 6px;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.6rem;
+  cursor: pointer;
+  background: transparent;
+  color: #444;
+  font-family: inherit;
+  transition: 0.1s;
+}
+.task-actions .btn-xs:hover { color: #aaa; background: rgba(255,255,255,0.04); }
+.task-actions .btn-xs.danger:hover { color: #f87171; }
+.empty-phase { text-align: center; padding: 40px; color: #555; font-size: 0.85rem; }
+/* Gantt */
+.gantt-section {
+  margin-top: 20px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding-top: 16px;
+}
+.gantt-section h3 { color: #888; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+.gantt-chart {
+  overflow-x: auto;
+  padding: 8px 0;
+}
+.gantt-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  font-size: 0.7rem;
+}
+.gantt-row .gantt-label { width: 80px; color: #888; text-align: right; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gantt-row .gantt-track { flex: 1; height: 20px; background: rgba(255,255,255,0.03); border-radius: 4px; position: relative; min-height: 20px; }
+.gantt-row .gantt-bar {
+  position: absolute;
+  height: 16px;
+  top: 2px;
+  border-radius: 4px;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  font-size: 0.6rem;
+  color: #0f0f1a;
+  overflow: hidden;
+  white-space: nowrap;
+}
+/* Modal */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  backdrop-filter: blur(4px);
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: #1a1a2e;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  padding: 24px;
+  width: 90%;
+  max-width: 450px;
+}
+.modal h2 { color: #00d9ff; font-size: 1.1rem; margin-bottom: 16px; }
+.modal label { display: block; font-size: 0.75rem; color: #888; margin-bottom: 4px; margin-top: 8px; }
+.modal label:first-of-type { margin-top: 0; }
+.modal input, .modal select, .modal textarea {
+  width: 100%;
+  padding: 8px 12px;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  color: #ccc;
+  font-size: 0.85rem;
+  font-family: inherit;
+  outline: none;
+}
+.modal textarea { resize: vertical; min-height: 50px; }
+.modal input:focus, .modal select:focus, .modal textarea:focus { border-color: #00d9ff; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>📋 Project Planner</h1>
+  <p class="subtitle">Plan projects, manage tasks, and track progress with Gantt charts</p>
+  <div class="top-bar">
+    <div class="project-name"><input id="projectName" value="My Project" onchange="saveData()"></div>
+    <span style="font-size:0.7rem;color:#555" id="overallProgress">0% complete</span>
+    <button class="btn btn-secondary" onclick="addPhase()">+ Phase</button>
+    <button class="btn btn-secondary" onclick="document.getElementById('edPhaseId').value='';openAddTaskModal()">+ Task</button>
+    <button class="btn btn-primary" onclick="exportProject()">📤 Export</button>
+  </div>
+  <div class="layout">
+    <div class="phase-panel" id="phasePanel">
+      <h3>📂 Phases</h3>
+      <div id="phaseList"></div>
+      <div style="margin-top:8px">
+        <button class="btn btn-secondary" style="width:100%;padding:6px;font-size:0.75rem" onclick="addPhase()">+ Add Phase</button>
+      </div>
+    </div>
+    <div class="content-area">
+      <div class="phase-detail" id="phaseDetail">
+        <div class="empty-phase">📋 Select a phase or create one to get started</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="taskModal">
+  <div class="modal">
+    <h2 id="taskModalTitle">Add Task</h2>
+    <label>Task Title</label>
+    <input id="edTaskTitle" placeholder="What needs to be done?" maxlength="100">
+    <label>Assigned To</label>
+    <input id="edAssignee" placeholder="Team member name">
+    <div style="display:flex;gap:8px">
+      <div style="flex:1"><label>Priority</label>
+        <select id="edPriority"><option value="high">🔴 High</option><option value="med">🟡 Medium</option><option value="low">🟢 Low</option></select>
+      </div>
+      <div style="flex:1"><label>Phase</label>
+        <select id="edPhase"></select>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <div style="flex:1"><label>Start Date</label><input id="edStartDate" type="date"></div>
+      <div style="flex:1"><label>Due Date</label><input id="edDueDate" type="date"></div>
+    </div>
+    <label>Description</label>
+    <textarea id="edTaskDesc" placeholder="Task details..."></textarea>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeTaskModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTask()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let project = {
+  name: 'My Project',
+  phases: [],
+  tasks: []
+};
+let currentPhaseId = null;
+let editingTaskId = null;
+const MEMBERS = ['Alice', 'Bob', 'Charlie', 'Diana', 'Eve', 'Frank'];
+
+function generateId() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+function loadData() {
+  try {
+    const d = localStorage.getItem('pp-data');
+    if (d) { project = JSON.parse(d); return; }
+  } catch {}
+  // Sample data
+  const phase1 = { id: generateId(), name: 'Planning', color: '#60a5fa', startDate: '2026-07-01', endDate: '2026-07-10' };
+  const phase2 = { id: generateId(), name: 'Design', color: '#a78bfa', startDate: '2026-07-11', endDate: '2026-07-25' };
+  const phase3 = { id: generateId(), name: 'Development', color: '#4ade80', startDate: '2026-07-18', endDate: '2026-08-15' };
+  const phase4 = { id: generateId(), name: 'Testing', color: '#fbbf24', startDate: '2026-08-10', endDate: '2026-08-25' };
+  const phase5 = { id: generateId(), name: 'Launch', color: '#f87171', startDate: '2026-08-25', endDate: '2026-09-01' };
+  project.phases = [phase1, phase2, phase3, phase4, phase5];
+  project.tasks = [
+    { id: generateId(), title: 'Define requirements', phaseId: phase1.id, assignee: 'Alice', priority: 'high', startDate: '2026-07-01', dueDate: '2026-07-05', done: true, desc: 'Gather and document all project requirements' },
+    { id: generateId(), title: 'Create project charter', phaseId: phase1.id, assignee: 'Bob', priority: 'high', startDate: '2026-07-03', dueDate: '2026-07-08', done: true, desc: 'Formal project charter document' },
+    { id: generateId(), title: 'Stakeholder analysis', phaseId: phase1.id, assignee: 'Charlie', priority: 'med', startDate: '2026-07-05', dueDate: '2026-07-10', done: false, desc: 'Identify and analyze stakeholders' },
+    { id: generateId(), title: 'UI/UX wireframes', phaseId: phase2.id, assignee: 'Diana', priority: 'high', startDate: '2026-07-11', dueDate: '2026-07-18', done: false, desc: 'Create wireframes for all main screens' },
+    { id: generateId(), title: 'Design system', phaseId: phase2.id, assignee: 'Diana', priority: 'med', startDate: '2026-07-15', dueDate: '2026-07-22', done: false, desc: 'Define colors, typography, components' },
+    { id: generateId(), title: 'Prototype review', phaseId: phase2.id, assignee: 'Alice', priority: 'low', startDate: '2026-07-20', dueDate: '2026-07-25', done: false },
+    { id: generateId(), title: 'Backend API', phaseId: phase3.id, assignee: 'Bob', priority: 'high', startDate: '2026-07-18', dueDate: '2026-08-05', done: false, desc: 'Develop REST API endpoints' },
+    { id: generateId(), title: 'Frontend implementation', phaseId: phase3.id, assignee: 'Charlie', priority: 'high', startDate: '2026-07-20', dueDate: '2026-08-10', done: false },
+    { id: generateId(), title: 'Database setup', phaseId: phase3.id, assignee: 'Frank', priority: 'med', startDate: '2026-07-18', dueDate: '2026-07-25', done: true, desc: 'Schema design and migration' },
+    { id: generateId(), title: 'Integration testing', phaseId: phase4.id, assignee: 'Eve', priority: 'high', startDate: '2026-08-10', dueDate: '2026-08-20', done: false },
+    { id: generateId(), title: 'Bug fixes', phaseId: phase4.id, assignee: 'Bob', priority: 'high', startDate: '2026-08-15', dueDate: '2026-08-25', done: false },
+    { id: generateId(), title: 'Performance testing', phaseId: phase4.id, assignee: 'Frank', priority: 'med', startDate: '2026-08-18', dueDate: '2026-08-25', done: false },
+    { id: generateId(), title: 'Deployment preparation', phaseId: phase5.id, assignee: 'Alice', priority: 'high', startDate: '2026-08-25', dueDate: '2026-08-29', done: false },
+    { id: generateId(), title: 'Go live!', phaseId: phase5.id, assignee: 'All', priority: 'high', startDate: '2026-08-30', dueDate: '2026-09-01', done: false, desc: 'Production launch' },
+  ];
+  currentPhaseId = phase1.id;
+  saveData();
+}
+
+function saveData() {
+  project.name = document.getElementById('projectName').value;
+  localStorage.setItem('pp-data', JSON.stringify(project));
+}
+
+function escapeHTML(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T12:00:00');
+  return d.toLocaleDateString('en', { month: 'short', day: 'numeric' });
+}
+
+function isOverdue(task) {
+  if (task.done) return false;
+  if (!task.dueDate) return false;
+  return new Date(task.dueDate + 'T23:59:59') < new Date();
+}
+
+function renderAll() {
+  renderPhases();
+  if (currentPhaseId) renderPhaseDetail(currentPhaseId);
+  updateOverallProgress();
+}
+
+function renderPhases() {
+  const list = document.getElementById('phaseList');
+  if (project.phases.length === 0) {
+    list.innerHTML = '<div style="font-size:0.75rem;color:#444;padding:8px">No phases created yet</div>'; return;
+  }
+  list.innerHTML = project.phases.map(p => {
+    const tasks = project.tasks.filter(t => t.phaseId === p.id);
+    const done = tasks.filter(t => t.done).length;
+    const pct = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
+    return `<div class="phase-item ${p.id === currentPhaseId ? 'active' : ''}" onclick="selectPhase('${p.id}')">
+      <div class="phase-name"><span style="color:${p.color}">●</span> ${escapeHTML(p.name)}</div>
+      <div class="phase-meta"><span>${done}/${tasks.length} tasks</span><span>${pct}%</span></div>
+      <div class="phase-progress"><div class="fill" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+  updatePhaseSelect();
+}
+
+function selectPhase(id) {
+  currentPhaseId = id;
+  renderAll();
+}
+
+function renderPhaseDetail(phaseId) {
+  const phase = project.phases.find(p => p.id === phaseId);
+  const container = document.getElementById('phaseDetail');
+  if (!phase) {
+    container.innerHTML = '<div class="empty-phase">📋 Select a phase to view its tasks</div>'; return;
+  }
+  
+  const tasks = project.tasks.filter(t => t.phaseId === phaseId);
+  const total = tasks.length;
+  const done = tasks.filter(t => t.done).length;
+  const overdue = tasks.filter(t => isOverdue(t)).length;
+  
+  let html = `<div class="phase-header">
+    <h2><span style="color:${phase.color}">●</span> ${escapeHTML(phase.name)}</h2>
+    <div><button class="btn btn-secondary" style="padding:6px 12px;font-size:0.75rem" onclick="openAddTaskModal('${phaseId}')">+ Add Task</button></div>
+  </div>
+  <div class="task-stats">
+    <div class="stat">📋 Total: <span>${total}</span></div>
+    <div class="stat">✅ Done: <span class="done">${done}</span></div>
+    <div class="stat">⏳ Progress: <span>${total ? Math.round(done/total*100) : 0}%</span></div>
+    <div class="stat">⚠️ Overdue: <span class="overdue">${overdue}</span></div>
+  </div>
+  <div class="task-list">`;
+  
+  if (tasks.length === 0) {
+    html += '<div class="empty-phase">No tasks in this phase. Add one!</div>';
+  } else {
+    const sorted = [...tasks].sort((a, b) => a.done - b.done || new Date(a.dueDate) - new Date(b.dueDate));
+    sorted.forEach(t => {
+      const overdueCls = isOverdue(t) ? 'overdue' : '';
+      html += `<div class="task-item ${t.done ? 'done' : ''} ${overdueCls}">
+        <div class="task-check ${t.done ? 'done' : ''}" onclick="toggleTask('${t.id}')">${t.done ? '✓' : ''}</div>
+        <div class="task-info">
+          <div class="task-title ${t.done ? 'done-text' : ''}">${escapeHTML(t.title)}</div>
+          <div class="task-meta">
+            ${t.assignee ? `<span class="task-assignee">👤 ${escapeHTML(t.assignee)}</span>` : ''}
+            <span class="task-priority priority-${t.priority}">${t.priority === 'high' ? '🔴' : t.priority === 'med' ? '🟡' : '🟢'} ${t.priority}</span>
+            ${t.startDate ? `<span>📅 ${formatDate(t.startDate)} - ${formatDate(t.dueDate)}</span>` : ''}
+            ${t.dueDate ? `<span class="task-date ${isOverdue(t) ? 'overdue' : ''}">${isOverdue(t) ? '⚠️ OVERDUE' : ''}</span>` : ''}
+          </div>
+        </div>
+        <div class="task-actions">
+          <button class="btn-xs" onclick="openEditTaskModal('${t.id}')">✏️</button>
+          <button class="btn-xs danger" onclick="deleteTask('${t.id}')">🗑️</button>
+        </div>
+      </div>`;
+    });
+  }
+  html += '</div>';
+  
+  // Gantt chart
+  html += `<div class="gantt-section">
+    <h3>📊 Gantt Chart</h3>
+    <div class="gantt-chart" id="ganttChart"></div>
+  </div>`;
+  
+  container.innerHTML = html;
+  renderGantt(phase);
+}
+
+function renderGantt(phase) {
+  const container = document.getElementById('ganttChart');
+  if (!container) return;
+  const tasks = project.tasks.filter(t => t.phaseId === phase.id && t.startDate && t.dueDate);
+  if (tasks.length === 0) { container.innerHTML = '<div style="font-size:0.7rem;color:#555">Add tasks with dates to see the Gantt chart</div>'; return; }
+  
+  const allDates = tasks.flatMap(t => [new Date(t.startDate), new Date(t.dueDate)]);
+  const minDate = new Date(Math.min(...allDates));
+  const maxDate = new Date(Math.max(...allDates));
+  const dayRange = Math.max(1, (maxDate - minDate) / 86400000 + 1);
+  const pxWidth = Math.max(200, dayRange * 20);
+  
+  let html = '';
+  const colors = ['#60a5fa', '#4ade80', '#fbbf24', '#f87171', '#a78bfa', '#f472b6'];
+  tasks.forEach((t, i) => {
+    const start = new Date(t.startDate);
+    const end = new Date(t.dueDate);
+    const left = ((start - minDate) / 86400000 / dayRange) * pxWidth;
+    const width = Math.max(10, ((end - start) / 86400000 + 1) / dayRange * pxWidth);
+    const color = t.done ? '#4ade80' : colors[i % colors.length];
+    html += `<div class="gantt-row">
+      <div class="gantt-label">${escapeHTML(t.title)}</div>
+      <div class="gantt-track">
+        <div class="gantt-bar" style="left:${left}px;width:${width}px;background:${color}">${t.done ? '✓' : ''}</div>
+      </div>
+    </div>`;
+  });
+  container.innerHTML = html;
+}
+
+function updateOverallProgress() {
+  const total = project.tasks.length;
+  const done = project.tasks.filter(t => t.done).length;
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  document.getElementById('overallProgress').textContent = `${pct}% complete (${done}/${total})`;
+}
+
+function toggleTask(id) {
+  const task = project.tasks.find(t => t.id === id);
+  if (task) { task.done = !task.done; saveData(); renderAll(); }
+}
+
+function addPhase() {
+  const name = prompt('Phase name:', 'New Phase');
+  if (!name || !name.trim()) return;
+  const startDate = new Date();
+  const endDate = new Date(startDate.getTime() + 14 * 86400000);
+  const colors = ['#60a5fa', '#4ade80', '#fbbf24', '#f87171', '#a78bfa', '#f472b6'];
+  const color = colors[project.phases.length % colors.length];
+  const phase = {
+    id: generateId(),
+    name: name.trim(),
+    color,
+    startDate: startDate.toISOString().slice(0, 10),
+    endDate: endDate.toISOString().slice(0, 10)
+  };
+  project.phases.push(phase);
+  currentPhaseId = phase.id;
+  saveData();
+  renderAll();
+}
+
+function openAddTaskModal(prefillPhaseId) {
+  editingTaskId = null;
+  document.getElementById('taskModalTitle').textContent = '➕ Add Task';
+  document.getElementById('edTaskTitle').value = '';
+  document.getElementById('edAssignee').value = '';
+  document.getElementById('edPriority').value = 'med';
+  document.getElementById('edStartDate').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('edDueDate').value = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+  document.getElementById('edTaskDesc').value = '';
+  updatePhaseSelect();
+  if (prefillPhaseId) document.getElementById('edPhase').value = prefillPhaseId;
+  else if (currentPhaseId) document.getElementById('edPhase').value = currentPhaseId;
+  document.getElementById('taskModal').classList.add('open');
+  document.getElementById('edTaskTitle').focus();
+}
+
+function openEditTaskModal(id) {
+  const task = project.tasks.find(t => t.id === id);
+  if (!task) return;
+  editingTaskId = id;
+  document.getElementById('taskModalTitle').textContent = '✏️ Edit Task';
+  document.getElementById('edTaskTitle').value = task.title;
+  document.getElementById('edAssignee').value = task.assignee || '';
+  document.getElementById('edPriority').value = task.priority || 'med';
+  document.getElementById('edStartDate').value = task.startDate || '';
+  document.getElementById('edDueDate').value = task.dueDate || '';
+  document.getElementById('edTaskDesc').value = task.desc || '';
+  updatePhaseSelect();
+  document.getElementById('edPhase').value = task.phaseId;
+  document.getElementById('taskModal').classList.add('open');
+}
+
+function updatePhaseSelect() {
+  const sel = document.getElementById('edPhase');
+  sel.innerHTML = project.phases.map(p => `<option value="${p.id}">${escapeHTML(p.name)}</option>`).join('');
+}
+
+function closeTaskModal() { document.getElementById('taskModal').classList.remove('open'); editingTaskId = null; }
+
+function saveTask() {
+  const title = document.getElementById('edTaskTitle').value.trim();
+  const phaseId = document.getElementById('edPhase').value;
+  const assignee = document.getElementById('edAssignee').value.trim();
+  const priority = document.getElementById('edPriority').value;
+  const startDate = document.getElementById('edStartDate').value;
+  const dueDate = document.getElementById('edDueDate').value;
+  const desc = document.getElementById('edTaskDesc').value.trim();
+  if (!title) { alert('Please enter a task title'); return; }
+  if (!phaseId) { alert('Please select a phase'); return; }
+  if (editingTaskId) {
+    const idx = project.tasks.findIndex(t => t.id === editingTaskId);
+    if (idx >= 0) project.tasks[idx] = { ...project.tasks[idx], title, phaseId, assignee, priority, startDate, dueDate, desc };
+  } else {
+    project.tasks.push({ id: generateId(), title, phaseId, assignee, priority, startDate, dueDate, done: false, desc });
+  }
+  saveData();
+  closeTaskModal();
+  renderAll();
+}
+
+function deleteTask(id) {
+  if (!confirm('Delete this task?')) return;
+  project.tasks = project.tasks.filter(t => t.id !== id);
+  saveData();
+  renderAll();
+}
+
+function exportProject() {
+  const data = JSON.stringify(project, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `project-${project.name.replace(/\s+/g, '-').toLowerCase()}.json`;
+  a.click();
+}
+
+loadData();
+renderAll();
+</script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html><head><title>Note Pad</title><style>
+body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#1a1a2e;color:#fff}
+.pad{width:400px}
+h1{color:#00d9ff;text-align:center;margin-bottom:16px}
+.toolbar{display:flex;gap:4px;margin-bottom:8px}
+.toolbar button{padding:6px 12px;background:#252542;border:1px solid #4a4a6a;color:#aaa;cursor:pointer;font-size:12px}
+.toolbar button:hover{border-color:#00d9ff}
+textarea{width:100%;height:250px;background:#0f0f1a;border:1px solid #4a4a6a;color:#e0e0e0;padding:12px;font-size:14px;resize:vertical;font-family:sans-serif}
+.list{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px}
+.list button{padding:4px 10px;background:#252542;border:1px solid #4a4a6a;color:#aaa;cursor:pointer;font-size:11px}
+.list button:hover{border-color:#00d9ff;color:#fff}
+.list button.active{border-color:#00d9ff;color:#00d9ff}
+</style></head><body>
+<div class="pad"><h1>⎔ Note Pad</h1>
+<div class="toolbar"><button onclick="saveNote()">💾 Save</button><button onclick="addNote()">＋ New</button><button onclick="deleteNote()">✕ Delete</button></div>
+<textarea id="editor" placeholder="Write your note here..." oninput="autoSave()"></textarea>
+<div class="list" id="noteList"></div>
+</div>
+<script>
+let notes=JSON.parse(localStorage.getItem('notepad_notes')||'["Welcome note"]')
+let contents=JSON.parse(localStorage.getItem('notepad_contents')||'["Welcome to Note Pad! Start editing."]')
+let current=0
+function render(){const l=document.getElementById('noteList');l.innerHTML=''
+notes.forEach((n,i)=>{const b=document.createElement('button');b.textContent=n
+b.className=i===current?'active':'';b.onclick=()=>selectNote(i);l.appendChild(b)})
+document.getElementById('editor').value=contents[current]||''}
+function selectNote(i){contents[current]=document.getElementById('editor').value;current=i;render()
+saveStorage()}
+function saveNote(){contents[current]=document.getElementById('editor').value;saveStorage();alert('Note saved!')}
+function addNote(){contents[current]=document.getElementById('editor').value;notes.push('Note '+(notes.length+1));contents.push('');current=notes.length-1;render();saveStorage()}
+function deleteNote(){if(notes.length<=1)return;if(!confirm('Delete this note?'))return
+notes.splice(current,1);contents.splice(current,1);current=Math.min(current,notes.length-1);render();saveStorage()}
+function autoSave(){contents[current]=document.getElementById('editor').value;saveStorage()}
+function saveStorage(){localStorage.setItem('notepad_notes',JSON.stringify(notes));localStorage.setItem('notepad_contents',JSON.stringify(contents))}
+render()
+</script></body></html>

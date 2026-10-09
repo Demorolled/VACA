@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>♞ Dazzling 3D Chess</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #0b0e14; font-family: 'Segoe UI', system-ui, sans-serif; }
+  #scene { position: fixed; inset: 0; }
+  canvas { display: block; }
+  #hud {
+    position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 12px; z-index: 10;
+    background: rgba(15, 20, 30, 0.82); border: 1px solid rgba(120, 160, 255, 0.25);
+    border-radius: 12px; padding: 10px 18px; backdrop-filter: blur(8px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5); user-select: none;
+  }
+  #hud .dot { width: 14px; height: 14px; border-radius: 50%; box-shadow: 0 0 12px currentColor; }
+  #hud .dot.white { background: #f3d98b; color: #f3d98b; }
+  #hud .dot.black { background: #9aa3b8; color: #9aa3b8; }
+  #turn { color: #dfe7ff; font-weight: 600; font-size: 15px; letter-spacing: 0.3px; }
+  #status { color: #8fb0ff; font-size: 13px; }
+  #hud button {
+    background: rgba(70, 110, 255, 0.18); color: #c9d8ff; border: 1px solid rgba(120, 160, 255, 0.35);
+    border-radius: 8px; padding: 6px 12px; font-size: 13px; cursor: pointer; transition: all 0.15s;
+  }
+  #hud button:hover { background: rgba(70, 110, 255, 0.35); color: #fff; transform: translateY(-1px); }
+  #hud label { color: #7f92b8; font-size: 12px; display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  #hint {
+    position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 10;
+    color: rgba(160, 180, 220, 0.6); font-size: 12.5px; letter-spacing: 0.2px;
+    background: rgba(15, 20, 30, 0.6); padding: 8px 16px; border-radius: 20px; border: 1px solid rgba(120,160,255,0.15);
+  }
+  #fallback { display: none; position: fixed; inset: 0; align-items: center; justify-content: center;
+    color: #ff9c9c; font-size: 16px; padding: 24px; text-align: center; z-index: 20; }
+  @media (max-width: 640px) {
+    #hud { top: 8px; padding: 8px 12px; gap: 8px; }
+    #status { display: none; }
+  }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+<div id="scene"></div>
+<div id="fallback">3D unavailable — could not load Three.js (CDN blocked or offline).<br>Check your network connection and reload.</div>
+<div id="hud">
+  <span class="dot white"></span>
+  <span id="turn">White to move</span>
+  <span id="status"></span>
+  <button id="newGame">♟ New Game</button>
+  <label><input type="checkbox" id="twoPlayer"> 2 Player</label>
+</div>
+<div id="hint">Drag to orbit · Scroll to zoom · Click a piece, then a highlighted square to move</div>
+
+<script>
+(function () {
+  'use strict';
+  if (typeof THREE === 'undefined') { document.getElementById('fallback').style.display = 'flex'; return; }
+
+  // ── Renderer / scene / camera ──────────────────────────────────────────
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0b0e14);
+  scene.fog = new THREE.Fog(0x0b0e14, 34, 78);
+
+  const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 200);
+  camera.position.set(11.5, 9.5, 12.5);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  document.getElementById('scene').appendChild(renderer.domElement);
+
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.minDistance = 7;
+  controls.maxDistance = 32;
+  controls.maxPolarAngle = Math.PI / 2.05;
+  controls.target.set(0, 0.8, 0);
+
+  // ── Lights ─────────────────────────────────────────────────────────────
+  scene.add(new THREE.AmbientLight(0xffffff, 0.42));
+  const key = new THREE.DirectionalLight(0xffeedd, 1.15);
+  key.position.set(9, 14, 7);
+  key.castShadow = true;
+  key.shadow.mapSize.set(2048, 2048);
+  key.shadow.camera.left = -9; key.shadow.camera.right = 9;
+  key.shadow.camera.top = 9;   key.shadow.camera.bottom = -9;
+  key.shadow.camera.near = 1;  key.shadow.camera.far = 40;
+  key.shadow.bias = -0.0004;
+  scene.add(key);
+  const fill = new THREE.DirectionalLight(0x4a6cf7, 0.35);
+  fill.position.set(-7, 5, -9);
+  scene.add(fill);
+
+  // ── Board ──────────────────────────────────────────────────────────────
+  const LIGHT_SQ = 0xf0d9b5, DARK_SQ = 0xb58863;
+  function checkerTexture() {
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = 512;
+    const ctx = cv.getContext('2d');
+    for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
+      ctx.fillStyle = ((r + c) % 2 === 0) ? '#' + LIGHT_SQ.toString(16).padStart(6, '0')
+                                          : '#' + DARK_SQ.toString(16).padStart(6, '0');
+      ctx.fillRect(c * 64, r * 64, 64, 64);
+    }
+    const t = new THREE.CanvasTexture(cv);
+    t.encoding = THREE.sRGBEncoding;
+    t.anisotropy = 8;
+    return t;
+  }
+  const board = new THREE.Mesh(
+    new THREE.BoxGeometry(8, 0.3, 8),
+    new THREE.MeshStandardMaterial({ map: checkerTexture(), roughness: 0.55 })
+  );
+  board.position.y = -0.15;
+  board.receiveShadow = true;
+  scene.add(board);
+
+  // rim frame
+  const rim = new THREE.Mesh(
+    new THREE.BoxGeometry(8.7, 0.16, 8.7),
+    new THREE.MeshStandardMaterial({ color: 0x1c2333, metalness: 0.6, roughness: 0.4 })
+  );
+  rim.position.y = 0.02;
+  rim.receiveShadow = true;
+  scene.add(rim);
+
+  // pedestal
+  const pedestal = new THREE.Mesh(
+    new THREE.CylinderGeometry(6.2, 6.6, 0.3, 48),
+    new THREE.MeshStandardMaterial({ color: 0x141a29, metalness: 0.5, roughness: 0.5 })
+  );
+  pedestal.position.y = -0.3;
+  pedestal.receiveShadow = true;
+  scene.add(pedestal);
+
+  // starfield backdrop
+  (function starfield() {
+    const n = 700, pos = new Float32Array(n * 3);
+    for (let i = 0; i < n * 3; i++) pos[i] = (Math.random() - 0.5) * 120;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    scene.add(new THREE.Points(g, new THREE.PointsMaterial({
+      color: 0xffffff, size: 0.12, transparent: true, opacity: 0.75, fog: false,
+    })));
+  })();
+
+  // ── Piece geometry (LatheGeometry profiles) ─────────────────────────────
+  // Profiles stored as plain [x=radius, y=height] pairs; mapped to Vector2
+  // with `new` (Vector2 is an ES6 class in r128 — calling it without new throws).
+  const PROFILES = {
+    pawn:   [[0,0],[.30,0],[.34,.06],[.22,.28],[.16,.50],[.13,.72],[.09,.86],[.16,.94],[.18,1],[.12,1],[.12,.94],[0,.94]],
+    rook:   [[0,0],[.34,0],[.34,.72],[.28,.72],[.28,.80],[.30,.80],[.30,.88],[.26,.88],[.26,.96],[.30,.96],[.30,1],[.24,1],[.24,.94],[.20,.94],[.20,1],[.14,1],[.14,.94],[.10,.94],[.10,1],[0,1]],
+    knight: [[0,0],[.32,0],[.32,.10],[.24,.34],[.18,.56],[.16,.78],[.18,.90],[.26,1],[.20,1],[0,1]],
+    bishop: [[0,0],[.30,0],[.32,.08],[.20,.30],[.14,.60],[.11,.82],[.08,.92],[.16,.96],[.14,1],[.08,1],[.08,.94],[0,.94]],
+    queen:  [[0,0],[.36,0],[.36,.06],[.26,.18],[.20,.46],[.15,.74],[.12,.90],[.20,.98],[.20,1],[.12,1],[.12,.92],[0,.92]],
+    king:   [[0,0],[.36,0],[.36,.06],[.26,.16],[.20,.42],[.15,.70],[.12,.86],[.18,.94],[.18,1.04],[.22,1.08],[.22,1.12],[0,1.12]],
+  };
+  function profilePoints(arr) { return arr.map(function (p) { return new THREE.Vector2(p[0], p[1]); }); }
+  const MATS = {
+    white: new THREE.MeshStandardMaterial({ color: 0xe8c878, metalness: 0.85, roughness: 0.32 }),
+    black: new THREE.MeshStandardMaterial({ color: 0x3a4256, metalness: 0.8, roughness: 0.38 }),
+  };
+
+  function makePiece(type, color) {
+    const mat = MATS[color];
+    const g = new THREE.Group();
+    const lathe = new THREE.Mesh(new THREE.LatheGeometry(profilePoints(PROFILES[type]), 36), mat);
+    lathe.castShadow = true;
+    lathe.receiveShadow = true;
+    lathe.scale.setScalar(1.5);
+    lathe.position.y = 0.01;
+    g.add(lathe);
+    if (type === 'king') {
+      const crossV = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.3, 0.11), mat);
+      const crossH = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.09, 0.09), mat);
+      crossV.position.y = 1.68; crossH.position.y = 1.76; crossH.position.z = 0.03;
+      crossV.castShadow = crossH.castShadow = true;
+      g.add(crossV, crossH);
+    }
+    return g;
+  }
+
+  // ── Board state + rules ─────────────────────────────────────────────────
+  const boardState = [];      // 8x8: {type, color} | null
+  let selected = null;        // {row, col}
+  let legalMoves = [];        // [{r, c, castle?, enPassant?}]
+  let turn = 'white';
+  let status = '';
+  let gameOver = false;
+  let enPassantTarget = null; // {row, col} of pawn that can be captured en passant
+  const castling = { white: { k: true, q: true }, black: { k: true, q: true } };
+
+  const INIT = [
+    ['rook','knight','bishop','queen','king','bishop','knight','rook'],
+    ['pawn','pawn','pawn','pawn','pawn','pawn','pawn','pawn'],
+  ];
+  function resetState() {
+    boardState.length = 0;
+    for (let r = 0; r < 8; r++) {
+      boardState.push([]);
+      for (let c = 0; c < 8; c++) {
+        if (r === 1) boardState[r].push({ type: 'pawn', color: 'black' });
+        else if (r === 6) boardState[r].push({ type: 'pawn', color: 'white' });
+        else if (r === 0) boardState[r].push({ type: INIT[0][c], color: 'black' });
+        else if (r === 7) boardState[r].push({ type: INIT[0][c], color: 'white' });
+        else boardState[r].push(null);
+      }
+    }
+    selected = null; legalMoves = []; turn = 'white'; gameOver = false; status = '';
+    enPassantTarget = null;
+    castling.white.k = castling.white.q = castling.black.k = castling.black.q = true;
+  }
+
+  function kingPos(color) {
+    for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
+      const p = boardState[r][c];
+      if (p && p.type === 'king' && p.color === color) return { r, c };
+    }
+    return null;
+  }
+
+  function inBounds(r, c) { return r >= 0 && r < 8 && c >= 0 && c < 8; }
+
+  function isAttacked(r, c, byColor) {
+    const atk = byColor === 'white' ? 'black' : 'white';
+    const dirs = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+    for (const [dr, dc] of dirs) {
+      for (let s = 1; s < 8; s++) {
+        const rr = r + dr * s, cc = c + dc * s;
+        if (!inBounds(rr, cc)) break;
+        const p = boardState[rr][cc];
+        if (!p) continue;
+        if (p.color !== atk) break;
+        // direct attack by sliding pieces, knight handled separately
+        const slide = (p.type === 'rook' && (dr === 0 || dc === 0)) ||
+                      (p.type === 'bishop' && (dr !== 0 && dc !== 0)) ||
+                      (p.type === 'queen');
+        if (slide) return true;
+        if (s === 1 && p.type === 'king') return true;
+        break;
+      }
+    }
+    // knights
+    for (const [dr, dc] of [[1,2],[2,1],[2,-1],[1,-2],[-1,-2],[-2,-1],[-2,1],[-1,2]]) {
+      const rr = r + dr, cc = c + dc;
+      if (inBounds(rr, cc)) {
+        const p = boardState[rr][cc];
+        if (p && p.color === atk && p.type === 'knight') return true;
+      }
+    }
+    // pawns: white pawns attack upward (r-1), black downward (r+1)
+    const pr = atk === 'white' ? r + 1 : r - 1;
+    for (const dc of [-1, 1]) {
+      const rr = pr, cc = c + dc;
+      if (inBounds(rr, cc)) {
+        const p = boardState[rr][cc];
+        if (p && p.color === atk && p.type === 'pawn') return true;
+      }
+    }
+    return false;
+  }
+
+  function inCheck(color) {
+    const kp = kingPos(color);
+    if (!kp) return false;
+    return isAttacked(kp.r, kp.c, color);
+  }
+
+  function pseudoLegal(r, c) {
+    const p = boardState[r][c];
+    if (!p) return [];
+    const moves = [];
+    const own = p.color;
+    const push = (rr, cc, extra) => { if (inBounds(rr, cc)) moves.push(Object.assign({ r: rr, c: cc }, extra)); };
+    const pushUntilBlocked = (dr, dc) => {
+      for (let s = 1; s < 8; s++) {
+        const rr = r + dr * s, cc = c + dc * s;
+        if (!inBounds(rr, cc)) break;
+        const q = boardState[rr][cc];
+        if (!q) { moves.push({ r: rr, c: cc }); continue; }
+        if (q.color !== own) moves.push({ r: rr, c: cc, capture: true });
+        break;
+      }
+    };
+    const dir = own === 'white' ? -1 : 1;
+    const startRow = own === 'white' ? 6 : 1;
+    switch (p.type) {
+      case 'pawn': {
+        const fr = r + dir, fc = c;
+        if (inBounds(fr, fc) && !boardState[fr][fc]) {
+          moves.push({ r: fr, c: fc });
+          const fr2 = r + 2 * dir;
+          if (r === startRow && inBounds(fr2, fc) && !boardState[fr2][fc]) moves.push({ r: fr2, c: fc, double: true });
+        }
+        for (const dc of [-1, 1]) {
+          const rr = r + dir, cc = c + dc;
+          if (inBounds(rr, cc)) {
+            const q = boardState[rr][cc];
+            if (q && q.color !== own) moves.push({ r: rr, c: cc, capture: true });
+            else if (enPassantTarget && enPassantTarget.r === rr && enPassantTarget.c === cc)
+              moves.push({ r: rr, c: cc, enPassant: true, capture: true });
+          }
+        }
+        break;
+      }
+      case 'knight': {
+        for (const [dr, dc] of [[1,2],[2,1],[2,-1],[1,-2],[-1,-2],[-2,-1],[-2,1],[-1,2]]) {
+          const rr = r + dr, cc = c + dc;
+          if (inBounds(rr, cc) && (!boardState[rr][cc] || boardState[rr][cc].color !== own))
+            moves.push({ r: rr, c: cc, capture: !!boardState[rr][cc] });
+        }
+        break;
+      }
+      case 'rook':  for (const [dr, dc] of [[1,0],[-1,0],[0,1],[0,-1]]) pushUntilBlocked(dr, dc); break;
+      case 'bishop':for (const [dr, dc] of [[1,1],[1,-1],[-1,1],[-1,-1]]) pushUntilBlocked(dr, dc); break;
+      case 'queen': for (const [dr, dc] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]) pushUntilBlocked(dr, dc); break;
+      case 'king': {
+        for (const [dr, dc] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]) {
+          const rr = r + dr, cc = c + dc;
+          if (inBounds(rr, cc) && (!boardState[rr][cc] || boardState[rr][cc].color !== own))
+            moves.push({ r: rr, c: cc, capture: !!boardState[rr][cc] });
+        }
+        const home = own === 'white' ? 7 : 0;
+        if (r === home && c === 4) {
+          const enemy = own === 'white' ? 'black' : 'white';
+          if (castling[own].k && boardState[home][5] === null && boardState[home][6] === null && boardState[home][7] &&
+              boardState[home][7].type === 'rook' && boardState[home][7].color === own &&
+              !isAttacked(4, home, enemy) && !isAttacked(5, home, enemy) && !isAttacked(6, home, enemy))
+            moves.push({ r: home, c: 6, castle: 'k' });
+          if (castling[own].q && boardState[home][3] === null && boardState[home][2] === null && boardState[home][1] === null &&
+              boardState[home][0] && boardState[home][0].type === 'rook' && boardState[home][0].color === own &&
+              !isAttacked(4, home, enemy) && !isAttacked(3, home, enemy) && !isAttacked(2, home, enemy))
+            moves.push({ r: home, c: 2, castle: 'q' });
+        }
+        break;
+      }
+    }
+    return moves;
+  }  function applyMove(r, c, mv) {
+    const p = boardState[r][c];
+    const target = mv.capture ? boardState[mv.r][mv.c] : null; // capture flag set by pseudoLegal
+    // Snapshot/advance the en-passant target so search (minimax) evaluates
+    // the hypothetical position, not the real game's stale state.
+    mv._prevEP = enPassantTarget;
+    enPassantTarget = mv.double ? { r: (r + mv.r) / 2, c: c } : null;
+    if (mv.enPassant) {
+      const pr = mv.r + (p.color === 'white' ? 1 : -1);
+      boardState[pr][mv.c] = null;
+    }
+    if (mv.castle === 'k') {
+      const home = p.color === 'white' ? 7 : 0;
+      boardState[home][5] = boardState[home][7];
+      boardState[home][7] = null;
+    }
+    if (mv.castle === 'q') {
+      const home = p.color === 'white' ? 7 : 0;
+      boardState[home][3] = boardState[home][0];
+      boardState[home][0] = null;
+    }
+    boardState[mv.r][mv.c] = p;
+    boardState[r][c] = null;
+    return target;
+  }  function undoMove(r, c, mv, target) {
+    const p = boardState[mv.r][mv.c];
+    boardState[r][c] = p;
+    boardState[mv.r][mv.c] = target !== undefined ? target : null;
+    if ('_prevEP' in mv) { enPassantTarget = mv._prevEP; delete mv._prevEP; }
+    if (mv.enPassant) { const pr = mv.r + (p.color === 'white' ? 1 : -1); boardState[pr][mv.c] = { type: 'pawn', color: p.color === 'white' ? 'black' : 'white' }; }
+    if (mv.castle === 'k') {
+      const home = p.color === 'white' ? 7 : 0;
+      boardState[home][7] = boardState[home][5];
+      boardState[home][5] = null;
+    }
+    if (mv.castle === 'q') {
+      const home = p.color === 'white' ? 7 : 0;
+      boardState[home][0] = boardState[home][3];
+      boardState[home][3] = null;
+    }
+  }
+
+  function legalFrom(r, c) {
+    const p = boardState[r][c];
+    if (!p) return [];
+    const out = [];
+    for (const mv of pseudoLegal(r, c)) {
+      const target = applyMove(r, c, mv);
+      const ok = !inCheck(p.color);
+      undoMove(r, c, mv, target);
+      if (ok) out.push(mv);
+    }
+    return out;
+  }
+
+  function allLegal(color) {
+    const list = [];
+    for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
+      const p = boardState[r][c];
+      if (p && p.color === color) {
+        for (const mv of legalFrom(r, c)) list.push({ r, c, mv });
+      }
+    }
+    return list;
+  }
+
+  function evaluate() {
+    const VAL = { pawn: 100, knight: 320, bishop: 330, rook: 500, queen: 900, king: 20000 };
+    let s = 0;
+    for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
+      const p = boardState[r][c];
+      if (p) s += VAL[p.type] * (p.color === 'white' ? 1 : -1);
+    }
+    return s;
+  }
+
+  // minimax depth 2
+  function minimax(depth, isMax) {
+    if (gameOver) return 0;
+    const color = isMax ? 'white' : 'black';
+    const moves = allLegal(color);
+    if (moves.length === 0) return isMax ? -99999 : 99999; // mated
+    if (depth === 0) return evaluate();
+    let best = isMax ? -Infinity : Infinity;
+    for (const { r, c, mv } of moves) {
+      const target = applyMove(r, c, mv);
+      const v = minimax(depth - 1, !isMax);
+      undoMove(r, c, mv, target);
+      if (isMax) best = Math.max(best, v); else best = Math.min(best, v);
+    }
+    return best;
+  }
+
+  function aiMove() {
+    const moves = allLegal('black');
+    if (moves.length === 0) return null;
+    let best = null, bestV = -Infinity;
+    for (const m of moves) {
+      const target = applyMove(m.r, m.c, m.mv);
+      const v = minimax(1, true);
+      undoMove(m.r, m.c, m.mv, target);
+      if (v > bestV) { bestV = v; best = m; }
+    }
+    return best;
+  }
+
+  // ── 3D pieces + animations ──────────────────────────────────────────────
+  const meshes = {};   // "r,c" -> THREE.Group
+  const highlights = [];
+  const anims = [];    // {mesh, from, to, t, dur, onDone, captureMesh}
+
+  function squarePos(r, c) { return { x: c - 3.5, y: 0, z: r - 3.5 }; }
+
+  function syncPieces(animate = false) {
+    // remove anything not on the board (captured meshes are removed by anim)
+    for (const key of Object.keys(meshes)) {
+      const [r, c] = key.split(',').map(Number);
+      const p = boardState[r] && boardState[r][c];
+      if (!p) { scene.remove(meshes[key]); delete meshes[key]; }
+    }
+    for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
+      const p = boardState[r][c];
+      if (!p) continue;
+      const key = r + ',' + c;
+      if (!meshes[key]) {
+        const mesh = makePiece(p.type, p.color);
+        mesh.userData = { r, c, color: p.color };
+        const pos = squarePos(r, c);
+        mesh.position.set(pos.x, pos.y, pos.z);
+        scene.add(mesh);
+        meshes[key] = mesh;
+      }
+    }
+  }
+
+  function animateMove(from, to, mv, captured) {
+    const fk = from.r + ',' + from.c;
+    const mesh = meshes[fk];
+    if (!mesh) return;
+    const p0 = squarePos(from.r, from.c);
+    const p1 = squarePos(to.r, to.c);
+    mesh.position.set(p0.x, p0.y, p0.z);
+    const entry = { mesh, from: p0, to: p1, t: 0, dur: 420 };
+    entry.onDone = () => {
+      delete meshes[fk];
+      const nk = to.r + ',' + to.c;
+      mesh.userData.r = to.r; mesh.userData.c = to.c;
+      meshes[nk] = mesh;
+      if (mv.castle === 'k') {
+        const home = mesh.userData.color === 'white' ? 7 : 0;
+        const rk = home + ',7', rn = home + ',5';
+        const rook = meshes[rk];
+        if (rook) {
+          delete meshes[rk]; rook.userData.c = 5; meshes[rn] = rook;
+          const rp1 = squarePos(home, 5);
+          rook.position.set(rp1.x, rp1.y, rp1.z);
+        }
+      }
+      if (mv.castle === 'q') {
+        const home = mesh.userData.color === 'white' ? 7 : 0;
+        const rk = home + ',0', rn = home + ',3';
+        const rook = meshes[rk];
+        if (rook) {
+          delete meshes[rk]; rook.userData.c = 3; meshes[rn] = rook;
+          const rp1 = squarePos(home, 3);
+          rook.position.set(rp1.x, rp1.y, rp1.z);
+        }
+      }
+    };
+    anims.push(entry);
+    if (captured && captured.mesh) {
+      const capMesh = captured.mesh;
+      capMesh.position.set(p1.x, p1.y, p1.z);
+      anims.push({
+        mesh: capMesh, from: { x: p1.x, y: p1.y, z: p1.z },
+        to: { x: p1.x, y: 2.6, z: p1.z }, t: 0, dur: 320,
+        onDone: () => { scene.remove(capMesh); },
+      });
+    }
+  }
+
+  function easeInOut(k) { return k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2; }
+
+  // ── Highlights ──────────────────────────────────────────────────────────
+  const HL_MAT = new THREE.MeshBasicMaterial({ color: 0x3ddc84, transparent: true, opacity: 0.42, depthWrite: false });
+  const HL_MAT_CAP = new THREE.MeshBasicMaterial({ color: 0xff5a5a, transparent: true, opacity: 0.5, depthWrite: false });
+  const SEL_MAT = new THREE.MeshBasicMaterial({ color: 0x4aa3ff, transparent: true, opacity: 0.55, depthWrite: false });
+
+  function clearHighlights() {
+    for (const h of highlights) scene.remove(h);
+    highlights.length = 0;
+  }
+  function highlightSquare(r, c, mat, y = 0.02) {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.9), mat);
+    const pos = squarePos(r, c);
+    m.position.set(pos.x, y, pos.z);
+    m.rotation.x = -Math.PI / 2;
+    scene.add(m);
+    highlights.push(m);
+  }
+  function showMoves(moves) {
+    clearHighlights();
+    const sel = selected ? boardState[selected.r][selected.c] : null;
+    for (const mv of moves) {
+      const occ = boardState[mv.r][mv.c];
+      const isEnPassant = !!mv.enPassant;
+      if (occ || isEnPassant) highlightSquare(mv.r, mv.c, HL_MAT_CAP);
+      else highlightSquare(mv.r, mv.c, HL_MAT);
+    }
+    if (sel) highlightSquare(sel.r, sel.c, SEL_MAT, 0.03);
+    // red danger square under a checked king
+    if (inCheck(turn)) {
+      const kp = kingPos(turn);
+      if (kp) highlightSquare(kp.r, kp.c, HL_MAT_CAP, 0.03);
+    }
+  }
+
+  // ── Picking ─────────────────────────────────────────────────────────────
+  const raycaster = new THREE.Raycaster();
+  const pointer = new THREE.Vector2();
+  const pickPlane = new THREE.Mesh(
+    new THREE.PlaneGeometry(8, 8),
+    new THREE.MeshBasicMaterial({ visible: false })
+  );
+  pickPlane.rotation.x = -Math.PI / 2;
+  scene.add(pickPlane);
+
+  function pickSquare(e) {
+    const rect = renderer.domElement.getBoundingClientRect();
+    pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    raycaster.setFromCamera(pointer, camera);
+    const hit = raycaster.intersectObject(pickPlane)[0];
+    if (!hit) return null;
+    const c = Math.round(hit.point.x + 3.5);
+    const r = Math.round(hit.point.z + 3.5);
+    if (!inBounds(r, c)) return null;
+    return { r, c };
+  }
+
+  let pendingAi = false;
+  renderer.domElement.addEventListener('pointerdown', (e) => {
+    if (gameOver || pendingAi) return;
+    const sq = pickSquare(e);
+    if (!sq) return;
+    const { r, c } = sq;
+    const p = boardState[r][c];
+    if (selected) {
+      const mv = legalMoves.find(m => m.r === r && m.c === c);
+      if (mv) { doMove(selected.r, selected.c, mv); return; }
+    }
+    if (p && p.color === turn) {
+      selected = { r, c };
+      legalMoves = legalFrom(r, c);
+      showMoves(legalMoves);
+    } else {
+      selected = null; legalMoves = []; clearHighlights();
+      if (inCheck(turn)) showMoves([]); // keep check marker
+    }
+  });
+
+  // ── Move execution ──────────────────────────────────────────────────────
+  function afterMove() {
+    const opp = turn === 'white' ? 'black' : 'white';
+    const kp = kingPos(opp);
+    const oppMoves = allLegal(opp);
+    if (oppMoves.length === 0) {
+      status = inCheck(opp) ? 'CHECKMATE — ' + turn.toUpperCase() + ' wins! 🏆' : 'STALEMATE — draw';
+      gameOver = true;
+      showMoves([]);
+    } else if (inCheck(opp)) {
+      status = 'Check!';
+    } else {
+      status = '';
+    }
+    document.getElementById('turn').textContent = turn[0].toUpperCase() + turn.slice(1) + ' to move';
+    document.getElementById('status').textContent = status;
+  }
+
+  function doMove(r, c, mv) {
+    const p = boardState[r][c];
+    if (!p) return;
+    // capture mesh bookkeeping
+    let captured = null;
+    if (boardState[mv.r][mv.c]) captured = { mesh: meshes[mv.r + ',' + mv.c] };
+    if (mv.enPassant) {
+      const pr = mv.r + (p.color === 'white' ? 1 : -1);
+      const ck = pr + ',' + mv.c;
+      if (meshes[ck]) { captured = { mesh: meshes[ck] }; delete meshes[ck]; }
+    }
+    if (mv.castle === 'k') castling[p.color].k = false;
+    if (mv.castle === 'q') castling[p.color].q = false;
+    if (p.type === 'rook') {
+      if (c === 0) castling[p.color].q = false;
+      if (c === 7) castling[p.color].k = false;
+    }
+    if (p.type === 'king') { castling[p.color].k = castling[p.color].q = false; }
+
+    // A rook captured on its home square also loses that side's castling right.
+    if (captured && captured.mesh) {
+      const capR = mv.enPassant ? mv.r + (p.color === 'white' ? 1 : -1) : mv.r;
+      const capPiece = boardState[capR] && boardState[capR][mv.c];
+      if (capPiece && capPiece.type === 'rook') {
+        if (mv.c === 0) castling[capPiece.color].q = false;
+        if (mv.c === 7) castling[capPiece.color].k = false;
+      }
+    }
+    // (enPassantTarget advance/restore is handled inside applyMove/undoMove)
+
+    // promotion (auto-queen)
+    if (p.type === 'pawn' && (mv.r === 0 || mv.r === 7)) {
+      p.type = 'queen';
+      // rebuild the mesh to a queen
+      const key = r + ',' + c;
+      if (meshes[key]) { scene.remove(meshes[key]); delete meshes[key]; }
+      const mesh = makePiece('queen', p.color);
+      mesh.userData = { r, c, color: p.color };
+      const pos = squarePos(r, c);
+      mesh.position.set(pos.x, pos.y, pos.z);
+      scene.add(mesh);
+      meshes[key] = mesh;
+      animateMove({ r, c }, mv, mv, captured);
+    } else {
+      animateMove({ r, c }, mv, mv, captured);
+    }
+
+    applyMove(r, c, mv);
+    clearHighlights();
+    selected = null; legalMoves = [];
+
+    turn = turn === 'white' ? 'black' : 'white';
+    afterMove();
+
+    // AI reply (black) after the human's animation finishes
+    if (turn === 'black' && !gameOver && !document.getElementById('twoPlayer').checked) {
+      pendingAi = true;
+      setTimeout(() => {
+        const ai = aiMove();
+        if (ai) doMove(ai.r, ai.c, ai.mv);
+        pendingAi = false;
+      }, 500);
+    }
+  }
+
+  // ── Intro sweep + loop ──────────────────────────────────────────────────
+  const introFrom = { x: 20, y: 18, z: 20 };
+  let introT = 0;
+  function animate() {
+    requestAnimationFrame(animate);
+    if (introT < 1) {
+      introT = Math.min(1, introT + 0.012);
+      const k = easeInOut(introT);
+      camera.position.set(
+        introFrom.x + (11.5 - introFrom.x) * k,
+        introFrom.y + (9.5 - introFrom.y) * k,
+        introFrom.z + (12.5 - introFrom.z) * k
+      );
+    }
+    for (let i = anims.length - 1; i >= 0; i--) {
+      const a = anims[i];
+      a.t += 16.67 / a.dur;
+      const k = easeInOut(Math.min(a.t, 1));
+      a.mesh.position.lerpVectors(a.from, a.to, k);
+      if (a.t >= 1) { if (a.onDone) a.onDone(); anims.splice(i, 1); }
+    }
+    controls.update();
+    renderer.render(scene, camera);
+  }
+
+  // ── UI wiring ───────────────────────────────────────────────────────────
+  function newGame() {
+    resetState();
+    clearHighlights();
+    for (const key of Object.keys(meshes)) { scene.remove(meshes[key]); delete meshes[key]; }
+    anims.length = 0;
+    syncPieces();
+    document.getElementById('turn').textContent = 'White to move';
+    document.getElementById('status').textContent = '';
+    introT = 0;
+  }
+  document.getElementById('newGame').addEventListener('click', newGame);
+  document.getElementById('twoPlayer').addEventListener('change', () => { if (!gameOver) newGame(); });
+
+  window.addEventListener('resize', () => {
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+
+  // ── Go ──────────────────────────────────────────────────────────────────
+  resetState();
+  syncPieces();
+  animate();
+
+  // ── Test/automation hook (used by the render smoke-test gate) ───────────
+  window.__vaca3d = {
+    newGame: newGame,
+    // Attempt a legal move (r1,c1) -> (r2,c2); returns true if it was played.
+    move: function (r1, c1, r2, c2) {
+      if (gameOver) return false;
+      const mv = legalFrom(r1, c1).find(function (m) { return m.r === r2 && m.c === c2; });
+      if (!mv) return false;
+      doMove(r1, c1, mv);
+      return true;
+    },
+    state: function () { return { turn: turn, status: status, gameOver: gameOver }; },
+  };
+})();
+</script>
+</body>
+</html>

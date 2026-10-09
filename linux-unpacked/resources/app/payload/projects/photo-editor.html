@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Photo Editor</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+  min-height: 100vh;
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+.container { max-width: 1000px; width: 100%; }
+h1 { color: #00d9ff; font-size: 1.5rem; text-align: center; margin-bottom: 4px; }
+.subtitle { color: #666; font-size: 0.8rem; text-align: center; margin-bottom: 12px; }
+.layout { display: flex; gap: 12px; }
+@media (max-width: 700px) { .layout { flex-direction: column; } }
+/* Sidebar */
+.sidebar {
+  width: 220px;
+  background: linear-gradient(145deg, #1a1a2e, #1e1e3a);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 16px;
+  flex-shrink: 0;
+  max-height: 600px;
+  overflow-y: auto;
+}
+.sidebar h3 { color: #888; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; margin-top: 12px; }
+.sidebar h3:first-child { margin-top: 0; }
+.slider-group { margin-bottom: 10px; }
+.slider-group .slider-header { display: flex; justify-content: space-between; font-size: 0.75rem; color: #888; margin-bottom: 2px; }
+.slider-group .slider-header .val { color: #00d9ff; }
+.slider-group input[type="range"] { width: 100%; accent-color: #00d9ff; }
+.filter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.filter-btn {
+  padding: 6px;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 6px;
+  background: rgba(255,255,255,0.03);
+  color: #888;
+  cursor: pointer;
+  font-size: 0.7rem;
+  text-align: center;
+  transition: 0.1s;
+  font-family: inherit;
+}
+.filter-btn:hover { border-color: #00d9ff; color: #ccc; }
+.filter-btn.active { border-color: #00d9ff; background: rgba(0,217,255,0.1); color: #00d9ff; }
+.sidebar .btn {
+  width: 100%;
+  padding: 8px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: 0.15s;
+  margin-top: 4px;
+}
+.btn-primary { background: linear-gradient(135deg, #00d9ff, #0099ff); color: #0f0f1a; }
+.btn-primary:hover { box-shadow: 0 2px 10px rgba(0,217,255,0.3); }
+.btn-secondary { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); color: #aaa; }
+.btn-secondary:hover { background: rgba(255,255,255,0.1); }
+.btn-reset { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.2); color: #f87171; }
+.btn-reset:hover { background: rgba(248,113,113,0.2); }
+/* Canvas */
+.canvas-area {
+  flex: 1;
+  background: linear-gradient(145deg, #1a1a2e, #1e1e3a);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 450px;
+}
+.canvas-area canvas {
+  max-width: 100%;
+  max-height: 500px;
+  border-radius: 8px;
+  image-rendering: auto;
+}
+.canvas-area .drop-area {
+  border: 2px dashed rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 60px 40px;
+  text-align: center;
+  cursor: pointer;
+  transition: 0.2s;
+  width: 100%;
+}
+.canvas-area .drop-area:hover { border-color: #00d9ff; background: rgba(0,217,255,0.02); }
+.canvas-area .drop-area .icon { font-size: 3rem; margin-bottom: 12px; }
+.canvas-area .drop-area .text { color: #888; font-size: 0.85rem; }
+.canvas-area .drop-area .sub { color: #555; font-size: 0.7rem; margin-top: 4px; }
+/* History */
+.history-bar { display: flex; gap: 6px; margin-top: 8px; width: 100%; justify-content: center; }
+.history-bar .btn-sm {
+  padding: 4px 10px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 4px;
+  background: rgba(255,255,255,0.04);
+  color: #666;
+  cursor: pointer;
+  font-size: 0.65rem;
+  font-family: inherit;
+}
+.history-bar .btn-sm:hover { color: #aaa; }
+/* Info */
+.image-info { font-size: 0.7rem; color: #555; text-align: center; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🖼️ Photo Editor</h1>
+  <p class="subtitle">Apply filters, adjust colors, and enhance images</p>
+  <div class="layout">
+    <div class="sidebar">
+      <h3>📁 File</h3>
+      <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">📤 Open Image</button>
+      <button class="btn btn-secondary" onclick="downloadImage()">💾 Save</button>
+      <input type="file" id="fileInput" accept="image/*" style="display:none" onchange="loadImage(event)">
+      
+      <h3>🎨 Adjustments</h3>
+      <div class="slider-group">
+        <div class="slider-header"><span>Brightness</span><span class="val" id="brightnessVal">0</span></div>
+        <input type="range" min="-100" max="100" value="0" id="brightness" oninput="applyFilters()">
+      </div>
+      <div class="slider-group">
+        <div class="slider-header"><span>Contrast</span><span class="val" id="contrastVal">0</span></div>
+        <input type="range" min="-100" max="100" value="0" id="contrast" oninput="applyFilters()">
+      </div>
+      <div class="slider-group">
+        <div class="slider-header"><span>Saturation</span><span class="val" id="saturationVal">0</span></div>
+        <input type="range" min="-100" max="100" value="0" id="saturation" oninput="applyFilters()">
+      </div>
+      <div class="slider-group">
+        <div class="slider-header"><span>Blur</span><span class="val" id="blurVal">0</span></div>
+        <input type="range" min="0" max="10" value="0" step="0.5" id="blur" oninput="applyFilters()">
+      </div>
+      
+      <h3>🌈 Filters</h3>
+      <div class="filter-grid" id="filterGrid">
+        <button class="filter-btn active" data-filter="none" onclick="setFilter('none')">None</button>
+        <button class="filter-btn" data-filter="grayscale" onclick="setFilter('grayscale')">Grayscale</button>
+        <button class="filter-btn" data-filter="sepia" onclick="setFilter('sepia')">Sepia</button>
+        <button class="filter-btn" data-filter="invert" onclick="setFilter('invert')">Invert</button>
+        <button class="filter-btn" data-filter="warm" onclick="setFilter('warm')">Warm</button>
+        <button class="filter-btn" data-filter="cool" onclick="setFilter('cool')">Cool</button>
+        <button class="filter-btn" data-filter="vintage" onclick="setFilter('vintage')">Vintage</button>
+        <button class="filter-btn" data-filter="dramatic" onclick="setFilter('dramatic')">Dramatic</button>
+      </div>
+      
+      <h3>⚙️ Actions</h3>
+      <div style="display:flex;gap:4px">
+        <button class="btn btn-secondary" style="flex:1" onclick="rotateImage(-90)">↩ Rotate</button>
+        <button class="btn btn-secondary" style="flex:1" onclick="flipImage()">↔ Flip</button>
+      </div>
+      <button class="btn btn-reset" onclick="resetAll()">↺ Reset All</button>
+    </div>
+    <div class="canvas-area">
+      <div id="dropArea" class="drop-area" onclick="document.getElementById('fileInput').click()">
+        <div class="icon">🖼️</div>
+        <div class="text">Drop an image here or click to browse</div>
+        <div class="sub">Supports JPG, PNG, GIF, WebP</div>
+      </div>
+      <canvas id="canvas" style="display:none"></canvas>
+      <div class="history-bar" id="historyBar" style="display:none">
+        <button class="btn-sm" onclick="undo()">↩ Undo</button>
+        <button class="btn-sm" onclick="redo()">↪ Redo</button>
+        <span id="zoomInfo" style="font-size:0.65rem;color:#555;margin-left:8px;"></span>
+      </div>
+      <div class="image-info" id="imageInfo"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let originalImage = null;
+let currentFilter = 'none';
+let historyStack = [];
+let redoStack = [];
+let imageLoaded = false;
+
+function loadImage(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const img = new Image();
+  img.onload = () => {
+    originalImage = img;
+    canvas.width = Math.min(img.width, 800);
+    canvas.height = Math.min(img.height, 600);
+    imageLoaded = true;
+    document.getElementById('dropArea').style.display = 'none';
+    canvas.style.display = 'block';
+    document.getElementById('historyBar').style.display = 'flex';
+    document.getElementById('imageInfo').textContent = `${img.width} × ${img.height}px · ${file.name}`;
+    historyStack = []; redoStack = [];
+    saveState();
+    applyFilters();
+  };
+  img.src = URL.createObjectURL(file);
+  e.target.value = '';
+}
+
+function saveState() {
+  historyStack.push(canvas.toDataURL());
+  if (historyStack.length > 20) historyStack.shift();
+  redoStack = [];
+}
+
+function undo() {
+  if (historyStack.length <= 1) return;
+  redoStack.push(historyStack.pop());
+  const prev = historyStack[historyStack.length - 1];
+  const img = new Image();
+  img.onload = () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0);
+  };
+  img.src = prev;
+}
+
+function redo() {
+  if (redoStack.length === 0) return;
+  const next = redoStack.pop();
+  historyStack.push(next);
+  const img = new Image();
+  img.onload = () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0);
+  };
+  img.src = next;
+}
+
+function applyFilters() {
+  if (!originalImage) return;
+  const brightness = parseInt(document.getElementById('brightness').value);
+  const contrast = parseInt(document.getElementById('contrast').value);
+  const saturation = parseInt(document.getElementById('saturation').value);
+  const blur = parseFloat(document.getElementById('blur').value);
+  
+  document.getElementById('brightnessVal').textContent = brightness;
+  document.getElementById('contrastVal').textContent = contrast;
+  document.getElementById('saturationVal').textContent = saturation;
+  document.getElementById('blurVal').textContent = blur;
+  
+  // Draw original
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(originalImage, 0, 0, canvas.width, canvas.height);
+  
+  // Get image data
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+  
+  // Apply adjustments pixel by pixel
+  for (let i = 0; i < data.length; i += 4) {
+    let r = data[i], g = data[i+1], b = data[i+2];
+    
+    // Brightness
+    if (brightness !== 0) {
+      const bFactor = 1 + brightness / 100;
+      r *= bFactor; g *= bFactor; b *= bFactor;
+    }
+    
+    // Contrast
+    if (contrast !== 0) {
+      const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+      r = factor * (r - 128) + 128;
+      g = factor * (g - 128) + 128;
+      b = factor * (b - 128) + 128;
+    }
+    
+    // Saturation
+    if (saturation !== 0) {
+      const gray = 0.2989 * r + 0.5870 * g + 0.1140 * b;
+      const sFactor = 1 + saturation / 100;
+      r = gray + sFactor * (r - gray);
+      g = gray + sFactor * (g - gray);
+      b = gray + sFactor * (b - gray);
+    }
+    
+    // Filter presets
+    if (currentFilter === 'grayscale') {
+      const gray = 0.2989 * r + 0.5870 * g + 0.1140 * b;
+      r = g = b = gray;
+    } else if (currentFilter === 'sepia') {
+      r = r * 0.393 + g * 0.769 + b * 0.189;
+      g = r * 0.349 + g * 0.686 + b * 0.168;
+      b = r * 0.272 + g * 0.534 + b * 0.131;
+    } else if (currentFilter === 'invert') {
+      r = 255 - r; g = 255 - g; b = 255 - b;
+    } else if (currentFilter === 'warm') {
+      r *= 1.15; b *= 0.85;
+    } else if (currentFilter === 'cool') {
+      b *= 1.15; r *= 0.85;
+    } else if (currentFilter === 'vintage') {
+      r = r * 0.9 + 30; g = g * 0.85 + 15; b = b * 0.75;
+    } else if (currentFilter === 'dramatic') {
+      r = r > 128 ? Math.min(255, r * 1.3) : r * 0.7;
+      g = g > 128 ? Math.min(255, g * 1.3) : g * 0.7;
+      b = b > 128 ? Math.min(255, b * 1.3) : b * 0.7;
+    }
+    
+    data[i] = Math.max(0, Math.min(255, r));
+    data[i+1] = Math.max(0, Math.min(255, g));
+    data[i+2] = Math.max(0, Math.min(255, b));
+  }
+  
+  ctx.putImageData(imageData, 0, 0);
+  
+  // Apply blur as CSS filter on top
+  canvas.style.filter = blur > 0 ? `blur(${blur}px)` : 'none';
+}
+
+function setFilter(filter) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', b.dataset.filter === filter));
+  applyFilters();
+}
+
+function rotateImage(deg) {
+  if (!originalImage) return;
+  const tempCanvas = document.createElement('canvas');
+  const tempCtx = tempCanvas.getContext('2d');
+  tempCanvas.width = canvas.height;
+  tempCanvas.height = canvas.width;
+  tempCtx.translate(tempCanvas.width / 2, tempCanvas.height / 2);
+  tempCtx.rotate(deg * Math.PI / 180);
+  tempCtx.drawImage(canvas, -canvas.width / 2, -canvas.height / 2);
+  
+  canvas.width = tempCanvas.width;
+  canvas.height = tempCanvas.height;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(tempCanvas, 0, 0);
+  
+  // Update original
+  const newImg = new Image();
+  newImg.src = canvas.toDataURL();
+  originalImage = newImg;
+  saveState();
+}
+
+function flipImage() {
+  if (!originalImage) return;
+  ctx.save();
+  ctx.translate(canvas.width, 0);
+  ctx.scale(-1, 1);
+  ctx.drawImage(canvas, 0, 0);
+  ctx.restore();
+  // Update original
+  const newImg = new Image();
+  newImg.src = canvas.toDataURL();
+  originalImage = newImg;
+  saveState();
+}
+
+function resetAll() {
+  if (!originalImage) return;
+  document.getElementById('brightness').value = 0;
+  document.getElementById('contrast').value = 0;
+  document.getElementById('saturation').value = 0;
+  document.getElementById('blur').value = 0;
+  setFilter('none');
+  canvas.style.filter = 'none';
+  applyFilters();
+  saveState();
+}
+
+function downloadImage() {
+  if (!imageLoaded) return;
+  const link = document.createElement('a');
+  link.download = 'edited-image.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+</script>
+</body>
+</html>

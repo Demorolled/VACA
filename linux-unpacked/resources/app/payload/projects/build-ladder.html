@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VACA Build Ladder — 55 Real Apps, Built &amp; Tested</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: radial-gradient(1200px 800px at 20% -10%, #1b1035 0%, #0f0f1a 55%, #0a0a12 100%);
+  color: #d0d0e0; min-height: 100vh; padding: 24px 16px 80px; line-height: 1.6;
+}
+.wrap { max-width: 1180px; margin: 0 auto; }
+header { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; flex-wrap: wrap; }
+h1 { font-size: 22px; color: #fff; letter-spacing: .3px; }
+h1 .grad { background: linear-gradient(90deg,#a78bfa,#f472b6); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.sub { color: #8b8ba3; font-size: 13px; margin-bottom: 18px; }
+.chips { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0 18px; }
+.chip {
+  background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1);
+  border-radius: 10px; padding: 8px 14px; font-size: 13px;
+}
+.chip b { display: block; font-size: 19px; color: #fff; }
+.chip.green b { color: #4ade80; } .chip.red b { color: #f87171; } .chip.amber b { color: #fbbf24; }
+.toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+.tab {
+  background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12); color: #c4c4d8;
+  padding: 6px 14px; border-radius: 999px; cursor: pointer; font-size: 13px; transition: all .15s;
+}
+.tab:hover { background: rgba(255,255,255,.1); }
+.tab.active { background: #7c3aed; border-color: #7c3aed; color: #fff; }
+input.search {
+  flex: 1; min-width: 200px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12);
+  border-radius: 999px; padding: 7px 16px; color: #eee; font-size: 13px; outline: none;
+}
+input.search:focus { border-color: #7c3aed; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; }
+.card {
+  background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.09); border-radius: 14px;
+  padding: 14px 16px; transition: transform .15s, border-color .15s; display: flex; flex-direction: column; gap: 8px;
+}
+.card:hover { transform: translateY(-2px); border-color: rgba(255,255,255,.2); }
+.card .top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.id { font-family: 'Consolas', monospace; font-weight: 700; font-size: 13px; color: #c4b5fd; background: rgba(124,58,237,.18); padding: 2px 8px; border-radius: 6px; }
+.lvl { font-size: 10px; text-transform: uppercase; letter-spacing: .8px; padding: 2px 7px; border-radius: 5px; font-weight: 700; }
+.lvl.simple { background: rgba(74,222,128,.15); color: #4ade80; }
+.lvl.hard { background: rgba(251,191,36,.15); color: #fbbf24; }
+.lvl.extreme { background: rgba(248,113,113,.15); color: #f87171; }
+.lang { font-size: 11px; color: #8b8ba3; border: 1px solid rgba(255,255,255,.12); padding: 1px 7px; border-radius: 5px; }
+.outcome { margin-left: auto; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 6px; }
+.outcome.pass { background: rgba(74,222,128,.15); color: #4ade80; }
+.outcome.fail { background: rgba(248,113,113,.18); color: #f87171; }
+.outcome.patch { background: rgba(167,139,250,.18); color: #c4b5fd; }
+.request { font-size: 13px; color: #d8d8ea; }
+.meta { font-size: 11px; color: #7c7c96; }
+.detail { font-size: 12px; background: rgba(0,0,0,.25); border-radius: 8px; padding: 8px 10px; color: #b8b8cc; max-height: 90px; overflow: auto; }
+.actions { display: flex; gap: 8px; margin-top: auto; }
+.btn {
+  background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14); color: #d0d0e0;
+  padding: 5px 12px; border-radius: 8px; cursor: pointer; font-size: 12px; transition: all .15s;
+}
+.btn:hover { background: rgba(255,255,255,.14); }
+.btn.primary { background: #7c3aed; border-color: #7c3aed; color: #fff; }
+.btn.primary:hover { background: #8b5cf6; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+#modal {
+  position: fixed; inset: 0; background: rgba(0,0,0,.7); display: none; align-items: center; justify-content: center; z-index: 50; padding: 20px;
+}
+#modal.open { display: flex; }
+#modalBox {
+  background: #14141f; border: 1px solid rgba(255,255,255,.15); border-radius: 16px; max-width: 900px; width: 100%;
+  max-height: 85vh; display: flex; flex-direction: column; overflow: hidden;
+}
+#modalHead { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid rgba(255,255,255,.1); }
+#modalHead h3 { color: #fff; font-size: 15px; flex: 1; }
+#modalBody { padding: 14px 18px; overflow: auto; font-size: 12.5px; }
+#modalBody pre { background: #0c0c15; border: 1px solid rgba(255,255,255,.08); border-radius: 8px; padding: 10px; overflow: auto; margin-top: 8px; font-size: 11.5px; color: #c4d3e0; }
+#retestResult { margin-top: 10px; padding: 10px; border-radius: 8px; font-size: 12.5px; }
+#retestResult.ok { background: rgba(74,222,128,.12); color: #86efac; }
+#retestResult.bad { background: rgba(248,113,113,.12); color: #fca5a5; }
+.statusline { display: flex; gap: 16px; color: #7c7c96; font-size: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+.statusline .live { color: #4ade80; }
+.empty { text-align: center; color: #8b8ba3; padding: 40px 0; font-size: 14px; }
+a { color: #a78bfa; text-decoration: none; } a:hover { text-decoration: underline; }
+footer { margin-top: 30px; color: #6b6b85; font-size: 12px; display: flex; gap: 20px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><span class="grad">VACA Build Ladder</span> — 55 Real Apps, Built &amp; Full-Tested</h1>
+  </header>
+  <div class="sub">Every app was generated through VACA's real plan-code → write-code pipeline, executed for real (Python runs, Node HTTP checks, headless-Chromium browser tests), repaired on failure, and recorded into the next-round training dataset.</div>
+
+  <div class="chips" id="chips"></div>
+  <div class="statusline" id="status"></div>
+
+  <div class="toolbar">
+    <button class="tab active" data-filter="all">All</button>
+    <button class="tab" data-filter="simple">Simple</button>
+    <button class="tab" data-filter="hard">Hard</button>
+    <button class="tab" data-filter="extreme">Extreme</button>
+    <button class="tab" data-filter="fails">Fails</button>
+    <button class="tab" data-filter="repaired">Repaired</button>
+    <input class="search" id="search" placeholder="Search builds… (e.g. chat, snake, password)">
+  </div>
+
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty" style="display:none;">No builds match.</div>
+</div>
+
+<div id="modal">
+  <div id="modalBox">
+    <div id="modalHead"><h3 id="modalTitle"></h3><button class="btn" onclick="closeModal()">✕ Close</button></div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+let DATA = null;
+let filter = 'all';
+let query = '';
+
+async function load() {
+  try {
+    const r = await fetch('/api/build-ladder/state');
+    if (!r.ok) throw new Error('state API returned ' + r.status);
+    DATA = await r.json();
+    render();
+  } catch (e) {
+    document.getElementById('grid').innerHTML =
+      '<div class="empty">⚠️ Could not load build-ladder state: ' + e.message +
+      '<br>Run the operator first: <code>python3 training/operator/run_operator.py</code></div>';
+  }
+}
+
+function chips() {
+  const s = DATA.summary || {};
+  const byLevel = s.by_level || {};
+  const fixes = (DATA.fixes || []).filter(f => f.passed_after_repair).length;
+  return `
+    <div class="chip green"><b>${s.total_done ?? '—'}</b>built</div>
+    <div class="chip green"><b>${s.passed ?? '—'}</b>fresh PASS</div>
+    <div class="chip red"><b>${s.failed ?? '—'}</b>FAIL</div>
+    <div class="chip amber"><b>${fixes}</b>recorded corrections</div>
+    <div class="chip"><b>${byLevel.simple?.passed ?? 0}/${byLevel.simple?.done ?? 0}</b>simple</div>
+    <div class="chip"><b>${byLevel.hard?.passed ?? 0}/${byLevel.hard?.done ?? 0}</b>hard</div>
+    <div class="chip"><b>${byLevel.extreme?.passed ?? 0}/${byLevel.extreme?.done ?? 0}</b>extreme</div>
+    <div class="chip"><b>${(DATA.fixes || []).length}</b>datasheet fixes</div>`;
+}
+
+function outcomeClass(b) {
+  if (b.passed && b.repairs) return 'patch';
+  return b.passed ? 'pass' : 'fail';
+}
+function outcomeLabel(b) {
+  if (b.passed && b.repairs) return `PASS +${b.repairs} repair${b.repairs > 1 ? 's' : ''}`;
+  return b.passed ? 'PASS' : 'FAIL';
+}
+
+function fixFor(id) {
+  return (DATA.fixes || []).filter(f => f.id === id);
+}
+
+function render() {
+  document.getElementById('chips').innerHTML = chips();
+  document.getElementById('status').innerHTML =
+    `<span>Updated ${DATA.updated}</span>` +
+    `<span>Dataset: <a href="/api/build-ladder/dataset" target="_blank">round9-buildladder.jsonl</a></span>` +
+    `<span class="live">● API live</span>`;
+
+  let list = (DATA.builds || []).slice();
+  if (filter === 'fails') list = list.filter(b => !b.passed);
+  else if (filter === 'repaired') list = list.filter(b => b.passed && (b.repairs || b.autoPatch));
+  else if (filter !== 'all') list = list.filter(b => b.level === filter);
+  if (query) {
+    const q = query.toLowerCase();
+    list = list.filter(b => (b.request || '').toLowerCase().includes(q) || (b.id || '').toLowerCase().includes(q));
+  }
+  document.getElementById('empty').style.display = list.length ? 'none' : 'block';
+  document.getElementById('grid').innerHTML = list.map(cardHtml).join('');
+}
+
+function cardHtml(b) {
+  const fixes = fixFor(b.id);
+  const fixNote = fixes.length
+    ? `<div class="detail"><b>Diagnosis:</b> ${escapeHtml(fixes[0].diagnosis || fixes[0].error || '').slice(0, 220)}</div>`
+    : '';
+  const kept = !b.passed ? `
+    <button class="btn" onclick="showFiles('${b.id}')">View export</button>
+    <button class="btn primary" onclick="retest('${b.id}', this)">Re-test now</button>` : '';
+  return `
+    <div class="card">
+      <div class="top">
+        <span class="id">${b.id}</span>
+        <span class="lvl ${b.level}">${b.level}</span>
+        <span class="lang">${b.lang}</span>
+        <span class="outcome ${outcomeClass(b)}">${outcomeLabel(b)}</span>
+      </div>
+      <div class="request">${escapeHtml(b.request || '').slice(0, 160)}</div>
+      <div class="meta">${b.attempts} attempt${b.attempts > 1 ? 's' : ''}${b.repairs ? ' · ' + b.repairs + ' repair(s)' : ''}${b.autoPatch ? ' · auto-patch: ' + escapeHtml(b.autoPatch.slice(0, 60)) : ''}</div>
+      ${b.detail && !b.passed ? `<div class="detail">${escapeHtml((b.detail || '').slice(0, 200))}</div>` : ''}
+      ${fixNote}
+      <div class="actions">${kept}</div>
+    </div>`;
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+async function showFiles(id) {
+  const m = document.getElementById('modal');
+  document.getElementById('modalTitle').textContent = id + ' — kept export';
+  document.getElementById('modalBody').innerHTML = 'Loading files…';
+  m.classList.add('open');
+  try {
+    const r = await fetch('/api/build-ladder/files/' + id);
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'failed');
+    document.getElementById('modalBody').innerHTML = d.files.map(f => `
+      <b>${escapeHtml(f.path)}</b> (${f.size} bytes)
+      <pre>${escapeHtml(f.content.slice(0, 4000))}</pre>`).join('') || '<i>no files</i>';
+  } catch (e) {
+    document.getElementById('modalBody').innerHTML = '<div class="empty">' + e.message + '</div>';
+  }
+}
+
+async function retest(id, btn) {
+  btn.disabled = true;
+  const orig = btn.textContent;
+  btn.textContent = 'Testing…';
+  try {
+    const r = await fetch('/api/build-ladder/retest/' + id, { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'retest failed');
+    const box = document.createElement('div');
+    box.id = 'retestResult';
+    box.className = d.ok ? 'ok' : 'bad';
+    box.innerHTML = `<b>${d.ok ? '✅ PASS' : '❌ FAIL'}</b> — ${escapeHtml(d.detail || '')}` +
+      (d.out ? `<pre style="max-height:160px;overflow:auto;margin-top:6px">${escapeHtml(d.out)}</pre>` : '');
+    btn.closest('.actions').appendChild(box);
+    setTimeout(() => box.remove(), 20000);
+    if (d.ok) await load();
+  } catch (e) {
+    alert('Retest error: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
+}
+
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  t.classList.add('active');
+  filter = t.dataset.filter;
+  render();
+}));
+document.getElementById('search').addEventListener('input', e => { query = e.target.value; render(); });
+document.getElementById('modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
+
+load();
+setInterval(load, 30000);
+</script>
+</body>
+</html>

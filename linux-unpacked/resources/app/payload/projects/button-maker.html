@@ -1,0 +1,93 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Button Maker</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#ccc;min-height:100vh;padding:12px;display:flex;justify-content:center}.container{max-width:960px;width:100%}h1{color:#00d9ff;font-size:1rem;margin-bottom:2px;text-align:center}p.sub{color:#555;font-size:0.6rem;margin-bottom:8px;text-align:center}.flex{display:flex;gap:10px}.sidebar{width:230px;flex-shrink:0}.main{flex:1}.panel{background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:8px;margin-bottom:6px}.panel-title{color:#888;font-size:0.5rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px}.prop-row{display:flex;align-items:center;gap:6px;margin:3px 0;flex-wrap:wrap}.prop-row label{font-size:0.45rem;color:#555;min-width:70px}.prop-row input[type=color]{width:28px;height:22px;border:none;border-radius:3px;cursor:pointer;padding:0;background:none}.prop-row input[type=color]::-webkit-color-swatch-wrapper{padding:0}.prop-row input[type=color]::-webkit-color-swatch{border:1px solid rgba(255,255,255,0.1);border-radius:3px}.prop-row input[type=number]{width:46px;padding:3px 4px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem;font-family:inherit;text-align:center}.prop-row input[type=number]:focus{outline:none;border-color:#00d9ff}.prop-row input[type=text]{flex:1;padding:3px 6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem;font-family:inherit}.prop-row input[type=range]{flex:1;-webkit-appearance:none;height:3px;background:rgba(255,255,255,0.08);border-radius:2px;outline:none}.prop-row input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:#00d9ff;cursor:pointer}.prop-row select{flex:1;padding:3px 4px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem;font-family:inherit}.btn{padding:4px 10px;border:1px solid rgba(255,255,255,0.06);border-radius:4px;background:transparent;color:#888;cursor:pointer;font-size:0.5rem;font-family:inherit;transition:0.1s}.btn:hover{border-color:#00d9ff;color:#ccc}.btn.primary{background:rgba(0,217,255,0.08);border-color:rgba(0,217,255,0.2);color:#00d9ff}.preview-card{display:flex;align-items:center;justify-content:center;min-height:160px;background:rgba(255,255,255,0.02);border-radius:6px;padding:20px;margin:4px 0}.css-out{font-family:'Courier New',monospace;font-size:0.45rem;color:#666;padding:6px;background:rgba(255,255,255,0.02);border-radius:4px;max-height:120px;overflow:auto;white-space:pre-wrap}.val{color:#00d9ff;font-size:0.5rem;min-width:20px}.color-option{display:flex;gap:4px;margin:2px 0}.toggle-row{display:flex;gap:8px;align-items:center;margin:3px 0}.toggle-row label{font-size:0.45rem;color:#555}.toggle-row input[type=checkbox]{accent-color:#00d9ff}</style></head><body><div class="container">
+<h1>🔘 Button Maker</h1><p class="sub">Design custom CSS buttons with live preview and export</p>
+<div class="flex">
+<div class="sidebar">
+<div class="panel"><div class="panel-title">Button Text</div>
+<div class="prop-row"><label>Text</label><input type="text" value="Click Me" onchange="updateProp('text',this.value)" id="btnText"></div>
+<div class="prop-row"><label>Font Size</label><input type="number" value="14" onchange="updateProp('fontSize',this.value+'px')">px</div>
+<div class="prop-row"><label>Font Weight</label><select onchange="updateProp('fontWeight',this.value)"><option value="400">Normal</option><option value="500">Medium</option><option value="600" selected>Semi-Bold</option><option value="700">Bold</option></select></div>
+</div>
+<div class="panel"><div class="panel-title">Background</div>
+<div class="prop-row"><label>Color 1</label><input type="color" value="#00d9ff" onchange="updateGradient()" id="grad1"></div>
+<div class="prop-row"><label>Color 2</label><input type="color" value="#0088cc" onchange="updateGradient()" id="grad2"></div>
+<div class="prop-row"><label>Direction</label><select onchange="updateGradient()" id="gradDir"><option value="to right">→ Right</option><option value="to bottom">↓ Down</option><option value="to top right">↗ Top Right</option><option value="to bottom right">↘ Bottom Right</option><option value="180deg">⬆ Up</option></select></div>
+</div>
+<div class="panel"><div class="panel-title">Hover State</div>
+<label class="toggle-row"><input type="checkbox" id="hoverEnabled" checked onchange="updateHover()"><span>Enable hover effect</span></label>
+<div class="prop-row"><label>Brightness</label><input type="range" id="hoverBrightness" min="0.8" max="1.5" step="0.05" value="1.1" oninput="updateHover()"><span class="val" id="hoverVal">1.1x</span></div>
+<div class="prop-row"><label>Scale</label><input type="range" id="hoverScale" min="1" max="1.15" step="0.01" value="1.03" oninput="updateHover()"><span class="val" id="scaleVal">1.03x</span></div>
+</div>
+</div>
+<div class="main">
+<div class="panel"><div class="panel-title">Preview</div>
+<div class="preview-card" id="previewCard"><button id="previewBtn">Click Me</button></div>
+</div>
+<div class="flex" style="gap:10px">
+<div class="panel" style="flex:1"><div class="panel-title">Layout</div>
+<div class="prop-row"><label>Padding X</label><input type="number" value="24" onchange="updateProp('px',this.value+'px')">px</div>
+<div class="prop-row"><label>Padding Y</label><input type="number" value="12" onchange="updateProp('py',this.value+'px')">px</div>
+<div class="prop-row"><label>Radius</label><input type="number" value="8" onchange="updateProp('radius',this.value+'px')">px</div>
+<div class="prop-row"><label>Border</label><input type="number" value="0" onchange="updateProp('borderW',this.value+'px')">px <input type="color" value="#fff" onchange="updateProp('borderC',this.value)" id="borderColor"></div>
+</div>
+<div class="panel" style="flex:1"><div class="panel-title">Shadow</div>
+<div class="prop-row"><label>Opacity</label><input type="range" min="0" max="25" value="15" oninput="updateShadow()" id="shadowOp"><span class="val" id="shadowVal">15%</span></div>
+<div class="prop-row"><label>Blur</label><input type="number" value="8" onchange="updateShadow()">px</div>
+<div class="prop-row"><label>Y Offset</label><input type="number" value="4" onchange="updateShadow()">px</div>
+</div>
+</div>
+<div class="panel"><div class="panel-title">Generated CSS</div>
+<pre class="css-out" id="cssOutput">/* Button CSS */</pre>
+<button class="btn primary" onclick="copyCSS()" style="margin-top:4px">📋 Copy CSS</button>
+</div>
+</div></div></div>
+<script>
+const btn=document.getElementById('previewBtn');
+const state={text:'Click Me',fontSize:'14px',fontWeight:'600',px:'24px',py:'12px',radius:'8px',borderW:'0px',borderC:'#fff',shadowOp:15,shadowBlur:'8px',shadowY:'4px'};
+
+function updateProp(key,val){state[key]=val;renderPreview();updateCSS();saveToStorage()}
+function updateGradient(){renderPreview();updateCSS();saveToStorage()}
+function updateHover(){const enabled=document.getElementById('hoverEnabled').checked;document.getElementById('hoverVal').textContent=document.getElementById('hoverBrightness').value+'x';document.getElementById('scaleVal').textContent=document.getElementById('hoverScale').value+'x';renderPreview();updateCSS();saveToStorage()}
+function updateShadow(){document.getElementById('shadowVal').textContent=document.getElementById('shadowOp').value+'%';renderPreview();updateCSS();saveToStorage()}
+
+function renderPreview(){
+  const g1=document.getElementById('grad1').value,g2=document.getElementById('grad2').value,dir=document.getElementById('gradDir').value;
+  btn.textContent=document.getElementById('btnText').value;
+  btn.style.background=`linear-gradient(${dir},${g1},${g2})`;
+  btn.style.color='#fff';btn.style.border='none';btn.style.cursor='pointer';btn.style.fontFamily='inherit';
+  btn.style.fontSize=state.fontSize;btn.style.fontWeight=state.fontWeight;
+  btn.style.padding=`${state.py} ${state.px}`;btn.style.borderRadius=state.radius;
+  btn.style.border=`${state.borderW} solid ${state.borderC}`;
+  const op=parseInt(document.getElementById('shadowOp').value)/100;
+  const blur=document.querySelectorAll('.prop-row input[type=number]')[5].value;
+  const yOff=document.querySelectorAll('.prop-row input[type=number]')[6].value;
+  btn.style.boxShadow=`0 ${yOff}px ${blur}px rgba(0,0,0,${op.toFixed(2)})`;
+  btn.style.transition='all 0.2s ease';
+  // Hover/active states
+  const hoverEnabled=document.getElementById('hoverEnabled').checked;
+  const hBright=parseFloat(document.getElementById('hoverBrightness').value);
+  const hScale=parseFloat(document.getElementById('hoverScale').value);
+  btn.onmouseenter=()=>{if(hoverEnabled){btn.style.filter=`brightness(${hBright})`;btn.style.transform=`scale(${hScale})`}};
+  btn.onmouseleave=()=>{if(hoverEnabled){btn.style.filter='brightness(1)';btn.style.transform='scale(1)'}};
+  btn.onmousedown=()=>{btn.style.transform='scale(0.97)'};
+  btn.onmouseup=()=>{btn.style.transform=`scale(${hScale})`};
+}
+
+function updateCSS(){
+  const g1=document.getElementById('grad1').value,g2=document.getElementById('grad2').value,dir=document.getElementById('gradDir').value;
+  const op=parseInt(document.getElementById('shadowOp').value)/100;
+  const blur=document.querySelectorAll('.prop-row input[type=number]')[5].value;
+  const yOff=document.querySelectorAll('.prop-row input[type=number]')[6].value;
+  const hoverEnabled=document.getElementById('hoverEnabled').checked;
+  const hBright=document.getElementById('hoverBrightness').value;
+  const hScale=document.getElementById('hoverScale').value;
+  let css=`.btn {\n  background: linear-gradient(${dir}, ${g1}, ${g2});\n  color: #fff;\n  font-size: ${state.fontSize};\n  font-weight: ${state.fontWeight};\n  padding: ${state.py} ${state.px};\n  border: ${state.borderW} solid ${state.borderC};\n  border-radius: ${state.radius};\n  cursor: pointer;\n  font-family: inherit;\n  transition: all 0.2s ease;\n  box-shadow: 0 ${yOff} ${blur} rgba(0,0,0,${op.toFixed(2)});\n}`;
+  if(hoverEnabled){css+=`\n\n.btn:hover {\n  filter: brightness(${hBright});\n  transform: scale(${hScale});\n}\n\n.btn:active {\n  transform: scale(0.97);\n}`}
+  document.getElementById('cssOutput').textContent=css;
+}
+
+function copyCSS(){navigator.clipboard.writeText(document.getElementById('cssOutput').textContent).then(()=>showToast('CSS copied!'))}
+function showToast(m){const t=document.createElement('div');t.textContent=m;Object.assign(t.style,{position:'fixed',bottom:20,left:'50%',transform:'translateX(-50%)',background:'rgba(0,217,255,0.15)',color:'#00d9ff',padding:'6px 16px',borderRadius:'4px',fontSize:'0.55rem',zIndex:999,transition:'opacity 0.2s',border:'1px solid rgba(0,217,255,0.2)'});document.body.appendChild(t);setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),300)},2000)}
+function saveToStorage(){try{const g1=document.getElementById('grad1').value,g2=document.getElementById('grad2').value,dir=document.getElementById('gradDir').value;const txt=document.getElementById('btnText').value;const hoverEnabled=document.getElementById('hoverEnabled').checked;localStorage.setItem('buttonmaker_data',JSON.stringify({state,grad1:g1,grad2:g2,gradDir:dir,text:txt,hoverEnabled}))}catch(e){}}
+function loadFromStorage(){try{const d=JSON.parse(localStorage.getItem('buttonmaker_data'));if(d&&d.state){Object.assign(state,d.state);document.getElementById('grad1').value=d.grad1||'#00d9ff';document.getElementById('grad2').value=d.grad2||'#0088cc';document.getElementById('gradDir').value=d.gradDir||'to right';document.getElementById('btnText').value=d.text||'Click Me';document.getElementById('hoverEnabled').checked=d.hoverEnabled!==false;return true}}catch(e){}return false}
+if(!loadFromStorage()){renderPreview();updateCSS()};renderPreview();updateCSS()
+</script></body></html>

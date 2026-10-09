@@ -1,0 +1,127 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Animation Studio</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#ccc;min-height:100vh;padding:12px;display:flex;justify-content:center}.container{max-width:960px;width:100%}h1{color:#00d9ff;font-size:1rem;margin-bottom:2px;text-align:center}p.sub{color:#555;font-size:0.6rem;margin-bottom:8px;text-align:center}.flex{display:flex;gap:10px}.sidebar{width:260px;flex-shrink:0}.main{flex:1}.panel{background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:8px;margin-bottom:6px}.panel-title{color:#888;font-size:0.5rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px}.prop-row{display:flex;align-items:center;gap:6px;margin:3px 0;flex-wrap:wrap}.prop-row label{font-size:0.45rem;color:#555;min-width:60px}.prop-row input[type=number]{width:52px;padding:3px 4px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem;text-align:center;font-family:inherit}.prop-row select{flex:1;padding:3px 4px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem;font-family:inherit}.prop-row input[type=range]{flex:1;-webkit-appearance:none;height:3px;background:rgba(255,255,255,0.08);border-radius:2px;outline:none}.prop-row input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:#00d9ff;cursor:pointer}.btn{padding:4px 10px;border:1px solid rgba(255,255,255,0.06);border-radius:4px;background:transparent;color:#888;cursor:pointer;font-size:0.5rem;font-family:inherit;transition:0.1s}.btn:hover{border-color:#00d9ff;color:#ccc}.btn.primary{background:rgba(0,217,255,0.08);border-color:rgba(0,217,255,0.2);color:#00d9ff}.preset-btn{padding:3px 10px;border:1px solid rgba(255,255,255,0.04);border-radius:3px;background:transparent;color:#666;cursor:pointer;font-size:0.45rem;font-family:inherit;margin:1px;transition:0.1s}.preset-btn:hover{border-color:#00d9ff;color:#ccc}.preset-btn.active{border-color:#00d9ff;color:#00d9ff;background:rgba(0,217,255,0.06)}.anim-box{width:120px;height:120px;background:linear-gradient(135deg,rgba(0,217,255,0.2),rgba(0,217,255,0.05));border:1px solid rgba(0,217,255,0.15);border-radius:var(--anim-radius,12px);display:flex;align-items:center;justify-content:center;font-size:0.5rem;color:#888;margin:0 auto;transition:background 0.2s}.anim-box.playing{background:linear-gradient(135deg,rgba(0,217,255,0.3),rgba(0,217,255,0.08))}.preview-container{min-height:220px;display:flex;align-items:center;justify-content:center}.css-out{font-family:'Courier New',monospace;font-size:0.45rem;color:#666;padding:6px;background:rgba(255,255,255,0.02);border-radius:4px;max-height:120px;overflow:auto;white-space:pre-wrap}.val{color:#00d9ff;font-size:0.5rem;min-width:18px}.badge{font-size:0.4rem;color:#555;padding:2px 6px;border:1px solid rgba(255,255,255,0.04);border-radius:3px;display:inline-block}</style></head><body><div class="container">
+<h1>🎬 Animation Studio</h1><p class="sub">Design CSS animations with live preview and keyframe export</p>
+<div class="flex">
+<div class="sidebar">
+<div class="panel"><div class="panel-title">Presets</div>
+<button class="preset-btn" onclick="loadPreset('fadeIn')">Fade In</button>
+<button class="preset-btn" onclick="loadPreset('slideIn')">Slide In</button>
+<button class="preset-btn" onclick="loadPreset('bounce')">Bounce</button>
+<button class="preset-btn" onclick="loadPreset('pulse')">Pulse</button>
+<button class="preset-btn" onclick="loadPreset('shake')">Shake</button>
+<button class="preset-btn" onclick="loadPreset('rotate')">Rotate</button>
+<button class="preset-btn" onclick="loadPreset('flip')">Flip</button>
+<button class="preset-btn" onclick="loadPreset('scale')">Scale</button>
+</div>
+</div>
+<div class="main">
+<div class="panel"><div class="panel-title">Preview <span style="color:#555;font-weight:400;font-size:0.45rem">click to replay</span></div>
+<div class="preview-container">
+<div class="anim-box" id="animBox" onclick="playAnimation()">▶ Click</div></div>
+</div>
+<div class="flex" style="gap:10px">
+<div class="panel" style="flex:1"><div class="panel-title">Timing</div>
+<div class="prop-row"><label>Duration</label><input type="range" id="duration" min="0.1" max="5" step="0.1" value="1" oninput="updateAnim()"><span class="val" id="durationVal">1.0s</span></div>
+<div class="prop-row"><label>Easing</label><select id="easing" onchange="updateAnim()">
+<option value="ease">ease</option><option value="ease-in">ease-in</option><option value="ease-out">ease-out</option><option value="ease-in-out">ease-in-out</option><option value="linear">linear</option><option value="cubic-bezier(0.68,-0.55,0.27,1.55)">bounce</option><option value="cubic-bezier(0.175,0.885,0.32,1.275)">spring</option>
+</select></div>
+<div class="prop-row"><label>Delay</label><input type="range" id="delay" min="0" max="3" step="0.1" value="0" oninput="updateAnim()"><span class="val" id="delayVal">0.0s</span></div>
+<div class="prop-row"><label>Iterations</label><select id="iterations" onchange="updateAnim()"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="infinite" selected>∞ Infinite</option></select></div>
+<div class="prop-row"><label>Direction</label><select id="direction" onchange="updateAnim()"><option value="normal">normal</option><option value="reverse">reverse</option><option value="alternate">alternate</option><option value="alternate-reverse">alt-reverse</option></select></div>
+<div class="prop-row"><label>Fill Mode</label><select id="fillMode" onchange="updateAnim()"><option value="none">none</option><option value="forwards">forwards</option><option value="backwards">backwards</option><option value="both" selected>both</option></select></div>
+</div>
+<div class="panel" style="flex:1"><div class="panel-title">Transform</div>
+<div class="prop-row"><label>Start X</label><input type="range" id="startX" min="-100" max="100" value="0" oninput="updateAnim()"><span class="val" id="startXVal">0</span></div>
+<div class="prop-row"><label>End X</label><input type="range" id="endX" min="-100" max="100" value="0" oninput="updateAnim()"><span class="val" id="endXVal">0</span></div>
+<div class="prop-row"><label>Start Y</label><input type="range" id="startY" min="-100" max="100" value="0" oninput="updateAnim()"><span class="val" id="startYVal">0</span></div>
+<div class="prop-row"><label>End Y</label><input type="range" id="endY" min="-100" max="100" value="0" oninput="updateAnim()"><span class="val" id="endYVal">0</span></div>
+<div class="prop-row"><label>Start Scale</label><input type="range" id="startScale" min="0" max="2" step="0.05" value="1" oninput="updateAnim()"><span class="val" id="startScaleVal">1.0</span></div>
+<div class="prop-row"><label>End Scale</label><input type="range" id="endScale" min="0" max="2" step="0.05" value="1" oninput="updateAnim()"><span class="val" id="endScaleVal">1.0</span></div>
+<div class="prop-row"><label>Start Rotate</label><input type="range" id="startRotate" min="-360" max="360" value="0" oninput="updateAnim()"><span class="val" id="startRotVal">0°</span></div>
+<div class="prop-row"><label>End Rotate</label><input type="range" id="endRotate" min="-360" max="360" value="0" oninput="updateAnim()"><span class="val" id="endRotVal">0°</span></div>
+<div class="prop-row"><label>Start Opacity</label><input type="range" id="startOpacity" min="0" max="1" step="0.05" value="1" oninput="updateAnim()"><span class="val" id="startOpVal">1.0</span></div>
+<div class="prop-row"><label>End Opacity</label><input type="range" id="endOpacity" min="0" max="1" step="0.05" value="1" oninput="updateAnim()"><span class="val" id="endOpVal">1.0</span></div>
+</div>
+</div>
+<div class="panel"><div class="panel-title">Generated Keyframes</div>
+<pre class="css-out" id="cssOutput">@keyframes customAnim { /* keyframes */ }</pre>
+<button class="btn primary" onclick="copyCSS()" style="margin-top:4px">📋 Copy CSS</button>
+</div></div></div>
+<script>
+function updateAnim(){
+  document.getElementById('durationVal').textContent=document.getElementById('duration').value+'s';
+  document.getElementById('delayVal').textContent=document.getElementById('delay').value+'s';
+  document.getElementById('startXVal').textContent=document.getElementById('startX').value;
+  document.getElementById('endXVal').textContent=document.getElementById('endX').value;
+  document.getElementById('startYVal').textContent=document.getElementById('startY').value;
+  document.getElementById('endYVal').textContent=document.getElementById('endY').value;
+  document.getElementById('startScaleVal').textContent=document.getElementById('startScale').value;
+  document.getElementById('endScaleVal').textContent=document.getElementById('endScale').value;
+  document.getElementById('startRotVal').textContent=document.getElementById('startRotate').value+'°';
+  document.getElementById('endRotVal').textContent=document.getElementById('endRotate').value+'°';
+  document.getElementById('startOpVal').textContent=document.getElementById('startOpacity').value;
+  document.getElementById('endOpVal').textContent=document.getElementById('endOpacity').value;
+  updateCSS();
+  playAnimation();
+  saveToStorage();
+}
+
+function playAnimation(){
+  const box=document.getElementById('animBox');
+  const dur=document.getElementById('duration').value;
+  const ease=document.getElementById('easing').value;
+  const delay=document.getElementById('delay').value;
+  const iter=document.getElementById('iterations').value;
+  const dir=document.getElementById('direction').value;
+  const fill=document.getElementById('fillMode').value;
+  box.classList.add('playing');
+  box.style.animation='none';
+  box.offsetHeight;
+  box.style.animation=`customAnim ${dur}s ${ease} ${delay}s ${iter} ${dir} ${fill}`;
+  setTimeout(()=>box.classList.remove('playing'),(parseFloat(dur)+parseFloat(delay)+0.1)*1000);
+}
+
+function updateCSS(){
+  const dur=document.getElementById('duration').value;
+  const ease=document.getElementById('easing').value;
+  const delay=document.getElementById('delay').value;
+  const iter=document.getElementById('iterations').value;
+  const dir=document.getElementById('direction').value;
+  const fill=document.getElementById('fillMode').value;
+  const sx=document.getElementById('startX').value,ex=document.getElementById('endX').value;
+  const sy=document.getElementById('startY').value,ey=document.getElementById('endY').value;
+  const ss=document.getElementById('startScale').value,es=document.getElementById('endScale').value;
+  const sr=document.getElementById('startRotate').value,er=document.getElementById('endRotate').value;
+  const so=document.getElementById('startOpacity').value,eo=document.getElementById('endOpacity').value;
+  let from=`from { opacity: ${so}; transform: translateX(${sx}px) translateY(${sy}px) scale(${ss}) rotate(${sr}deg); }`;
+  let to=`to { opacity: ${eo}; transform: translateX(${ex}px) translateY(${ey}px) scale(${es}) rotate(${er}deg); }`;
+  if(sx!='0'||sy!='0'||ss!='1'||sr!='0'||so!='1'){} // always show both
+  document.getElementById('cssOutput').textContent=
+`@keyframes customAnim {\n  ${from}\n  ${to}\n}\n\n.element {\n  animation: customAnim ${dur}s ${ease} ${delay}s ${iter} ${dir} ${fill};\n}`;
+}
+
+function copyCSS(){navigator.clipboard.writeText(document.getElementById('cssOutput').textContent).then(()=>showToast('CSS copied!'))}
+function showToast(m){const t=document.createElement('div');t.textContent=m;Object.assign(t.style,{position:'fixed',bottom:20,left:'50%',transform:'translateX(-50%)',background:'rgba(0,217,255,0.15)',color:'#00d9ff',padding:'6px 16px',borderRadius:'4px',fontSize:'0.55rem',zIndex:999,transition:'opacity 0.2s',border:'1px solid rgba(0,217,255,0.2)'});document.body.appendChild(t);setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),300)},2000)}
+
+function loadPreset(name){
+  const presets={
+    fadeIn:{duration:1,easing:'ease',startOpacity:0,endOpacity:1,startScale:1,endScale:1,startYVal:0,endYVal:0},
+    slideIn:{duration:0.8,easing:'ease-out',startOpacity:0,endOpacity:1,startY:40,endY:0,startScale:1,endScale:1},
+    bounce:{duration:1,easing:'cubic-bezier(0.68,-0.55,0.27,1.55)',startOpacity:1,endOpacity:1,startY:-60,endY:0,startScale:0.9,endScale:1},
+    pulse:{duration:1.5,easing:'ease-in-out',startOpacity:1,endOpacity:1,startScale:1,endScale:1.08,startY:0,endY:0},
+    shake:{duration:0.5,easing:'ease',startX:-10,endX:10,startOpacity:1,endOpacity:1,startScale:1,endScale:1},
+    rotate:{duration:1.5,easing:'linear',startRotate:0,endRotate:360,startOpacity:1,endOpacity:1,startScale:1,endScale:1},
+    flip:{duration:0.8,easing:'ease-in-out',startRotate:0,endRotate:180,startScale:1.5,endScale:1,startOpacity:1,endOpacity:1},
+    scale:{duration:1,easing:'ease-in-out',startScale:0.3,endScale:1,startOpacity:0,endOpacity:1,startY:0,endY:0}
+  };
+  const p=presets[name];if(!p)return;
+  Object.keys(p).forEach(k=>{
+    const el=document.getElementById(k);if(el){if(el.type==='range')el.value=p[k];else el.value=p[k]}
+  });
+  document.querySelector('.preset-btn.active')?.classList.remove('active')
+  updateAnim();saveToStorage();
+}
+
+function saveToStorage(){try{const data={};['duration','easing','delay','iterations','direction','fillMode','startX','endX','startY','endY','startScale','endScale','startRotate','endRotate','startOpacity','endOpacity'].forEach(k=>{data[k]=document.getElementById(k).value});localStorage.setItem('animstudio_data',JSON.stringify(data))}catch(e){}}
+function loadFromStorage(){try{const d=JSON.parse(localStorage.getItem('animstudio_data'));if(d&&d.duration){Object.entries(d).forEach(([k,v])=>{const el=document.getElementById(k);if(el)el.value=v});return true}}catch(e){}return false}
+if(!loadFromStorage())loadPreset('fadeIn');else updateAnim()
+</script></body></html>

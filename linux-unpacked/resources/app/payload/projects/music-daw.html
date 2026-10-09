@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Music DAW Studio</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#ccc;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+header{display:flex;align-items:center;padding:4px 12px;background:#12121e;border-bottom:1px solid rgba(255,255,255,0.06);gap:10px;font-size:0.7rem}
+header h1{font-size:0.9rem;color:#00d9ff}header h1 small{color:#555;font-size:0.55rem;font-weight:400}
+.toolbar{display:flex;gap:3px}
+.toolbar button{padding:4px 10px;border:1px solid rgba(255,255,255,0.06);border-radius:3px;background:rgba(255,255,255,0.03);color:#888;cursor:pointer;font-size:0.55rem;font-family:inherit;transition:0.1s}
+.toolbar button:hover{border-color:#00d9ff;color:#ccc}
+.toolbar button.active{border-color:#00d9ff;color:#00d9ff;background:rgba(0,217,255,0.1)}
+.main{display:flex;flex:1;overflow:hidden}
+.track-panel{flex:1;display:flex;flex-direction:column;background:#0e0e1a;overflow:auto}
+.track-header{display:flex;border-bottom:1px solid rgba(255,255,255,0.04);min-height:28px;font-size:0.55rem;color:#555}
+.th-label{width:120px;padding:4px 8px;flex-shrink:0;display:flex;align-items:center;gap:4px}
+.th-mutes{display:flex;gap:6px;padding:4px 8px;align-items:center}
+.tracks{flex:1;overflow-y:auto}
+.track-row{display:flex;border-bottom:1px solid rgba(255,255,255,0.03);min-height:48px}
+.track-controls{width:120px;flex-shrink:0;padding:4px 8px;background:rgba(255,255,255,0.01);display:flex;flex-direction:column;justify-content:center}
+.track-controls .tname{font-size:0.6rem;color:#aaa}
+.track-controls .tcontrols{display:flex;gap:2px;margin-top:2px}
+.track-controls .tcontrols button{padding:2px 6px;border:1px solid rgba(255,255,255,0.06);border-radius:2px;background:transparent;color:#555;cursor:pointer;font-size:0.45rem;font-family:inherit}
+.track-controls .tcontrols button.muted{color:#f87171;border-color:rgba(248,113,113,0.2)}
+.track-controls input[type=range]{width:60px;accent-color:#00d9ff;height:4px}
+.track-clips{flex:1;position:relative;overflow:hidden}
+.daw-clip{position:absolute;top:2px;height:44px;border-radius:3px;display:flex;align-items:center;padding:0 8px;font-size:0.5rem;color:rgba(255,255,255,0.7);overflow:hidden;cursor:pointer;border:1px solid rgba(255,255,255,0.1);transition:0.1s;min-width:8px}
+.daw-clip:hover{border-color:rgba(255,255,255,0.3)}
+.daw-clip.selected{border-color:#00d9ff;box-shadow:0 0 6px rgba(0,217,255,0.3)}
+.playhead{position:absolute;top:0;bottom:0;width:2px;background:#f87171;z-index:10;pointer-events:none;transition:left 0.05s linear}
+.ruler{height:20px;border-bottom:1px solid rgba(255,255,255,0.04);position:relative;display:flex;align-items:flex-end;overflow:hidden}
+.ruler div{position:absolute;font-size:7px;color:#444;transform:translateX(-50%)}
+.sidebar{width:230px;background:#12121e;border-left:1px solid rgba(255,255,255,0.06);display:flex;flex-direction:column;padding:10px;font-size:0.6rem;overflow-y:auto}
+.sidebar h3{font-size:0.65rem;color:#888;margin-bottom:6px;margin-top:10px}
+.sidebar h3:first-child{margin-top:0}
+.sidebar label{color:#666;display:block;margin-bottom:2px}
+.sidebar select,.sidebar input[type=text]{width:100%;padding:4px 8px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.06);border-radius:3px;color:#aaa;font-family:inherit;font-size:0.6rem;outline:none;margin-bottom:4px}
+.sidebar select:focus,.sidebar input:focus{border-color:#00d9ff}
+.slider-row{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.slider-row label{min-width:40px;font-size:0.55rem}
+.slider-row input[type=range]{flex:1;accent-color:#00d9ff;height:4px}
+.slider-row .val{min-width:24px;text-align:right;color:#00d9ff;font-size:0.55rem}
+.synth-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-bottom:8px}
+.synth-grid button{padding:4px;border:1px solid rgba(255,255,255,0.06);border-radius:3px;background:rgba(255,255,255,0.03);color:#888;cursor:pointer;font-size:0.5rem;font-family:inherit;transition:0.1s}
+.synth-grid button:hover{border-color:#00d9ff;color:#ccc}
+.synth-grid button.active{border-color:#00d9ff;color:#00d9ff;background:rgba(0,217,255,0.1)}
+.master-meter{height:6px;background:rgba(0,0,0,0.3);border-radius:3px;margin-top:6px;overflow:hidden}
+.master-meter div{height:100%;background:linear-gradient(90deg,#4ade80,#fbbf24,#f87171);transition:width 0.1s;border-radius:3px}
+</style>
+</head>
+<body>
+<header>
+  <h1>🎵 Music DAW Studio <small>Multi-track · Synth · Effects</small></h1>
+  <div class="toolbar">
+    <button id="playBtn" onclick="togglePlay()">▶ Play</button>
+    <button onclick="stopPlayback()">⏹ Stop</button>
+    <button onclick="recordAction()">⏺ Record</button>
+    <button onclick="addTrack()">➕ Track</button>
+    <button onclick="showExport()">💾 Export</button>
+    <span style="color:#444;margin-left:8px;font-size:0.55rem">BPM: <span id="bpmDisplay">120</span></span>
+    <input type="range" min="60" max="200" value="120" id="bpmSlider" oninput="updateBPM()" style="width:60px;accent-color:#00d9ff;height:4px">
+  </div>
+</header>
+<div class="main">
+  <div class="track-panel" id="trackPanel">
+    <div class="ruler" id="ruler"></div>
+    <div class="tracks" id="tracksContainer"></div>
+    <div class="playhead" id="playhead" style="left:0"></div>
+  </div>
+  <div class="sidebar">
+    <h3>🎛️ Track Properties</h3>
+    <label>Name</label>
+    <input type="text" id="trackName" value="Track 1" onchange="updateTrackProp('name',this.value)">
+    <label>Volume</label>
+    <div class="slider-row"><label>Vol</label><input type="range" min="0" max="100" value="80" id="trackVol" oninput="updateTrackProp('volume',this.value)"><span class="val" id="trackVolVal">80</span></div>
+    <label>Pan</label>
+    <div class="slider-row"><label>Pan</label><input type="range" min="-100" max="100" value="0" id="trackPan" oninput="updateTrackProp('pan',this.value)"><span class="val" id="trackPanVal">0</span></div>
+    <h3>🎹 Synth</h3>
+    <div class="synth-grid">
+      <button class="active" data-synth="sine" onclick="setSynth('sine')">Sine</button>
+      <button data-synth="square" onclick="setSynth('square')">Square</button>
+      <button data-synth="sawtooth" onclick="setSynth('sawtooth')">Saw</button>
+      <button data-synth="triangle" onclick="setSynth('triangle')">Tri</button>
+    </div>
+    <label>Attack</label>
+    <div class="slider-row"><label>Atk</label><input type="range" min="0" max="100" value="10" id="synthAttack"><span class="val" id="synthAttackVal">10</span></div>
+    <label>Release</label>
+    <div class="slider-row"><label>Rel</label><input type="range" min="0" max="100" value="30" id="synthRelease"><span class="val" id="synthReleaseVal">30</span></div>
+    <h3>🌀 Effects</h3>
+    <label>Reverb</label>
+    <div class="slider-row"><label>Rev</label><input type="range" min="0" max="100" value="10" id="fxReverb"><span class="val" id="fxReverbVal">10</span></div>
+    <label>Delay</label>
+    <div class="slider-row"><label>Del</label><input type="range" min="0" max="100" value="15" id="fxDelay"><span class="val" id="fxDelayVal">15</span></div>
+    <label>Filter</label>
+    <div class="slider-row"><label>Flt</label><input type="range" min="0" max="100" value="80" id="fxFilter"><span class="val" id="fxFilterVal">80</span></div>
+    <div class="master-meter"><div id="masterMeter" style="width:30%"></div></div>
+  </div>
+</div>
+
+<script>
+let audioCtx=null,isPlaying=false,playStartTime=0,currentPos=0;
+let tracks=[],selectedTrack=0,nextId=1;
+let bpm=120,ppq=480;
+let metronomeTimer=null;
+
+function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)()}
+
+function updateBPM(){bpm=parseInt(document.getElementById('bpmSlider').value);document.getElementById('bpmDisplay').textContent=bpm;if(isPlaying)restartPlayback()}
+
+function createTrack(name='Track'){const id=nextId++;return{id,name,volume:80,pan:0,synth:'sine',muted:false,solo:false,clips:[],attack:10,release:30,color:`hsl(${(id*47)%360},50%,30%)`}}
+
+function addTrack(){const t=createTrack(`Track ${tracks.length+1}`);tracks.push(t);selectedTrack=tracks.length-1;renderTracks();updateTrackPanel()}
+
+function renderTracks(){
+  const container=document.getElementById('tracksContainer');
+  container.innerHTML='';
+  const totalBeats=16;
+  const pxPerBeat=60;
+  const totalWidth=totalBeats*pxPerBeat;
+  
+  for(let i=0;i<tracks.length;i++){
+    const t=tracks[i];
+    const row=document.createElement('div');row.className='track-row';
+    row.style.cursor='pointer';
+    row.onclick=()=>{selectedTrack=i;renderTracks();updateTrackPanel()};
+    if(i===selectedTrack)row.style.background='rgba(0,217,255,0.03)';
+    
+    // Controls
+    const ctrl=document.createElement('div');ctrl.className='track-controls';
+    ctrl.innerHTML=`
+      <div class="tname">${t.name}</div>
+      <div class="tcontrols">
+        <button class="${t.muted?'muted':''}" onclick="event.stopPropagation();toggleMute(${i})">M</button>
+        <button class="${t.solo?'muted':''}" onclick="event.stopPropagation();toggleSolo(${i})" style="${t.solo?'color:#00d9ff;border-color:rgba(0,217,255,0.3)':''}">S</button>
+        <input type="range" min="0" max="100" value="${t.volume}" onmousedown="event.stopPropagation()" oninput="setTrackVol(${i},this.value)" style="width:50px;height:4px">
+      </div>`;
+    row.appendChild(ctrl);
+    
+    // Clip area
+    const clips=document.createElement('div');clips.className='track-clips';
+    clips.style.width=totalWidth+'px';
+    
+    // Grid lines
+    for(let b=0;b<=totalBeats;b++){
+      const line=document.createElement('div');
+      line.style.cssText=`position:absolute;left:${b*pxPerBeat}px;top:0;width:1px;height:100%;background:rgba(255,255,255,${b%4===0?'0.04':'0.02'})`;
+      clips.appendChild(line);
+    }
+    
+    for(const clip of t.clips){
+      const el=document.createElement('div');
+      el.className='daw-clip'+(clip.selected?' selected':'');
+      el.style.cssText=`left:${clip.beat*pxPerBeat}px;width:${clip.duration*pxPerBeat}px;background:linear-gradient(135deg,${t.color},${t.color}88)`;
+      el.innerHTML=`<span>${clip.name||'Clip'}</span>`;
+      el.onclick=(e)=>{e.stopPropagation();selectClip(i,clip.id);renderTracks()};
+      clips.appendChild(el);
+    }
+    
+    row.appendChild(clips);
+    container.appendChild(row);
+  }
+  
+  renderRuler(totalBeats,pxPerBeat);
+}
+
+function renderRuler(totalBeats,pxPerBeat){
+  const ruler=document.getElementById('ruler');
+  ruler.innerHTML='';
+  ruler.style.width=(totalBeats*pxPerBeat)+'px';
+  for(let b=0;b<=totalBeats;b++){
+    const d=document.createElement('div');
+    d.style.cssText=`left:${b*pxPerBeat}px;top:0`;
+    d.textContent=b%4===0?`${b/4+1}.1`:b%2===0?`${Math.floor(b/4)+1}.${[1,3][b%4/2]}`:'';
+    ruler.appendChild(d);
+    if(b%4===0&&b>0){
+      const line=document.createElement('div');
+      line.style.cssText=`position:absolute;left:${b*pxPerBeat}px;top:16px;width:1px;height:12px;background:rgba(255,255,255,0.06)`;
+      ruler.appendChild(line);
+    }
+  }
+}
+
+// ── PLAYBACK ──
+function togglePlay(){
+  initAudio();
+  if(isPlaying){pausePlayback()}else{startPlayback()}
+}
+
+function startPlayback(){
+  if(audioCtx.state==='suspended')audioCtx.resume();
+  isPlaying=true;
+  playStartTime=audioCtx.currentTime-currentPos;
+  document.getElementById('playBtn').textContent='⏸';
+  scheduleMetronome();
+}
+
+function pausePlayback(){
+  isPlaying=false;
+  currentPos=audioCtx.currentTime-playStartTime;
+  document.getElementById('playBtn').textContent='▶';
+  clearInterval(metronomeTimer);
+}
+
+function stopPlayback(){
+  isPlaying=false;currentPos=0;
+  document.getElementById('playBtn').textContent='▶';
+  clearInterval(metronomeTimer);
+  document.getElementById('playhead').style.left='0';
+}
+
+function restartPlayback(){if(isPlaying){currentPos=0;playStartTime=audioCtx.currentTime}}
+
+function scheduleMetronome(){
+  clearInterval(metronomeTimer);
+  metronomeTimer=setInterval(()=>{
+    if(!isPlaying)return;
+    const now=audioCtx.currentTime;
+    const elapsed=now-playStartTime;
+    currentPos=elapsed;
+    const beatDur=60/bpm;
+    const pxPerBeat=60;
+    const x=(elapsed/beatDur)*pxPerBeat;
+    document.getElementById('playhead').style.left=Math.min(x,960)+'px';
+    
+    // Play notes from clips
+    for(const track of tracks){
+      if(track.muted)continue;
+      const beatPos=elapsed/beatDur;
+      for(const clip of track.clips){
+        if(beatPos>=clip.beat&&beatPos<clip.beat+clip.duration){
+          const localBeat=beatPos-clip.beat;
+          if(localBeat<0.05&&!clip._lastPlayed){
+            playSynthNote(track,clip.note||440,0.1);
+            clip._lastPlayed=true;
+          }else if(localBeat>0.1){
+            clip._lastPlayed=false;
+          }
+        }
+      }
+    }
+    
+    // Update meter
+    const meter=document.getElementById('masterMeter');
+    const val=30+Math.sin(elapsed*4)*10+Math.random()*5;
+    meter.style.width=Math.min(100,val)+'%';
+  },50);
+}
+
+function playSynthNote(track,freq,duration){
+  initAudio();
+  if(track.muted)return;
+  const osc=audioCtx.createOscillator();
+  const gain=audioCtx.createGain();
+  osc.type=track.synth;
+  osc.frequency.value=freq;
+  const vol=(track.volume/100)*0.3;
+  const attack=(track.attack||10)/1000;
+  const release=(track.release||30)/1000;
+  const now=audioCtx.currentTime;
+  gain.gain.setValueAtTime(0,now);
+  gain.gain.linearRampToValueAtTime(vol,now+attack);
+  gain.gain.exponentialRampToValueAtTime(0.001,now+duration+release);
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start(now);
+  osc.stop(now+duration+release+0.1);
+}
+
+function recordAction(){
+  if(!audioCtx){initAudio()}
+  if(audioCtx.state==='suspended')audioCtx.resume();
+  const track=tracks[selectedTrack];
+  if(!track)return;
+  const beatDur=60/bpm;
+  const beatPos=isPlaying?currentPos/beatDur:0;
+  track.clips.push({
+    id:Date.now(),beat:Math.floor(beatPos/4)*4+track.clips.length*2,
+    duration:4,name:`Clip ${track.clips.length+1}`,
+    note:440+Math.random()*440,
+    selected:false,_lastPlayed:false
+  });
+  renderTracks();
+  addDemoNotes(track);
+}
+
+function selectClip(trackId,clipId){
+  for(const t of tracks)for(const c of t.clips)c.selected=false;
+  const clip=tracks[trackId]?.clips.find(c=>c.id===clipId);
+  if(clip)clip.selected=true;
+  selectedTrack=trackId;
+  renderTracks();
+}
+
+// ── TRACK PROPS ──
+function updateTrackPanel(){
+  const t=tracks[selectedTrack];
+  if(!t)return;
+  document.getElementById('trackName').value=t.name;
+  document.getElementById('trackVol').value=t.volume;
+  document.getElementById('trackVolVal').textContent=t.volume;
+  document.getElementById('trackPan').value=t.pan;
+  document.getElementById('trackPanVal').textContent=t.pan;
+  document.querySelectorAll('[data-synth]').forEach(b=>b.classList.toggle('active',b.dataset.synth===t.synth));
+  document.getElementById('synthAttack').value=t.attack||10;
+  document.getElementById('synthAttackVal').textContent=t.attack||10;
+  document.getElementById('synthRelease').value=t.release||30;
+  document.getElementById('synthReleaseVal').textContent=t.release||30;
+}
+
+function updateTrackProp(key,val){
+  const t=tracks[selectedTrack];
+  if(!t)return;
+  if(key==='volume'){t.volume=parseInt(val);document.getElementById('trackVolVal').textContent=val;renderTracks()}
+  else if(key==='pan'){t.pan=parseInt(val);document.getElementById('trackPanVal').textContent=val}
+  else if(key==='name'){t.name=val;renderTracks()}
+}
+
+function toggleMute(i){tracks[i].muted=!tracks[i].muted;renderTracks()}
+function toggleSolo(i){tracks[i].solo=!tracks[i].solo;renderTracks()}
+function setTrackVol(i,val){tracks[i].volume=parseInt(val);if(i===selectedTrack)document.getElementById('trackVol').value=val,document.getElementById('trackVolVal').textContent=val}
+
+function setSynth(type){
+  const t=tracks[selectedTrack];
+  if(!t)return;
+  t.synth=type;
+  document.querySelectorAll('[data-synth]').forEach(b=>b.classList.toggle('active',b.dataset.synth===type));
+}
+
+function addDemoNotes(track){
+  const notes=[262,294,330,349,392,440,494,523];
+  const beatDur=60/bpm;
+  for(let i=0;i<8;i++){
+    const beat=track.clips[track.clips.length-1]?.beat||0;
+    track.clips.push({
+      id:Date.now()+i,
+      beat:beat+i*0.5,duration:0.4,
+      name:`♪`,note:notes[i%notes.length],
+      selected:false,_lastPlayed:false
+    });
+  }
+}
+
+function showExport(){
+  alert('🎬 Exporting audio...\nIn a full DAW this would render multi-track to WAV/MP3.\n(Demo mode - no audio file generated)');
+}
+
+function saveToStorage(){
+  try{localStorage.setItem('musicdaw_data',JSON.stringify({
+    tracks:tracks.map(t=>({...t,_lastPlayed:undefined,clips:t.clips.map(c=>({...c,_lastPlayed:undefined}))})),
+    bpm,selectedTrack
+  }))}catch(e){}
+}
+function loadFromStorage(){
+  try{
+    const d=JSON.parse(localStorage.getItem('musicdaw_data'));
+    if(d&&d.tracks&&d.tracks.length){
+      tracks=d.tracks.map(t=>({...t,clips:t.clips.map(c=>({...c,_lastPlayed:false}))}));
+      bpm=d.bpm||120;selectedTrack=d.selectedTrack||0;
+      document.getElementById('bpmSlider').value=bpm;
+      document.getElementById('bpmDisplay').textContent=bpm;
+      return true;
+    }
+  }catch(e){}
+  return false;
+}
+
+// Auto-save on state changes
+const _origAddTrack=addTrack;addTrack=function(){_origAddTrack();saveToStorage()};
+const _origAddNote=addDemoNotes;addDemoNotes=function(t){_origAddNote(t);saveToStorage()};
+
+// ── INIT ──
+if(!loadFromStorage()){
+  addTrack();
+  const track=tracks[0];
+  if(track)track.name='Synth 1';
+  addDemoNotes(tracks[0]||track);
+}
+renderTracks();
+updateTrackPanel();
+</script></body></html>

@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d0d1a"/>
+      <stop offset="100%" stop-color="#1a1a3e"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00d9ff"/>
+      <stop offset="100%" stop-color="#667eea"/>
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="32" fill="url(#bg)"/>
+  <!-- Neural network nodes -->
+  <circle cx="60" cy="60" r="8" fill="#00d9ff" opacity="0.8"/>
+  <circle cx="96" cy="44" r="8" fill="#667eea" opacity="0.8"/>
+  <circle cx="132" cy="60" r="8" fill="#a855f7" opacity="0.8"/>
+  <circle cx="60" cy="96" r="8" fill="#4ade80" opacity="0.8"/>
+  <circle cx="96" cy="96" r="12" fill="url(#accent)"/>
+  <circle cx="132" cy="96" r="8" fill="#fbbf24" opacity="0.8"/>
+  <circle cx="60" cy="132" r="8" fill="#f87171" opacity="0.8"/>
+  <circle cx="96" cy="148" r="8" fill="#4ade80" opacity="0.8"/>
+  <circle cx="132" cy="132" r="8" fill="#60a5fa" opacity="0.8"/>
+  <!-- Connections -->
+  <line x1="60" y1="60" x2="96" y2="44" stroke="#00d9ff" stroke-width="1.5" opacity="0.4"/>
+  <line x1="96" y1="44" x2="132" y2="60" stroke="#667eea" stroke-width="1.5" opacity="0.4"/>
+  <line x1="60" y1="60" x2="60" y2="96" stroke="#00d9ff" stroke-width="1.5" opacity="0.4"/>
+  <line x1="132" y1="60" x2="132" y2="96" stroke="#a855f7" stroke-width="1.5" opacity="0.4"/>
+  <line x1="60" y1="96" x2="96" y2="96" stroke="#4ade80" stroke-width="1.5" opacity="0.4"/>
+  <line x1="96" y1="96" x2="132" y2="96" stroke="#fbbf24" stroke-width="1.5" opacity="0.4"/>
+  <line x1="60" y1="96" x2="60" y2="132" stroke="#4ade80" stroke-width="1.5" opacity="0.4"/>
+  <line x1="132" y1="96" x2="132" y2="132" stroke="#60a5fa" stroke-width="1.5" opacity="0.4"/>
+  <line x1="96" y1="96" x2="96" y2="148" stroke="#667eea" stroke-width="1.5" opacity="0.4"/>
+  <line x1="60" y1="132" x2="96" y2="148" stroke="#f87171" stroke-width="1.5" opacity="0.4"/>
+  <line x1="96" y1="148" x2="132" y2="132" stroke="#4ade80" stroke-width="1.5" opacity="0.4"/>
+  <!-- Code brackets -->
+  <text x="96" y="100" text-anchor="middle" dominant-baseline="central"
+        font-family="monospace" font-size="24" font-weight="bold"
+        fill="#ffffff" opacity="0.9">&lt;/&gt;</text>
+</svg>

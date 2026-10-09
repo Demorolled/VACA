@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Household Ledger</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+<h1>Household Ledger</h1>
+<nav>
+<a href="#entries">Entries</a>
+<a href="#balance">Balance</a>
+<a href="#reports">Reports</a>
+</nav>
+</header>
+
+<main>
+<section id="entries">
+<h2>Entries</h2>
+<form id="entryForm">
+<label for="date">Date:</label>
+<input type="date" id="date" name="date" required>
+<label for="amount">Amount:</label>
+<input type="number" id="amount" name="amount" step="0.01" required>
+<label for="payer">Payer:</label>
+<input type="text" id="payer" name="payer" required>
+<label for="payee">Payee:</label>
+<input type="text" id="payee" name="payee" required>
+<label for="description">Description:</label>
+<textarea id="description" name="description" required></textarea>
+<button type="submit">Add Entry</button>
+</form>
+
+<table id="entriesTable">
+<thead>
+<tr>
+<th>Date</th>
+<th>Amount</th>
+<th>Payer</th>
+<th>Payee</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<!-- Entries will be inserted here -->
+</tbody>
+</table>
+</section>
+
+<section id="balance">
+<h2>Balance</h2>
+<table id="balanceTable">
+<thead>
+<tr>
+<th>Member</th>
+<th>Balance</th>
+</tr>
+</thead>
+<tbody>
+<!-- Balance will be inserted here -->
+</tbody>
+</table>
+</section>
+
+<section id="reports">
+<h2>Reports</h2>
+<table id="reportsTable">
+<thead>
+<tr>
+<th>Member</th>
+<th>Total Spent</th>
+<th>Total Received</th>
+</tr>
+</thead>
+<tbody>
+<!-- Reports will be inserted here -->
+</tbody>
+</table>
+</section>
+</main>
+
+<footer>
+<p>&copy; 2023 Household Ledger</p>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

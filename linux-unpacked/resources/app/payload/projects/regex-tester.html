@@ -1,0 +1,70 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Regex Tester</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Fira Code','Consolas',monospace;background:#0a0a14;color:#ccc;min-height:100vh;padding:20px;display:flex;justify-content:center}.container{max-width:700px;width:100%}h1{color:#00d9ff;font-size:1.1rem;text-align:center;margin-bottom:4px;font-family:'Segoe UI',Arial,sans-serif}p.sub{color:#555;font-size:0.65rem;text-align:center;margin-bottom:12px;font-family:'Segoe UI',Arial,sans-serif}.field{margin-bottom:10px}.field label{font-size:0.5rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:2px;font-family:'Segoe UI',Arial,sans-serif}.field textarea,.field input{width:100%;padding:8px 12px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.06);border-radius:6px;color:#ccc;font-family:'Fira Code','Consolas',monospace;font-size:0.75rem;outline:none;box-sizing:border-box}.field textarea:focus,.field input:focus{border-color:#00d9ff}.field textarea{min-height:80px;resize:vertical}.flags{display:flex;gap:8px;align-items:center;margin-bottom:10px;font-size:0.55rem;color:#888;font-family:'Segoe UI',Arial,sans-serif}.flags label{display:flex;align-items:center;gap:3px;cursor:pointer}.flags input{accent-color:#00d9ff}.result-box{background:#12121e;border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:12px;min-height:80px;font-size:0.7rem;line-height:1.6;white-space:pre-wrap;word-wrap:break-word}.match{background:rgba(0,217,255,0.15);color:#00d9ff;border-radius:2px;padding:0 2px}.match-group{background:rgba(74,222,128,0.15);color:#4ade80;border-radius:2px}.info{display:flex;gap:16px;margin-top:6px;font-size:0.5rem;color:#555;font-family:'Segoe UI',Arial,sans-serif}.info .val{color:#00d9ff}</style></head><body>
+<div class="container"><h1>🔍 Regex Tester</h1><p class="sub">Live pattern matching with highlighted results and capture groups</p>
+<div class="field"><label>Pattern</label><input id="patternInput" value="\\b[A-Z][a-z]+\\b" placeholder="Enter regex pattern" oninput="testRegex()"></div>
+<div class="flags"><label><input type="checkbox" id="flagG" checked onchange="testRegex()"> g (global)</label><label><input type="checkbox" id="flagI" onchange="testRegex()"> i (case-insensitive)</label><label><input type="checkbox" id="flagM" onchange="testRegex()"> m (multiline)</label><label><input type="checkbox" id="flagS" onchange="testRegex()"> s (dotall)</label></div>
+<div class="field"><label>Test String</label><textarea id="testInput" oninput="testRegex()">Hello World! This is a Test.
+JavaScript Regex Tester 2026.
+Hello again, World.</textarea></div>
+<div class="field"><label>Replace With (optional)</label><input id="replaceInput" placeholder="e.g., **$&** to bold matches" oninput="testRegex()"></div>
+<div class="result-box" id="resultDisplay">Waiting for input...</div>
+<div class="info"><span>Matches: <span class="val" id="matchCount">0</span></span><span>Groups: <span class="val" id="groupCount">0</span></span><span>Replace: <span class="val" id="replaceResult">-</span></span></div></div>
+<script>
+function testRegex(){
+  const pattern=document.getElementById('patternInput').value;
+  const test=document.getElementById('testInput').value;
+  const replace=document.getElementById('replaceInput').value;
+  const flagG=document.getElementById('flagG').checked?'g':'';
+  const flagI=document.getElementById('flagI').checked?'i':'';
+  const flagM=document.getElementById('flagM').checked?'m':'';
+  const flagS=document.getElementById('flagS').checked?'s':'';
+  const flags=flagG+flagI+flagM+flagS;
+  const result=document.getElementById('resultDisplay');
+  
+  if(!pattern){result.textContent='Enter a pattern to match';return}
+  
+  try{
+    const regex=new RegExp(pattern,flags||'g');
+    const matches=[...test.matchAll(regex)];
+    const matchCount=matches.length;
+    
+    // Count unique groups
+    const groups=new Set();
+    matches.forEach(m=>{for(let i=1;i<m.length;i++)if(m[i]!==undefined)groups.add(i)});
+    
+    // Highlighted text
+    let lastIdx=0,html='';
+    if(flagG||true){
+      const globalRegex=new RegExp(pattern,flags||'g');
+      let m;
+      while((m=globalRegex.exec(test))!==null){
+        html+=escapeHTML(test.slice(lastIdx,m.index));
+        html+=`<span class="match">${escapeHTML(m[0])}</span>`;
+        lastIdx=globalRegex.lastIndex;
+        if(lastIdx===m.index)globalRegex.lastIndex++;
+      }
+      html+=escapeHTML(test.slice(lastIdx));
+    }
+    
+    // Replace
+    let replaceText='';
+    if(replace){
+      try{replaceText=test.replace(new RegExp(pattern,flags||'g'),replace)}catch(e){replaceText='Replace error'}
+    }
+    
+    result.innerHTML=html||escapeHTML(test);
+    document.getElementById('matchCount').textContent=matchCount;
+    document.getElementById('groupCount').textContent=groups.size||0;
+    document.getElementById('replaceResult').textContent=replaceText.slice(0,100)+(replaceText.length>100?'...':'')||'-';
+    saveToStorage();
+  }catch(e){
+    result.innerHTML=`<span style="color:#f87171">❌ ${escapeHTML(e.message)}</span>`;
+  }
+}
+
+function escapeHTML(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+function saveToStorage(){try{localStorage.setItem('regex_data',JSON.stringify({p:document.getElementById('patternInput').value,t:document.getElementById('testInput').value,r:document.getElementById('replaceInput').value}))}catch(e){}}
+function loadFromStorage(){try{const d=JSON.parse(localStorage.getItem('regex_data'));if(d&&d.p){document.getElementById('patternInput').value=d.p;document.getElementById('testInput').value=d.t||'';document.getElementById('replaceInput').value=d.r||'';return true}}catch(e){}return false}
+loadFromStorage();testRegex();
+</script>
+</body></html>

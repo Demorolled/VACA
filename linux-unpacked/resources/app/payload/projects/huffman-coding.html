@@ -1,0 +1,176 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Huffman Coding Visualizer</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#ccc;min-height:100vh;padding:16px;display:flex;justify-content:center}.container{max-width:960px;width:100%}h1{color:#00d9ff;font-size:1rem;margin-bottom:2px;text-align:center}p.sub{color:#555;font-size:0.6rem;margin-bottom:10px;text-align:center}.flex{display:flex;gap:12px}.left{width:320px;flex-shrink:0}.right{flex:1}.panel{background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:10px;margin-bottom:8px}.panel-title{color:#888;font-size:0.55rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}textarea{width:100%;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:4px;color:#ccc;padding:8px;font-family:'Courier New',monospace;font-size:0.7rem;resize:vertical;min-height:60px}textarea:focus{outline:none;border-color:#00d9ff}.btn{padding:5px 12px;border:1px solid rgba(255,255,255,0.06);border-radius:4px;background:transparent;color:#888;cursor:pointer;font-size:0.55rem;font-family:inherit;transition:0.1s}.btn:hover{border-color:#00d9ff;color:#ccc}.btn.primary{background:rgba(0,217,255,0.08);border-color:rgba(0,217,255,0.2);color:#00d9ff}.btn.accent{background:rgba(74,222,128,0.08);border-color:rgba(74,222,128,0.2);color:#4ade80}.btn-group{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px}#treeCanvas{width:100%;height:350px;border:1px solid rgba(255,255,255,0.06);border-radius:6px;display:block}.table-wrap{max-height:200px;overflow-y:auto;font-size:0.5rem}.table-wrap table{width:100%;border-collapse:collapse}.table-wrap th{position:sticky;top:0;background:#0a0a14;color:#555;font-weight:400;padding:4px 6px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.06);font-size:0.45rem;text-transform:uppercase}.table-wrap td{padding:3px 6px;border-bottom:1px solid rgba(255,255,255,0.03);color:#888}.table-wrap .char-cell{color:#00d9ff;font-weight:600}.stats-row{display:flex;gap:12px;font-size:0.5rem;color:#555;flex-wrap:wrap}.stats-row span{display:flex;align-items:center;gap:3px}.val{color:#00d9ff}.code-output{font-size:0.55rem;color:#888;word-break:break-all;padding:6px;background:rgba(255,255,255,0.02);border-radius:4px;max-height:60px;overflow-y:auto;font-family:'Courier New',monospace}.step-slider{width:100%;margin:4px 0;-webkit-appearance:none;height:3px;background:rgba(255,255,255,0.1);border-radius:2px;outline:none}.step-slider::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:#00d9ff;cursor:pointer}.step-labels{display:flex;justify-content:space-between;font-size:0.45rem;color:#444}</style></head><body><div class="container">
+<h1>🌳 Huffman Coding Visualizer</h1><p class="sub">Enter text to see Huffman tree construction, frequency table, and encoded/decoded output</p>
+<div class="flex">
+<div class="left">
+<div class="panel">
+<div class="panel-title">Input</div>
+<textarea id="inputText" placeholder="Enter text to encode..." oninput="buildHuffman()">HELLO HUFFMAN</textarea>
+<div class="btn-group" style="margin-top:6px">
+<button class="btn primary" onclick="buildHuffman()">▶ Encode</button>
+<button class="btn" onclick="loadPreset('AABBBCCCDDDDEEEEEFFFFFF')">🎲 Preset 1</button>
+<button class="btn" onclick="loadPreset('MISSISSIPPI RIVER')">🎲 Preset 2</button>
+<button class="btn" onclick="loadPreset('SHE SELLS SEA SHELLS')">🎲 Preset 3</button>
+</div>
+</div>
+<div class="panel">
+<div class="panel-title">Encoded Bits</div>
+<div class="code-output" id="encodedOutput">—</div>
+<div class="stats-row" style="margin-top:4px">
+<span>Original: <span class="val" id="originalBits">0</span> bits</span>
+<span>Encoded: <span class="val" id="encodedBits">0</span> bits</span>
+<span>Compression: <span class="val" id="compressionRatio">0%</span></span>
+</div>
+</div>
+<div class="panel">
+<div class="panel-title">Decoded Output</div>
+<div class="code-output" id="decodedOutput">—</div>
+</div>
+</div>
+<div class="right">
+<div class="panel">
+<div class="panel-title">Huffman Tree <span style="color:#555;font-weight:400;font-size:0.45rem">(build animation: slide to step)</span></div>
+<input type="range" class="step-slider" id="stepSlider" min="0" max="1" value="1" oninput="updateStep()">
+<div class="step-labels"><span>Start</span><span id="stepLabel">Step 0/0</span><span>Final</span></div>
+<canvas id="treeCanvas"></canvas>
+</div>
+<div class="panel">
+<div class="panel-title">Frequency Table &amp; Codes</div>
+<div class="table-wrap" id="codeTable"></div>
+</div>
+</div></div></div>
+<script>
+let tree=null,steps=[],currentStep=-1,freqs={},codes={};
+const canvas=document.getElementById('treeCanvas'),ctx=canvas.getContext('2d');
+let W=0,H=350;
+function resize(){const r=canvas.parentElement.getBoundingClientRect();canvas.width=W=r.width;canvas.height=H;drawTree()}
+window.addEventListener('resize',resize);
+
+function buildHuffman(){
+  const text=document.getElementById('inputText').value;
+  if(!text){clearAll();return}
+  // Count frequencies
+  freqs={};for(const ch of text)freqs[ch]=(freqs[ch]||0)+1;
+  // Build leaf nodes
+  let nodes=Object.entries(freqs).map(([ch,freq])=>({ch,freq,left:null,right:null}));
+  steps=[nodes.map(n=>({...n}))]; // snapshot
+  // Build tree
+  while(nodes.length>1){
+    nodes.sort((a,b)=>a.freq-b.freq);
+    const left=nodes.shift(),right=nodes.shift();
+    const parent={ch:'',freq:left.freq+right.freq,left,right};
+    nodes.push(parent);
+    steps.push(nodes.map(n=>deepClone(n)));
+  }
+  tree=nodes[0]||null;
+  // Generate codes
+  codes={};
+  function traverse(node,prefix=''){if(!node)return;if(node.ch&&!node.left&&!node.right)codes[node.ch]=prefix||'0';traverse(node.left,prefix+'0');traverse(node.right,prefix+'1')}
+  traverse(tree);
+  // Update UI
+  currentStep=steps.length-1;
+  const slider=document.getElementById('stepSlider');slider.max=Math.max(0,steps.length-1);slider.value=currentStep;
+  document.getElementById('stepLabel').textContent=`Step ${currentStep}/${steps.length-1}`;
+  drawTree();
+  updateCodeTable();
+  updateEncodedOutput(text);
+  saveToStorage();
+}
+
+function deepClone(obj){return JSON.parse(JSON.stringify(obj))}
+
+function updateStep(){
+  currentStep=parseInt(document.getElementById('stepSlider').value);
+  document.getElementById('stepLabel').textContent=`Step ${currentStep}/${steps.length-1}`;
+  drawTree();
+}
+
+function drawTree(){
+  ctx.clearRect(0,0,W,H);
+  if(steps.length===0||currentStep<0||!steps[currentStep])return;
+  const currentNodes=steps[currentStep];
+  if(!currentNodes||currentNodes.length===0)return;
+  // Draw each tree in the forest
+  const spacing=W/(currentNodes.length+1);
+  currentNodes.forEach((node,i)=>{
+    const cx=spacing*(i+1),y=30;
+    drawNode(node,cx,y,W*0.35,0);
+  });
+  // Draw legend
+  ctx.fillStyle='#555';ctx.font='8px sans-serif';ctx.textAlign='left';
+  ctx.fillText('○ = Internal node (combined freq)',10,H-14);
+  ctx.fillText('□ = Leaf node (character + freq)',10,H-4);
+}
+
+function drawNode(node,x,y,maxW,depth){
+  if(!node)return;
+  const isLeaf=node.ch&&!node.left&&!node.right;
+  const r=isLeaf?8:6;
+  // Draw children first
+  if(node.left&&node.right){
+    const childY=y+45;const gap=Math.max(20,maxW/2);
+    const lx=x-gap, rx=x+gap;
+    ctx.strokeStyle='rgba(255,255,255,0.1)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(x,y+r);ctx.lineTo(lx,childY-r);ctx.stroke();
+    ctx.fillStyle='#555';ctx.font='7px monospace';ctx.textAlign='center';
+    ctx.fillText('0',(x+lx)/2,(y+childY)/2);
+    drawNode(node.left,lx,childY,gap*0.8,depth+1);
+    ctx.beginPath();ctx.moveTo(x,y+r);ctx.lineTo(rx,childY-r);ctx.stroke();
+    ctx.fillText('1',(x+rx)/2,(y+childY)/2);
+    drawNode(node.right,rx,childY,gap*0.8,depth+1);
+  }
+  // Draw this node
+  if(isLeaf){
+    ctx.fillStyle='#1a1a2e';ctx.strokeStyle='#00d9ff';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.arc(x,y,r*1.5,0,Math.PI*2);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#00d9ff';ctx.font='7px monospace';ctx.textAlign='center';
+    const label=node.ch===' '?'␣':node.ch;
+    ctx.fillText(label,x,y-3);
+    ctx.fillStyle='#555';ctx.font='6px sans-serif';
+    ctx.fillText(node.freq,x,y+10);
+  }else{
+    ctx.fillStyle='rgba(0,217,255,0.08)';ctx.strokeStyle='rgba(0,217,255,0.2)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.arc(x,y,r*2,0,Math.PI*2);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#888';ctx.font='6px sans-serif';ctx.textAlign='center';
+    ctx.fillText(node.freq,x,y+2);
+  }
+}
+
+function updateCodeTable(){
+  const table=document.getElementById('codeTable');
+  const sorted=Object.entries(codes).sort((a,b)=>freqs[b[0]]-freqs[a[0]]);
+  if(!sorted.length){table.innerHTML='<div style="padding:8px;color:#555;font-size:0.5rem">No data</div>';return}
+  let html='<table><tr><th>Char</th><th>Freq</th><th>Code</th><th>Length</th></tr>';
+  for(const [ch,code]of sorted){
+    const display=ch===' '?'␣':ch==='\n'?'\\n':ch;
+    html+=`<tr><td class="char-cell">${escapeHTML(display)}</td><td>${freqs[ch]}</td><td style="font-family:monospace;color:#4ade80">${escapeHTML(code)}</td><td>${code.length}</td></tr>`;
+  }
+  html+='</table>';
+  table.innerHTML=html;
+}
+
+function updateEncodedOutput(text){
+  let encoded='';for(const ch of text)encoded+=codes[ch]||'';
+  document.getElementById('encodedOutput').textContent=encoded||'—';
+  const origBits=text.length*8;
+  const encBits=encoded.length;
+  document.getElementById('originalBits').textContent=origBits;
+  document.getElementById('encodedBits').textContent=encBits;
+  document.getElementById('compressionRatio').textContent=origBits>0?`${((1-encBits/origBits)*100).toFixed(1)}%`:'0%';
+  // Decode
+  let decoded='',node=tree;
+  if(tree&&!tree.left&&!tree.right){decoded=tree.ch.repeat(text.length)}else{
+    for(const bit of encoded){node=bit==='0'?node.left:node.right;if(!node){break}if(node.ch&&!node.left&&!node.right){decoded+=node.ch;node=tree}}
+  }
+  document.getElementById('decodedOutput').textContent=decoded||'—';
+}
+
+function loadPreset(t){document.getElementById('inputText').value=t;buildHuffman()}
+function clearAll(){freqs={};codes={};tree=null;steps=[];currentStep=-1;ctx.clearRect(0,0,W,H);document.getElementById('encodedOutput').textContent='—';document.getElementById('decodedOutput').textContent='—';document.getElementById('originalBits').textContent='0';document.getElementById('encodedBits').textContent='0';document.getElementById('compressionRatio').textContent='0%';document.getElementById('codeTable').innerHTML='<div style="padding:8px;color:#555;font-size:0.5rem">No data</div>';document.getElementById('stepSlider').max=1;document.getElementById('stepLabel').textContent='Step 0/0'}
+function escapeHTML(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+function saveToStorage(){try{const text=document.getElementById('inputText').value;localStorage.setItem('huffman_data',JSON.stringify({text}))}catch(e){}}
+function loadFromStorage(){try{const d=JSON.parse(localStorage.getItem('huffman_data'));if(d&&d.text){document.getElementById('inputText').value=d.text;return true}}catch(e){}return false}
+
+if(!loadFromStorage())buildHuffman();else buildHuffman();
+resize();
+</script></body></html>

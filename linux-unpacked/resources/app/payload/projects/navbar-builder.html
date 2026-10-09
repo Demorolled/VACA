@@ -1,0 +1,122 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Navbar Builder</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#ccc;min-height:100vh;padding:12px;display:flex;justify-content:center}.container{max-width:960px;width:100%}h1{color:#00d9ff;font-size:1rem;margin-bottom:2px;text-align:center}p.sub{color:#555;font-size:0.6rem;margin-bottom:8px;text-align:center}.flex{display:flex;gap:10px}.sidebar{width:230px;flex-shrink:0}.main{flex:1}.panel{background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:8px;margin-bottom:6px}.panel-title{color:#888;font-size:0.5rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px}.prop-row{display:flex;align-items:center;gap:6px;margin:3px 0;flex-wrap:wrap}.prop-row label{font-size:0.45rem;color:#555;min-width:60px}.prop-row input[type=color]{width:28px;height:22px;border:none;border-radius:3px;cursor:pointer;padding:0;background:none}.prop-row input[type=color]::-webkit-color-swatch{border:1px solid rgba(255,255,255,0.1);border-radius:3px}.prop-row input[type=number]{width:46px;padding:3px 4px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem;text-align:center;font-family:inherit}.prop-row input[type=text]{flex:1;padding:3px 6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem;font-family:inherit}.prop-row select{flex:1;padding:3px 4px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem;font-family:inherit}.prop-row input[type=range]{flex:1;-webkit-appearance:none;height:3px;background:rgba(255,255,255,0.08);border-radius:2px;outline:none}.prop-row input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:#00d9ff;cursor:pointer}.btn{padding:4px 10px;border:1px solid rgba(255,255,255,0.06);border-radius:4px;background:transparent;color:#888;cursor:pointer;font-size:0.5rem;font-family:inherit;transition:0.1s}.btn:hover{border-color:#00d9ff;color:#ccc}.btn.primary{background:rgba(0,217,255,0.08);border-color:rgba(0,217,255,0.2);color:#00d9ff}.btn.accent{background:rgba(74,222,128,0.08);border-color:rgba(74,222,128,0.2);color:#4ade80}.navbar-preview{margin:8px 0;overflow:hidden;border-radius:var(--nav-radius,6px);transition:all 0.2s}.navbar-preview nav{display:var(--nav-display,flex);align-items:center;flex-wrap:wrap;padding:var(--nav-padding,12px 20px);background:var(--nav-bg,#1a1a2e);border:1px solid var(--nav-border,rgba(255,255,255,0.06));gap:4px}.navbar-preview .brand{font-size:0.7rem;font-weight:700;color:var(--nav-brand-color,#00d9ff);margin-right:auto;cursor:pointer}.navbar-preview .nav-link{font-size:0.5rem;color:var(--nav-link-color,#888);padding:4px 10px;border-radius:4px;cursor:pointer;transition:0.1s;text-decoration:none}.navbar-preview .nav-link:hover{color:#ccc;background:rgba(255,255,255,0.04)}.navbar-preview .nav-link.active{color:var(--nav-brand-color,#00d9ff);background:rgba(0,217,255,0.06)}.navbar-preview .nav-cta{padding:5px 14px;border:none;border-radius:4px;background:var(--nav-cta-bg,#00d9ff);color:var(--nav-cta-color,#fff);font-size:0.5rem;cursor:pointer;font-family:inherit;transition:0.1s}.navbar-preview .nav-cta:hover{filter:brightness(1.15)}.css-out{font-family:'Courier New',monospace;font-size:0.45rem;color:#666;padding:6px;background:rgba(255,255,255,0.02);border-radius:4px;max-height:100px;overflow:auto;white-space:pre-wrap}.preset-btn{padding:3px 8px;border:1px solid rgba(255,255,255,0.04);border-radius:3px;background:transparent;color:#666;cursor:pointer;font-size:0.45rem;font-family:inherit;margin:1px}.preset-btn:hover{border-color:#00d9ff;color:#ccc}.val{color:#00d9ff;font-size:0.5rem;min-width:18px}</style></head><body><div class="container">
+<h1>🧭 Navbar Builder</h1><p class="sub">Design responsive navigation bars with live preview and CSS export</p>
+<div class="flex">
+<div class="sidebar">
+<div class="panel"><div class="panel-title">Presets</div>
+<button class="preset-btn" onclick="loadPreset('default')">Default</button>
+<button class="preset-btn" onclick="loadPreset('glass')">Glass</button>
+<button class="preset-btn" onclick="loadPreset('gradient')">Gradient</button>
+<button class="preset-btn" onclick="loadPreset('minimal')">Minimal</button>
+<button class="preset-btn" onclick="loadPreset('branded')">Branded</button>
+</div>
+<div class="panel"><div class="panel-title">Brand</div>
+<div class="prop-row"><label>Name</label><input type="text" id="brandName" value="Brand" onchange="renderNav()"></div>
+<div class="prop-row"><label>Color</label><input type="color" id="brandColor" value="#00d9ff" onchange="renderNav()"></div>
+</div>
+<div class="panel"><div class="panel-title">Layout</div>
+<div class="prop-row"><label>Layout</label><select id="navLayout" onchange="renderNav()"><option value="flex">Horizontal</option><option value="column">Vertical</option></select></div>
+<div class="prop-row"><label>Padding X</label><input type="number" id="navPadX" value="20" onchange="renderNav()">px</div>
+<div class="prop-row"><label>Padding Y</label><input type="number" id="navPadY" value="12" onchange="renderNav()">px</div>
+<div class="prop-row"><label>Radius</label><input type="range" id="navRadius" min="0" max="16" value="6" oninput="renderNav()"><span class="val" id="radiusVal">6</span></div>
+</div>
+<div class="panel"><div class="panel-title">Style</div>
+<div class="prop-row"><label>Background</label><input type="color" id="navBg" value="#1a1a2e" onchange="renderNav()"></div>
+<div class="prop-row"><label>Border</label><input type="color" id="navBorder" value="rgba(255,255,255,0.08)" onchange="renderNav()"></div>
+<div class="prop-row"><label>Link Color</label><input type="color" id="navLinkColor" value="#888" onchange="renderNav()"></div>
+<div class="prop-row"><label>Shadow</label><input type="range" id="navShadow" min="0" max="20" value="6" oninput="renderNav()"><span class="val" id="shadowVal">6</span></div>
+</div>
+<div class="panel"><div class="panel-title">CTA Button</div>
+<div class="prop-row"><label>Show</label><input type="checkbox" id="showCTA" checked onchange="renderNav()" style="accent-color:#00d9ff"></div>
+<div class="prop-row"><label>Text</label><input type="text" id="ctaText" value="Get Started" onchange="renderNav()"></div>
+<div class="prop-row"><label>Bg</label><input type="color" id="ctaBg" value="#00d9ff" onchange="renderNav()"></div>
+</div>
+<div class="panel"><button class="btn primary" onclick="copyCSS()" style="width:100%">📋 Copy CSS</button></div>
+</div>
+<div class="main">
+<div class="panel"><div class="panel-title">Preview</div>
+<div class="navbar-preview" id="navPreview"></div>
+<div class="panel" style="margin-top:8px"><div class="panel-title">Generated CSS</div><pre class="css-out" id="cssOutput">/* Navbar CSS */</pre></div>
+</div></div></div>
+<script>
+const links=['Home','Features','Pricing','About','Contact'];
+let activeLink=0;
+
+function renderNav(){
+  const layout=document.getElementById('navLayout').value;
+  const padX=parseInt(document.getElementById('navPadX').value);
+  const padY=parseInt(document.getElementById('navPadY').value);
+  const brand=escapeHTML(document.getElementById('brandName').value);
+  const brandColor=document.getElementById('brandColor').value;
+  const bg=document.getElementById('navBg').value;
+  const border=document.getElementById('navBorder').value;
+  const linkColor=document.getElementById('navLinkColor').value;
+  const radius=parseInt(document.getElementById('navRadius').value);
+  const shadow=parseInt(document.getElementById('navShadow').value);
+  const showCTA=document.getElementById('showCTA').checked;
+  const ctaText=escapeHTML(document.getElementById('ctaText').value);
+  const ctaBg=document.getElementById('ctaBg').value;
+
+  document.getElementById('radiusVal').textContent=radius;
+  document.getElementById('shadowVal').textContent=shadow;
+
+  const preview=document.getElementById('navPreview');
+  const display=layout==='column'?'flex':'flex';
+  const dir=layout==='column'?'column':'row';
+  preview.style.setProperty('--nav-radius',radius+'px');
+  preview.style.setProperty('--nav-display',display);
+  preview.innerHTML=`<nav style="flex-direction:${dir};padding:${padY}px ${padX}px;background:${bg};border-color:${border};box-shadow:0 ${Math.round(shadow*0.5)}px ${shadow}px rgba(0,0,0,${(shadow*0.04).toFixed(2)})">
+    <div class="brand" style="color:${brandColor};margin-bottom:${dir==='column'?'8px':'0'}">${brand}</div>
+    ${links.map((l,i)=>`<span class="nav-link${i===activeLink?' active':''}" style="color:${i===activeLink?brandColor:linkColor}" onclick="activeLink=${i};renderNav()">${l}</span>`).join('')}
+    ${showCTA?`<button class="nav-cta" style="background:${ctaBg};margin-top:${dir==='column'?'6px':'0'}">${ctaText}</button>`:''}
+  </nav>`;
+  updateCSS();
+  saveToStorage();
+}
+
+function updateCSS(){
+  const layout=document.getElementById('navLayout').value;
+  const padX=document.getElementById('navPadX').value;
+  const padY=document.getElementById('navPadY').value;
+  const brandColor=document.getElementById('brandColor').value;
+  const bg=document.getElementById('navBg').value;
+  const border=document.getElementById('navBorder').value;
+  const linkColor=document.getElementById('navLinkColor').value;
+  const radius=document.getElementById('navRadius').value;
+  const shadow=document.getElementById('navShadow').value;
+  const ctaBg=document.getElementById('ctaBg').value;
+  document.getElementById('cssOutput').textContent=
+`.navbar {\n  display: flex;\n  flex-direction: ${layout};\n  align-items: center;\n  padding: ${padY}px ${padX}px;\n  background: ${bg};\n  border: 1px solid ${border};\n  border-radius: ${radius}px;\n  box-shadow: 0 ${Math.round(shadow*0.5)}px ${shadow}px rgba(0,0,0,${(shadow*0.04).toFixed(2)});\n}\n\n.brand {\n  font-weight: 700;\n  color: ${brandColor};\n  margin-right: auto;\n}\n\n.nav-link {\n  color: ${linkColor};\n  padding: 4px 12px;\n  border-radius: 4px;\n  cursor: pointer;\n  text-decoration: none;\n}\n\n.nav-link:hover {\n  color: #ccc;\n  background: rgba(255,255,255,0.04);\n}\n\n.nav-cta {\n  background: ${ctaBg};\n  color: #fff;\n  border: none;\n  padding: 6px 16px;\n  border-radius: 4px;\n  cursor: pointer;\n}`;
+}
+
+function copyCSS(){navigator.clipboard.writeText(document.getElementById('cssOutput').textContent).then(()=>showToast('CSS copied!'))}
+function showToast(m){const t=document.createElement('div');t.textContent=m;Object.assign(t.style,{position:'fixed',bottom:20,left:'50%',transform:'translateX(-50%)',background:'rgba(0,217,255,0.15)',color:'#00d9ff',padding:'6px 16px',borderRadius:'4px',fontSize:'0.55rem',zIndex:999,transition:'opacity 0.2s',border:'1px solid rgba(0,217,255,0.2)'});document.body.appendChild(t);setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),300)},2000)}
+function escapeHTML(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+function loadPreset(name){
+  const presets={
+    default:{bg:'#1a1a2e',border:'rgba(255,255,255,0.06)',brandColor:'#00d9ff',linkColor:'#888',padX:20,padY:12,radius:6,shadow:6,ctaBg:'#00d9ff'},
+    glass:{bg:'rgba(255,255,255,0.04)',border:'rgba(255,255,255,0.06)',brandColor:'#4ade80',linkColor:'#aaa',padX:24,padY:14,radius:12,shadow:8,ctaBg:'#4ade80'},
+    gradient:{bg:'linear-gradient(135deg,rgba(0,217,255,0.08),rgba(192,132,252,0.08))',border:'rgba(255,255,255,0.04)',brandColor:'#c084fc',linkColor:'#999',padX:20,padY:12,radius:6,shadow:4,ctaBg:'#c084fc'},
+    minimal:{bg:'transparent',border:'rgba(255,255,255,0.04)',brandColor:'#e0e0e0',linkColor:'#666',padX:16,padY:10,radius:0,shadow:0,ctaBg:'transparent'},
+    branded:{bg:'#0a1628',border:'rgba(0,217,255,0.08)',brandColor:'#00d9ff',linkColor:'#7aa',padX:24,padY:14,radius:8,shadow:8,ctaBg:'#00d9ff'}
+  };
+  const p=presets[name];if(!p)return;
+  document.getElementById('navBg').value=p.bg;document.getElementById('navBorder').value=p.border;
+  document.getElementById('brandColor').value=p.brandColor;document.getElementById('navLinkColor').value=p.linkColor;
+  document.getElementById('navPadX').value=p.padX;document.getElementById('navPadY').value=p.padY;
+  document.getElementById('navRadius').value=p.radius;document.getElementById('navShadow').value=p.shadow;
+  document.getElementById('ctaBg').value=p.ctaBg;renderNav();saveToStorage();
+}
+
+function saveToStorage(){try{localStorage.setItem('navbuilder_data',JSON.stringify({
+  brandName:document.getElementById('brandName').value,brandColor:document.getElementById('brandColor').value,
+  navLayout:document.getElementById('navLayout').value,navPadX:document.getElementById('navPadX').value,
+  navPadY:document.getElementById('navPadY').value,navRadius:document.getElementById('navRadius').value,
+  navBg:document.getElementById('navBg').value,navBorder:document.getElementById('navBorder').value,
+  navLinkColor:document.getElementById('navLinkColor').value,navShadow:document.getElementById('navShadow').value,
+  showCTA:document.getElementById('showCTA').checked,ctaText:document.getElementById('ctaText').value,
+  ctaBg:document.getElementById('ctaBg').value,activeLink
+}))}catch(e){}}
+function loadFromStorage(){try{const d=JSON.parse(localStorage.getItem('navbuilder_data'));if(d&&d.brandName){Object.entries(d).forEach(([k,v])=>{const el=document.getElementById(k);if(el){if(el.type==='checkbox')el.checked=v;else el.value=v}});if(d.activeLink!==undefined)activeLink=d.activeLink;return true}}catch(e){}return false}
+if(!loadFromStorage())renderNav();else renderNav()
+</script></body></html>

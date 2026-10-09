@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gantt Project Planner</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#ccc;min-height:100vh;display:flex;flex-direction:column;height:100vh;overflow:hidden}
+header{display:flex;align-items:center;padding:6px 14px;background:#12121e;border-bottom:1px solid rgba(255,255,255,0.06);gap:10px;flex-shrink:0}
+header h1{font-size:0.9rem;color:#00d9ff}header h1 small{color:#555;font-size:0.55rem;font-weight:400}
+.toolbar{display:flex;gap:3px}
+.toolbar button{padding:5px 10px;border:1px solid rgba(255,255,255,0.06);border-radius:3px;background:rgba(255,255,255,0.03);color:#888;cursor:pointer;font-size:0.55rem;font-family:inherit;transition:0.1s}
+.toolbar button:hover{border-color:#00d9ff;color:#ccc}
+.toolbar button.primary{background:rgba(0,217,255,0.1);border-color:rgba(0,217,255,0.2);color:#00d9ff}
+.main{display:flex;flex:1;overflow:hidden}
+.sidebar{width:280px;background:#12121e;border-right:1px solid rgba(255,255,255,0.04);overflow-y:auto;flex-shrink:0;padding:10px;font-size:0.6rem}
+.sidebar h3{font-size:0.65rem;color:#888;margin-bottom:6px;margin-top:10px;text-transform:uppercase;letter-spacing:0.3px}
+.sidebar h3:first-child{margin-top:0}
+.task-list{margin-bottom:12px}
+.task-item{padding:6px 8px;border-radius:4px;cursor:pointer;margin-bottom:2px;border:1px solid transparent;transition:0.1s;display:flex;align-items:center;gap:6px}
+.task-item:hover{background:rgba(255,255,255,0.03)}
+.task-item.active{border-color:rgba(0,217,255,0.3);background:rgba(0,217,255,0.05)}
+.task-item .color-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.task-item .tname{flex:1;color:#aaa;font-size:0.6rem}
+.task-item .tdates{color:#555;font-size:0.5rem}
+.prop-row{display:flex;gap:4px;margin-bottom:4px}
+.prop-row label{color:#666;min-width:50px;font-size:0.55rem;padding:4px 0}
+.prop-row input,.prop-row select{flex:1;padding:4px 6px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.06);border-radius:3px;color:#aaa;font-size:0.55rem;font-family:inherit;outline:none}
+.prop-row input:focus{border-color:#00d9ff}
+.prop-row input[type=color]{width:30px;padding:2px}
+.gantt-area{flex:1;overflow:auto;position:relative;background:#0e0e1a}
+.gantt-header{display:flex;border-bottom:1px solid rgba(255,255,255,0.04);position:sticky;top:0;background:#0e0e1a;z-index:10}
+.gh-label{width:60px;padding:4px;text-align:center;font-size:0.5rem;color:#555}
+.gh-day{width:30px;padding:4px 2px;text-align:center;font-size:0.45rem;color:#444;border-left:1px solid rgba(255,255,255,0.03)}
+.gh-day.weekend{color:#333;background:rgba(255,255,255,0.02)}
+.gantt-body{position:relative}
+.gantt-row{display:flex;height:34px;align-items:center;border-bottom:1px solid rgba(255,255,255,0.02)}
+.gantt-row-label{width:60px;padding:0 6px;font-size:0.5rem;color:#555;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gantt-row-bar{flex:1;position:relative;height:100%}
+.gantt-bar{position:absolute;top:4px;height:26px;border-radius:4px;display:flex;align-items:center;padding:0 6px;font-size:0.5rem;color:rgba(255,255,255,0.8);cursor:pointer;overflow:hidden;min-width:8px;border:1px solid rgba(255,255,255,0.1);transition:0.1s}
+.gantt-bar:hover{border-color:rgba(255,255,255,0.3)}
+.gantt-bar.selected{border-color:#00d9ff;box-shadow:0 0 4px rgba(0,217,255,0.3)}
+.gantt-bar .dep-line{position:absolute;top:13px;height:2px;background:rgba(255,255,255,0.15);pointer-events:none}
+.gantt-bar .dep-arrow{position:absolute;top:8px;width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;pointer-events:none}
+.critical-path{position:absolute;top:0;bottom:0;background:rgba(248,113,113,0.03);pointer-events:none;z-index:0}
+.today-line{position:absolute;top:0;bottom:0;width:2px;background:#f87171;z-index:5}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:none;align-items:center;justify-content:center;z-index:100}
+.modal.open{display:flex}
+.modal-content{background:#1a1a2e;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:24px;min-width:350px}
+.modal-content h2{color:#00d9ff;font-size:0.9rem;margin-bottom:12px}
+.modal-content label{font-size:0.6rem;color:#888;display:block;margin-top:6px;margin-bottom:2px}
+.modal-content input,.modal-content select{width:100%;padding:6px 10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.06);border-radius:4px;color:#ccc;font-size:0.75rem;font-family:inherit;outline:none}
+.modal-content input:focus{border-color:#00d9ff}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+.btn{padding:7px 16px;border:none;border-radius:5px;background:linear-gradient(135deg,#00d9ff,#0099ff);color:#000;font-weight:600;cursor:pointer;font-family:inherit;font-size:0.7rem}
+.btn-secondary{padding:7px 16px;border:1px solid rgba(255,255,255,0.08);border-radius:5px;background:transparent;color:#aaa;cursor:pointer;font-family:inherit;font-size:0.7rem}
+</style>
+</head>
+<body>
+<header>
+  <h1>📊 Gantt Planner <small>Dependencies · Critical Path · Resources</small></h1>
+  <div class="toolbar">
+    <button onclick="showAddTask()" class="primary">➕ Task</button>
+    <button onclick="addMilestone()">🏁 Milestone</button>
+    <button onclick="showSettings()">⚙️ Settings</button>
+    <button onclick="exportProject()">💾 Export</button>
+    <button onclick="importProject()">📂 Import</button>
+  </div>
+</header>
+<div class="main">
+  <div class="sidebar" id="sidebar">
+    <h3>📋 Tasks</h3>
+    <div class="task-list" id="taskList"></div>
+    <h3>⚙️ Properties</h3>
+    <div id="taskProps">
+      <div class="prop-row"><label>Name</label><input id="propName" onchange="updateProp('name',this.value)"></div>
+      <div class="prop-row"><label>Start</label><input id="propStart" type="number" min="0" onchange="updateProp('start',parseInt(this.value))"></div>
+      <div class="prop-row"><label>Duration</label><input id="propDuration" type="number" min="1" onchange="updateProp('duration',parseInt(this.value))"></div>
+      <div class="prop-row"><label>Assigned</label><input id="propAssigned" onchange="updateProp('assigned',this.value)"></div>
+      <div class="prop-row"><label>Depends</label><select id="propDepends" multiple onchange="updateDependencies()"></select></div>
+      <div class="prop-row"><label>Color</label><input id="propColor" type="color" onchange="updateProp('color',this.value)"></div>
+      <div class="prop-row"><label>Progress</label><input id="propProgress" type="range" min="0" max="100" oninput="updateProp('progress',parseInt(this.value))"></div>
+      <div style="margin-top:8px;display:flex;gap:4px">
+        <button onclick="deleteTask()" style="flex:1;padding:4px;border:1px solid rgba(248,113,113,0.2);border-radius:3px;background:transparent;color:#f87171;cursor:pointer;font-size:0.55rem;font-family:inherit">🗑️ Delete</button>
+      </div>
+    </div>
+    <div style="margin-top:auto;border-top:1px solid rgba(255,255,255,0.04);padding-top:8px;font-size:0.55rem;color:#444">
+      <div>📅 Day <span id="currentDay">0</span></div>
+      <div>⏱️ Duration: <span id="totalDuration">0</span> days</div>
+    </div>
+  </div>
+  <div class="gantt-area" id="ganttArea"></div>
+</div>
+
+<div class="modal" id="addTaskModal">
+  <div class="modal-content">
+    <h2>➕ New Task</h2>
+    <label>Task Name</label>
+    <input id="newTaskName" value="New Task">
+    <label>Duration (days)</label>
+    <input id="newTaskDur" type="number" value="3" min="1">
+    <label>Assigned To</label>
+    <input id="newTaskAssigned" value="Team">
+    <label>Start Day</label>
+    <input id="newTaskStart" type="number" value="0" min="0">
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="hideModal('addTaskModal')">Cancel</button>
+      <button class="btn" onclick="addTask()">Create</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="settingsModal">
+  <div class="modal-content">
+    <h2>⚙️ Settings</h2>
+    <label>Project Name</label>
+    <input id="projectName" value="Project Plan">
+    <label>Resources (comma separated)</label>
+    <input id="projectResources" value="Alice, Bob, Charlie, Diana">
+    <label>Start Date</label>
+    <input id="projectStart" type="date" value="2026-07-26">
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="hideModal('settingsModal')">Cancel</button>
+      <button class="btn" onclick="saveSettings()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let tasks=[],selectedTask=null,nextId=1;
+let projectName='Project Plan',resources=['Alice','Bob','Charlie','Diana'];
+const COLORS=['#00d9ff','#4ade80','#fbbf24','#a78bfa','#f472b6','#34d399','#60a5fa','#fb923c'];
+
+function escapeHTML(str){return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+function saveToStorage(){try{localStorage.setItem('gantt_save',JSON.stringify({tasks,nextId,projectName,resources}))}catch(e){}}
+function loadFromStorage(){try{const d=JSON.parse(localStorage.getItem('gantt_save'));if(d){tasks=d.tasks||[];nextId=d.nextId||1;projectName=d.projectName||'Project';resources=d.resources||['Team'];return true}}catch(e){}return false}
+
+function initDemo(){
+  addTaskInternal('Research',4,0,'Alice',COLORS[0]);
+  addTaskInternal('Design',5,1,'Bob',COLORS[1]);
+  addTaskInternal('Frontend Dev',8,2,'Charlie',COLORS[2]);
+  addTaskInternal('Backend Dev',10,3,'Diana',COLORS[3]);
+  addTaskInternal('API Integration',4,5,'Bob',COLORS[4]);
+  addTaskInternal('Testing',6,7,'Alice',COLORS[5]);
+  addTaskInternal('Deployment',3,11,'Team',COLORS[6]);
+  addTaskInternal('Documentation',4,7,'Diana',COLORS[7]);
+  // Dependencies
+  tasks[1].depends=[tasks[0].id]; // Design depends on Research
+  tasks[2].depends=[tasks[1].id]; // Frontend depends on Design
+  tasks[3].depends=[tasks[1].id]; // Backend depends on Design
+  tasks[4].depends=[tasks[2].id,tasks[3].id]; // API depends on Frontend+Backend
+  tasks[5].depends=[tasks[4].id]; // Testing depends on API
+  tasks[6].depends=[tasks[5].id]; // Deployment depends on Testing
+  tasks[7].depends=[tasks[1].id]; // Docs depends on Design
+  selectedTask=tasks[0]?.id||null;
+  renderAll();
+}
+
+function addTaskInternal(name,dur,start,assigned,color){
+  const t={id:nextId++,name,duration:dur,start,assigned:assigned||'Unassigned',color:color||COLORS[nextId%COLORS.length],progress:0,depends:[],isMilestone:false};
+  tasks.push(t);return t;
+}
+
+function addTask(){
+  const name=document.getElementById('newTaskName').value||'Task';
+  const dur=parseInt(document.getElementById('newTaskDur').value)||3;
+  const start=parseInt(document.getElementById('newTaskStart').value)||0;
+  const assigned=document.getElementById('newTaskAssigned').value||'Team';
+  addTaskInternal(name,dur,start,assigned,COLORS[tasks.length%COLORS.length]);
+  hideModal('addTaskModal');
+  selectedTask=tasks[tasks.length-1].id;
+  renderAll();
+}
+
+function addMilestone(){
+  const t=addTaskInternal('🏁 Milestone '+nextId,1,0,'-','#f87171');
+  t.isMilestone=true;
+  selectedTask=t.id;
+  renderAll();
+}
+
+function deleteTask(){
+  if(!selectedTask)return;
+  tasks=tasks.filter(t=>t.id!==selectedTask);
+  tasks.forEach(t=>{t.depends=t.depends.filter(d=>d!==selectedTask)});
+  selectedTask=tasks.length>0?tasks[tasks.length-1].id:null;
+  renderAll();
+}
+
+function getTask(id){return tasks.find(t=>t.id===id)}
+
+function renderAll(){
+  renderTaskList();
+  renderGantt();
+  updateProps();
+}
+
+function renderTaskList(){
+  const list=document.getElementById('taskList');
+  list.innerHTML='';
+  const sorted=[...tasks].sort((a,b)=>a.start-b.start);
+  for(const t of sorted){
+    const div=document.createElement('div');div.className='task-item'+(t.id===selectedTask?' active':'');
+    div.innerHTML=`<span class="color-dot" style="background:${t.color}"></span><span class="tname">${escapeHTML(t.name)}</span><span class="tdates">d${t.start}-${t.start+t.duration}</span>`;
+    div.onclick=()=>{selectedTask=t.id;renderAll()};
+    list.appendChild(div);
+  }
+}
+
+function renderGantt(){
+  const area=document.getElementById('ganttArea');
+  if(tasks.length===0){area.innerHTML='<div style="padding:40px;text-align:center;color:#444;font-size:0.7rem">Add tasks to get started</div>';return}
+  
+  const maxEnd=Math.max(...tasks.map(t=>t.start+t.duration),10);
+  const totalDays=maxEnd+5;
+  const dayWidth=30,labelWidth=60;
+  const totalWidth=labelWidth+totalDays*dayWidth;
+  
+  let html=`<div class="gantt-header" style="width:${totalWidth}px">`;
+  html+=`<div class="gh-label"></div>`;
+  for(let d=0;d<totalDays;d++){
+    const isWE=d%7>=5;
+    html+=`<div class="gh-day${isWE?' weekend':''}" style="width:${dayWidth}px">d${d}</div>`;
+  }
+  html+=`</div><div class="gantt-body">`;
+  
+  // Critical path calculation
+  const criticalPath=findCriticalPath();
+  
+  for(const t of tasks){
+    const isCritical=criticalPath.includes(t.id);
+    const x=labelWidth+t.start*dayWidth;
+    const w=t.duration*dayWidth-2;
+    
+    html+=`<div class="gantt-row" style="width:${totalWidth}px">`;
+    html+=`<div class="gantt-row-label" style="color:${isCritical?'#f87171':'#555'}">${isCritical?'🔴 ':''}${escapeHTML(t.name)}</div>`;
+    html+=`<div class="gantt-row-bar">`;
+    
+    if(isCritical){
+      html+=`<div class="critical-path" style="left:${labelWidth}px;width:${totalDays*dayWidth}px"></div>`;
+    }
+    
+    // Dependency arrows
+    for(const depId of t.depends){
+      const dep=getTask(depId);
+      if(!dep)continue;
+      const depEnd=dep.start+dep.duration;
+      const dx=labelWidth+depEnd*dayWidth-2;
+      const sx=labelWidth+t.start*dayWidth;
+      html+=`<div class="dep-line" style="left:${dx}px;width:${sx-dx}px;background:${isCritical?'rgba(248,113,113,0.4)':'rgba(255,255,255,0.1)'};top:${t.id===selectedTask?'5px':'13px'}"></div>`;
+      html+=`<div class="dep-arrow" style="left:${sx-4}px;top:${t.id===selectedTask?'4px':'12px'};border-left:6px solid ${isCritical?'rgba(248,113,113,0.4)':'rgba(255,255,255,0.1)'}"></div>`;
+    }
+    
+    // Today line
+    html+=`<div class="today-line" style="left:${labelWidth+3*dayWidth}px"></div>`;
+    
+    // Bar
+    const isSelected=t.id===selectedTask;
+    html+=`<div class="gantt-bar${isSelected?' selected':''}" style="left:${x}px;width:${w}px;background:linear-gradient(135deg,${t.color},${t.color}88);${isSelected?'box-shadow:0 0 8px rgba(0,217,255,0.4)':''}" onclick="selectTask(${t.id})">`;
+    html+=`<span>${escapeHTML(t.name)}</span>`;
+    // Progress fill
+    if(t.progress>0){
+      html+=`<div style="position:absolute;left:0;top:0;bottom:0;width:${t.progress}%;background:rgba(255,255,255,0.15);border-radius:3px 0 0 3px;pointer-events:none"></div>`;
+    }
+    html+=`</div></div></div>`;
+  }
+  
+  html+=`</div>`;
+  area.innerHTML=html;
+  document.getElementById('totalDuration').textContent=maxEnd;
+}
+
+function findCriticalPath(){
+  // Simple longest path algorithm
+  const sorted=[...tasks].sort((a,b)=>a.start-b.start);
+  let maxDuration=0;
+  let criticalIds=[];
+
+  function dfs(taskId,visited=new Set(),duration=0,path=[]){
+    if(visited.has(taskId))return;
+    visited.add(taskId);
+    path.push(taskId);
+    const task=getTask(taskId);
+    if(!task){path.pop();visited.delete(taskId);return}
+    duration+=task.duration;
+    
+    const dependents=tasks.filter(t=>t.depends.includes(taskId));
+    if(dependents.length===0){
+      if(duration>maxDuration){maxDuration=duration;criticalIds=[...path]}
+    }else{
+      for(const dep of dependents)dfs(dep.id,visited,duration,path);
+    }
+    path.pop();visited.delete(taskId);
+  }
+  
+  for(const t of sorted){
+    if(!t.depends||t.depends.length===0)dfs(t.id,new Set(),0,[]);
+  }
+  return criticalIds;
+}
+
+function selectTask(id){
+  selectedTask=id;
+  renderAll();
+}
+
+function updateProps(){
+  const t=getTask(selectedTask);
+  if(!t){
+    document.getElementById('taskProps').style.display='none';
+    return;
+  }
+  document.getElementById('taskProps').style.display='block';
+  document.getElementById('propName').value=t.name;
+  document.getElementById('propStart').value=t.start;
+  document.getElementById('propDuration').value=t.duration;
+  document.getElementById('propAssigned').value=t.assigned||'';
+  document.getElementById('propColor').value=t.color;
+  document.getElementById('propProgress').value=t.progress||0;
+  document.getElementById('currentDay').textContent=t.start;
+  
+  // Dependencies select
+  const sel=document.getElementById('propDepends');
+  sel.innerHTML='';
+  for(const ot of tasks){
+    if(ot.id===t.id)continue;
+    const opt=document.createElement('option');
+    opt.value=ot.id;
+    opt.textContent=escapeHTML(ot.name);
+    if(t.depends.includes(ot.id))opt.selected=true;
+    sel.appendChild(opt);
+  }
+}
+
+function updateProp(key,val){
+  const t=getTask(selectedTask);
+  if(!t)return;
+  if(key==='name')t.name=val;
+  else if(key==='start')t.start=Math.max(0,val);
+  else if(key==='duration')t.duration=Math.max(1,val);
+  else if(key==='assigned')t.assigned=val;
+  else if(key==='color')t.color=val;
+  else if(key==='progress')t.progress=Math.min(100,Math.max(0,val));
+  renderAll();
+}
+
+function updateDependencies(){
+  const t=getTask(selectedTask);
+  if(!t)return;
+  const sel=document.getElementById('propDepends');
+  t.depends=Array.from(sel.selectedOptions).map(o=>parseInt(o.value));
+  renderAll();
+}
+
+function showAddTask(){document.getElementById('addTaskModal').classList.add('open')}
+function showSettings(){document.getElementById('settingsModal').classList.add('open')}
+function hideModal(id){document.getElementById(id).classList.remove('open')}
+
+function saveSettings(){
+  projectName=document.getElementById('projectName').value||'Project';
+  resources=document.getElementById('projectResources').value.split(',').map(s=>s.trim()).filter(Boolean);
+  hideModal('settingsModal');
+}
+
+function exportProject(){
+  const data={project:projectName,resources,tasks:tasks.map(t=>({...t}))};
+  const json=JSON.stringify(data,null,2);
+  const blob=new Blob([json],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=projectName.replace(/\s+/g,'_')+'.gantt';
+  a.click();URL.revokeObjectURL(url);
+}
+
+function importProject(){
+  const input=document.createElement('input');
+  input.type='file';input.accept='.gantt,.json';
+  input.onchange=(e)=>{
+    const reader=new FileReader();
+    reader.onload=(ev)=>{
+      try{
+        const data=JSON.parse(ev.target.result);
+        tasks=data.tasks||[];
+        projectName=data.project||'Imported';
+        resources=data.resources||['Team'];
+        nextId=Math.max(...tasks.map(t=>t.id),0)+1;
+        selectedTask=tasks[0]?.id||null;
+        renderAll();
+      }catch(e){alert('Invalid file')}
+    };
+    reader.readAsText(e.target.files[0]);
+  };
+  input.click();
+}
+
+function showToast(msg){
+  const el=document.createElement('div');
+  el.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,217,255,0.9);color:#000;padding:6px 16px;border-radius:6px;font-size:0.65rem;z-index:200';
+  el.textContent=msg;document.body.appendChild(el);
+  setTimeout(()=>{el.style.opacity='0';setTimeout(()=>el.remove(),300)},2000);
+}
+
+if(!loadFromStorage())initDemo();
+setInterval(saveToStorage,10000);
+window.addEventListener('beforeunload',saveToStorage);
+</script>
+</body>
+</html>

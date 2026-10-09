@@ -1,0 +1,61 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Veronica (VACA) — what is NOT tracked
+#
+# This repo holds the runnable app tree (Electron main process + payload).
+# The two things that make a clone unrunnable on their own are deliberately
+# excluded, because they are either huge or machine-specific:
+#
+#   1. the packaged release artifacts  -> attached to a GitHub Release
+#   2. the Electron runtime + vendored node_modules -> installed / downloaded
+#
+# The LLM is excluded too, but it was never a file in here to begin with:
+# see scripts/install-model.sh.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── 1. packaged artifacts (GitHub Releases, not git) ─────────────────────────
+# Two of these are over GitHub's 100 MB hard per-file limit, so git rejects
+# them outright; keep them out of the index on purpose.
+*.AppImage
+*.deb
+*.rpm
+*.snap
+*.tar.gz
+*.tar.xz
+*.zip
+*.7z
+# ANCHORED. A bare `dist/` matches at every level and would silently drop
+# payload/backend/dist and payload/frontend/dist — i.e. the entire backend and
+# the entire UI — leaving a repo that cannot run.
+/dist/
+/release/
+SHA256SUMS
+
+# ── 2a. the Electron runtime that wraps the app ──────────────────────────────
+# Keep linux-unpacked/resources/app/** (our code) and ignore everything else in
+# linux-unpacked/ (Chromium, the 218 MB `veronica` binary, locales, .pak, .so).
+/linux-unpacked/*
+!/linux-unpacked/resources/
+/linux-unpacked/resources/*
+!/linux-unpacked/resources/app/
+
+# ── 2b. vendored dependencies ────────────────────────────────────────────────
+# payload/node_modules is ~109 MB of install output. Restore it with:
+#   npm --prefix linux-unpacked/resources/app/payload install
+**/node_modules/
+
+# ── 3. runtime state written by the backend ──────────────────────────────────
+*.log
+logs/
+**/__pycache__/
+**/*.pyc
+.pytest_cache/
+.DS_Store
+Thumbs.db
+
+# ── 4. machine-local config ──────────────────────────────────────────────────
+# dspark-target.env holds an absolute path to a GGUF on someone's workstation;
+# dspark-target.env.example is the tracked, portable version.
+*.env
+!*.env.example
+*.bak
+*.bak-*

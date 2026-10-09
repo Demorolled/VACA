@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Habit Tracker</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+  min-height: 100vh;
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+.container { max-width: 900px; width: 100%; }
+h1 { color: #00d9ff; font-size: 1.5rem; text-align: center; margin-bottom: 4px; }
+.subtitle { color: #666; font-size: 0.8rem; text-align: center; margin-bottom: 16px; }
+/* Stats bar */
+.stats-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.stat-card {
+  background: linear-gradient(145deg, #1a1a2e, #1e1e3a);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 14px;
+  text-align: center;
+}
+.stat-card .val { font-size: 1.5rem; font-weight: 700; color: #00d9ff; }
+.stat-card .lbl { font-size: 0.65rem; color: #666; text-transform: uppercase; letter-spacing: 0.3px; margin-top: 2px; }
+.stat-card.streak .val { color: #fb923c; }
+.stat-card.today .val { color: #4ade80; }
+.stat-card.rate .val { color: #a78bfa; }
+/* Habits */
+.habits-section {
+  background: linear-gradient(145deg, #1a1a2e, #1e1e3a);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.section-header h2 { color: #ccc; font-size: 1rem; }
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: 0.2s;
+}
+.btn-primary { background: linear-gradient(135deg, #00d9ff, #0099ff); color: #0f0f1a; }
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(0,217,255,0.3); }
+.btn-secondary { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); color: #aaa; }
+.btn-secondary:hover { background: rgba(255,255,255,0.1); }
+.btn-danger { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.2); color: #f87171; }
+.btn-danger:hover { background: rgba(248,113,113,0.2); }
+/* Habit rows */
+.habit-list { display: flex; flex-direction: column; gap: 8px; }
+.habit-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  transition: 0.15s;
+}
+.habit-row:hover { border-color: rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); }
+.habit-icon {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+.habit-info { flex: 1; min-width: 0; }
+.habit-name { font-size: 0.9rem; color: #ddd; font-weight: 500; }
+.habit-desc { font-size: 0.7rem; color: #555; }
+.habit-streak { font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; background: rgba(251,146,60,0.1); color: #fb923c; white-space: nowrap; }
+.habit-check { 
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 2px solid #444;
+  background: transparent;
+  cursor: pointer;
+  transition: 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+.habit-check:hover { border-color: #4ade80; background: rgba(74,222,128,0.1); }
+.habit-check.done { border-color: #4ade80; background: #4ade80; color: #0f0f1a; }
+.habit-actions { display: flex; gap: 4px; }
+.habit-actions .btn-sm {
+  padding: 4px 8px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  cursor: pointer;
+  background: transparent;
+  color: #444;
+  transition: 0.15s;
+  font-family: inherit;
+}
+.habit-actions .btn-sm:hover { background: rgba(255,255,255,0.06); color: #aaa; }
+.habit-actions .btn-sm.danger:hover { color: #f87171; }
+/* Weekly view */
+.week-view {
+  margin-top: 12px;
+  display: flex;
+  gap: 4px;
+  padding: 8px;
+  background: rgba(0,0,0,0.15);
+  border-radius: 8px;
+  justify-content: center;
+}
+.week-day {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  transition: 0.15s;
+}
+.week-day.done { background: #4ade80; color: #0f0f1a; font-weight: 600; }
+.week-day.missed { background: rgba(248,113,113,0.15); color: #f87171; }
+.week-day.future { background: rgba(255,255,255,0.04); color: #333; }
+.week-day.today { border: 1px solid #00d9ff; }
+/* Heatmap */
+.heatmap-section {
+  background: linear-gradient(145deg, #1a1a2e, #1e1e3a);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.heatmap-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 12px;
+}
+.heatmap-row { display: flex; align-items: center; gap: 6px; }
+.heatmap-label { font-size: 0.65rem; color: #555; width: 80px; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.heatmap-cells { display: flex; gap: 2px; }
+.heatmap-cell {
+  width: 12px; height: 12px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.04);
+  transition: 0.1s;
+}
+.heatmap-cell.done-1 { background: rgba(74,222,128,0.2); }
+.heatmap-cell.done-2 { background: rgba(74,222,128,0.4); }
+.heatmap-cell.done-3 { background: rgba(74,222,128,0.6); }
+.heatmap-cell.done-4 { background: rgba(74,222,128,0.8); }
+.heatmap-cell.done-5 { background: #4ade80; }
+.heatmap-empty { text-align: center; padding: 20px; color: #555; font-size: 0.85rem; }
+/* Modal */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  backdrop-filter: blur(4px);
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: #1a1a2e;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  padding: 24px;
+  width: 90%;
+  max-width: 420px;
+}
+.modal h2 { color: #00d9ff; font-size: 1.1rem; margin-bottom: 16px; }
+.modal label { display: block; font-size: 0.75rem; color: #888; margin-bottom: 4px; margin-top: 8px; }
+.modal label:first-of-type { margin-top: 0; }
+.modal input, .modal select, .modal textarea {
+  width: 100%;
+  padding: 8px 12px;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  color: #ccc;
+  font-size: 0.85rem;
+  font-family: inherit;
+  outline: none;
+}
+.modal textarea { resize: vertical; min-height: 60px; }
+.modal input:focus, .modal select:focus, .modal textarea:focus { border-color: #00d9ff; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+@media (max-width: 600px) {
+  .stats-bar { grid-template-columns: repeat(2, 1fr); }
+  .habit-row { flex-wrap: wrap; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>📊 Habit Tracker</h1>
+  <p class="subtitle">Build better habits, one day at a time</p>
+  <div class="stats-bar">
+    <div class="stat-card"><div class="val" id="totalHabits">0</div><div class="lbl">Total Habits</div></div>
+    <div class="stat-card streak"><div class="val" id="bestStreak">0</div><div class="lbl">Best Streak</div></div>
+    <div class="stat-card today"><div class="val" id="doneToday">0</div><div class="lbl">Done Today</div></div>
+    <div class="stat-card rate"><div class="val" id="completionRate">0%</div><div class="lbl">Overall Rate</div></div>
+  </div>
+  <div class="habits-section">
+    <div class="section-header">
+      <h2>🎯 My Habits</h2>
+      <button class="btn btn-primary" onclick="openAddModal()">+ Add Habit</button>
+    </div>
+    <div class="habit-list" id="habitList"><div class="heatmap-empty">No habits yet. Add your first habit!</div></div>
+  </div>
+  <div class="heatmap-section">
+    <div class="section-header">
+      <h2>📅 Activity Heatmap</h2>
+      <span style="font-size:0.7rem;color:#666;">Last 30 days</span>
+    </div>
+    <div id="heatmapContainer"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="habitModal">
+  <div class="modal">
+    <h2 id="modalTitle">Add Habit</h2>
+    <label>Habit Name</label>
+    <input id="edName" placeholder="e.g. Morning Run" maxlength="50">
+    <label>Description (optional)</label>
+    <textarea id="edDesc" placeholder="e.g. Run for 20 minutes before breakfast"></textarea>
+    <label>Icon</label>
+    <select id="edIcon">
+      <option value="🏃">🏃 Exercise</option>
+      <option value="📚">📚 Read</option>
+      <option value="💧">💧 Water</option>
+      <option value="🧘">🧘 Meditate</option>
+      <option value="✍️">✍️ Journal</option>
+      <option value="💻">💻 Code</option>
+      <option value="🎵">🎵 Music</option>
+      <option value="🥗">🥗 Healthy Eat</option>
+      <option value="😴">😴 Sleep</option>
+      <option value="🎯">🎯 Other</option>
+    </select>
+    <label>Target (times per week)</label>
+    <select id="edTarget">
+      <option value="1">1x per week</option>
+      <option value="2">2x per week</option>
+      <option value="3">3x per week</option>
+      <option value="4">4x per week</option>
+      <option value="5">5x per week</option>
+      <option value="6">6x per week</option>
+      <option value="7">Every day</option>
+    </select>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveHabit()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let habits = [];
+let editingId = null;
+
+function loadData() {
+  try { const d = localStorage.getItem('ht-data'); if (d) habits = JSON.parse(d); } catch {}
+}
+function saveData() { localStorage.setItem('ht-data', JSON.stringify(habits)); renderAll(); }
+
+function getDateKey(date) { return date.toISOString().slice(0, 10); }
+function todayKey() { return getDateKey(new Date()); }
+
+function toggleHabit(id) {
+  const habit = habits.find(h => h.id === id);
+  if (!habit) return;
+  if (!habit.log) habit.log = {};
+  const key = todayKey();
+  if (habit.log[key]) delete habit.log[key];
+  else habit.log[key] = true;
+  saveData();
+  renderAll();
+}
+
+function getStreak(habit) {
+  if (!habit.log || !Object.keys(habit.log).length) return 0;
+  let streak = 0;
+  const d = new Date();
+  while (true) {
+    const key = getDateKey(d);
+    if (habit.log[key]) streak++;
+    else if (streak > 0) break;
+    else { d.setDate(d.getDate() - 1); continue; }
+    d.setDate(d.getDate() - 1);
+  }
+  return streak;
+}
+
+function renderAll() {
+  renderStats();
+  renderHabits();
+  renderHeatmap();
+}
+
+function renderStats() {
+  document.getElementById('totalHabits').textContent = habits.length;
+  const best = habits.reduce((max, h) => Math.max(max, getStreak(h)), 0);
+  document.getElementById('bestStreak').textContent = best;
+  const key = todayKey();
+  const done = habits.filter(h => h.log && h.log[key]).length;
+  document.getElementById('doneToday').textContent = done;
+  let totalChecks = 0, doneChecks = 0;
+  habits.forEach(h => {
+    if (!h.log) return;
+    Object.values(h.log).forEach(v => { totalChecks++; if (v) doneChecks++; });
+  });
+  document.getElementById('completionRate').textContent = totalChecks ? Math.round((doneChecks / totalChecks) * 100) + '%' : '0%';
+}
+
+function escapeHTML(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
+
+function renderHabits() {
+  const container = document.getElementById('habitList');
+  if (habits.length === 0) {
+    container.innerHTML = '<div class="heatmap-empty">No habits yet. Add your first habit!</div>'; return;
+  }
+  const sorted = [...habits].sort((a, b) => (b.log && b.log[todayKey()] ? 1 : 0) - (a.log && a.log[todayKey()] ? 1 : 0));
+  container.innerHTML = sorted.map(h => {
+    const streak = getStreak(h);
+    const done = h.log && h.log[todayKey()];
+    // Build week view
+    let weekHtml = '<div class="week-view">';
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const k = getDateKey(d);
+      const isToday = k === todayKey();
+      const isDone = h.log && h.log[k];
+      const isFuture = d > new Date();
+      let cls = 'week-day';
+      if (isFuture) cls += ' future';
+      else if (isDone) cls += ' done';
+      else cls += ' missed';
+      if (isToday) cls += ' today';
+      weekHtml += `<div class="${cls}">${isToday ? '★' : d.toLocaleDateString('en', { weekday: 'narrow' })}</div>`;
+    }
+    weekHtml += '</div>';
+    return `
+      <div class="habit-row">
+        <div class="habit-icon" style="background:${done ? 'rgba(74,222,128,0.1)' : 'rgba(255,255,255,0.03)'}">${h.icon}</div>
+        <div class="habit-info">
+          <div class="habit-name">${escapeHTML(h.name)}</div>
+          <div class="habit-desc">${h.desc ? escapeHTML(h.desc) : 'Target: ' + h.target + 'x/week'}</div>
+          ${weekHtml}
+        </div>
+        <div class="habit-streak">🔥 ${streak} day${streak !== 1 ? 's' : ''}</div>
+        <button class="habit-check ${done ? 'done' : ''}" onclick="toggleHabit('${h.id}')">${done ? '✓' : ''}</button>
+        <div class="habit-actions">
+          <button class="btn-sm" onclick="openEditModal('${h.id}')">✏️</button>
+          <button class="btn-sm danger" onclick="deleteHabit('${h.id}')">🗑️</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderHeatmap() {
+  const container = document.getElementById('heatmapContainer');
+  if (habits.length === 0) {
+    container.innerHTML = '<div class="heatmap-empty">📅 Add habits to see your activity heatmap</div>'; return;
+  }
+  let html = '<div class="heatmap-grid">';
+  habits.forEach(h => {
+    html += '<div class="heatmap-row">';
+    html += `<div class="heatmap-label">${h.icon} ${escapeHTML(h.name)}</div>`;
+    html += '<div class="heatmap-cells">';
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const k = getDateKey(d);
+      const done = h.log && h.log[k];
+      let cls = 'heatmap-cell';
+      if (done) { const str = getStreakForDay(h, d); cls += ' done-' + Math.min(5, Math.ceil(str / 3) + 1); }
+      html += `<div class="${cls}" title="${k}: ${done ? '✓' : '✗'}"></div>`;
+    }
+    html += '</div></div>';
+  });
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function getStreakForDay(habit, date) {
+  let streak = 0;
+  const d = new Date(date);
+  while (true) {
+    const key = getDateKey(d);
+    if (habit.log && habit.log[key]) { streak++; d.setDate(d.getDate() - 1); }
+    else break;
+  }
+  return streak;
+}
+
+function openAddModal() {
+  editingId = null;
+  document.getElementById('modalTitle').textContent = '➕ Add New Habit';
+  document.getElementById('edName').value = '';
+  document.getElementById('edDesc').value = '';
+  document.getElementById('edIcon').value = '🏃';
+  document.getElementById('edTarget').value = '5';
+  document.getElementById('habitModal').classList.add('open');
+  document.getElementById('edName').focus();
+}
+
+function openEditModal(id) {
+  const h = habits.find(x => x.id === id);
+  if (!h) return;
+  editingId = id;
+  document.getElementById('modalTitle').textContent = '✏️ Edit Habit';
+  document.getElementById('edName').value = h.name;
+  document.getElementById('edDesc').value = h.desc || '';
+  document.getElementById('edIcon').value = h.icon || '🎯';
+  document.getElementById('edTarget').value = h.target || 5;
+  document.getElementById('habitModal').classList.add('open');
+}
+
+function closeModal() { document.getElementById('habitModal').classList.remove('open'); editingId = null; }
+
+function saveHabit() {
+  const name = document.getElementById('edName').value.trim();
+  if (!name) { alert('Please enter a habit name'); return; }
+  const desc = document.getElementById('edDesc').value.trim();
+  const icon = document.getElementById('edIcon').value;
+  const target = parseInt(document.getElementById('edTarget').value);
+  if (editingId) {
+    const idx = habits.findIndex(h => h.id === editingId);
+    if (idx >= 0) { habits[idx] = { ...habits[idx], name, desc, icon, target }; }
+  } else {
+    habits.push({
+      id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+      name, desc, icon, target, log: {}
+    });
+  }
+  saveData();
+  closeModal();
+}
+
+function deleteHabit(id) {
+  if (!confirm('Delete this habit and all its data?')) return;
+  habits = habits.filter(h => h.id !== id);
+  saveData();
+}
+
+loadData();
+renderAll();
+</script>
+</body>
+</html>

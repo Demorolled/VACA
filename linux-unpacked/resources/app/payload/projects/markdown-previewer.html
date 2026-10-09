@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Markdown Previewer</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+.container { max-width: 1100px; width: 100%; }
+h1 { color: #00d9ff; font-size: 1.5rem; text-align: center; margin-bottom: 4px; }
+.subtitle { color: #666; font-size: 0.8rem; text-align: center; margin-bottom: 16px; }
+.toolbar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.toolbar button {
+  padding: 5px 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px;
+  background: rgba(255,255,255,0.03);
+  color: #aaa;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: 0.15s;
+  font-family: inherit;
+}
+.toolbar button:hover { background: rgba(255,255,255,0.08); color: #fff; }
+.toolbar button.primary { background: linear-gradient(135deg, #00d9ff, #0099ff); color: #0f0f1a; border: none; font-weight: 600; }
+.editor-wrap {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(255,255,255,0.02);
+}
+.panel { display: flex; flex-direction: column; }
+.panel-header {
+  padding: 8px 14px;
+  background: rgba(255,255,255,0.04);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.panel-header .count { color: #444; font-weight: 400; font-size: 0.7rem; }
+textarea {
+  flex: 1;
+  min-height: 400px;
+  padding: 16px;
+  background: rgba(255,255,255,0.02);
+  border: none;
+  color: #ccc;
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  resize: vertical;
+  outline: none;
+}
+textarea:focus { background: rgba(255,255,255,0.04); }
+#preview {
+  flex: 1;
+  min-height: 400px;
+  padding: 16px;
+  overflow-y: auto;
+  color: #d0d0e0;
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+#preview h1 { color: #00d9ff; font-size: 1.8rem; text-align: left; margin: 0 0 12px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 8px; }
+#preview h2 { color: #4ade80; font-size: 1.4rem; margin: 20px 0 10px; }
+#preview h3 { color: #fbbf24; font-size: 1.15rem; margin: 16px 0 8px; }
+#preview h4 { color: #f472b6; font-size: 1rem; margin: 12px 0 6px; }
+#preview p { margin-bottom: 12px; color: #c0c0d0; }
+#preview a { color: #00d9ff; text-decoration: none; }
+#preview a:hover { text-decoration: underline; }
+#preview ul, #preview ol { margin: 8px 0 12px 24px; }
+#preview li { margin-bottom: 4px; }
+#preview blockquote {
+  margin: 12px 0;
+  padding: 10px 16px;
+  border-left: 3px solid #00d9ff;
+  background: rgba(0,217,255,0.04);
+  color: #aaa;
+  font-style: italic;
+}
+#preview code {
+  background: rgba(255,255,255,0.06);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.85em;
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  color: #f472b6;
+}
+#preview pre {
+  margin: 12px 0;
+  padding: 14px 16px;
+  background: rgba(0,0,0,0.3);
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.06);
+  overflow-x: auto;
+}
+#preview pre code {
+  background: none;
+  padding: 0;
+  color: #a0d8a0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+#preview hr {
+  border: none;
+  height: 1px;
+  background: rgba(255,255,255,0.06);
+  margin: 20px 0;
+}
+#preview table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+}
+#preview th, #preview td {
+  padding: 8px 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+  text-align: left;
+}
+#preview th { background: rgba(255,255,255,0.04); color: #00d9ff; font-weight: 600; }
+#preview td { color: #b0b0c0; }
+#preview img { max-width: 100%; border-radius: 6px; margin: 12px 0; }
+#preview strong { color: #fff; }
+#preview em { color: #ddd; }
+.empty-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #444;
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 40px;
+}
+@media (max-width: 700px) {
+  .editor-wrap { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>📝 Markdown Previewer</h1>
+  <p class="subtitle">Write in Markdown, see instant preview</p>
+  <div class="toolbar">
+    <button onclick="insertMarkdown('**', '**')">Bold</button>
+    <button onclick="insertMarkdown('*', '*')">Italic</button>
+    <button onclick="insertMarkdown('[', '](url)')">Link</button>
+    <button onclick="insertMarkdown('![', '](image-url)')">Image</button>
+    <button onclick="insertMarkdown('# ', '')">H1</button>
+    <button onclick="insertMarkdown('## ', '')">H2</button>
+    <button onclick="insertMarkdown('### ', '')">H3</button>
+    <button onclick="insertMarkdown('- ', '')">List</button>
+    <button onclick="insertMarkdown('> ', '')">Quote</button>
+    <button onclick="insertMarkdown('```\n', '\n```')">Code</button>
+    <button class="primary" onclick="loadSample()">📄 Sample</button>
+    <button onclick="copyHTML()">📋 Copy HTML</button>
+  </div>
+  <div class="editor-wrap">
+    <div class="panel">
+      <div class="panel-header">
+        <span>✏️ Editor</span>
+        <span class="count" id="charCount">0 chars</span>
+      </div>
+      <textarea id="editor" placeholder="Type Markdown here..." oninput="render()"># Hello Markdown!
+
+Start typing **Markdown** on the left to see the *live preview* on the right.
+
+## Features
+
+- **Bold** and *italic* text
+- [Links](https://example.com)
+- Code blocks and inline `code`
+- Lists and blockquotes
+- Tables and images</textarea>
+    </div>
+    <div class="panel">
+      <div class="panel-header">
+        <span>👁️ Preview</span>
+        <span class="count" id="wordCount">0 words</span>
+      </div>
+      <div id="preview"></div>
+    </div>
+  </div>
+</div>
+<script>
+function escapeHTML(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderMarkdown(text) {
+  let html = '';
+  // Escape HTML first
+  text = escapeHTML(text);
+  
+  // Split into lines
+  const lines = text.split('\n');
+  let inCodeBlock = false;
+  let codeBuffer = [];
+  let inTable = false;
+  let tableBuffer = [];
+  let inList = false;
+  let result = [];
+  
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i];
+    
+    // Code blocks
+    if (line.startsWith('```')) {
+      if (inCodeBlock) {
+        result.push(`<pre><code>${codeBuffer.join('\n')}</code></pre>`);
+        codeBuffer = [];
+        inCodeBlock = false;
+      } else {
+        inCodeBlock = true;
+      }
+      continue;
+    }
+    if (inCodeBlock) {
+      codeBuffer.push(line);
+      continue;
+    }
+    
+    // Horizontal rule
+    if (/^(-{3,}|\*{3,}|_{3,})$/.test(line)) {
+      result.push('<hr>');
+      continue;
+    }
+    
+    // Headings
+    if (line.startsWith('###### ')) { result.push('<h6>' + processInline(line.slice(7)) + '</h6>'); continue; }
+    if (line.startsWith('##### ')) { result.push('<h5>' + processInline(line.slice(6)) + '</h5>'); continue; }
+    if (line.startsWith('#### ')) { result.push('<h4>' + processInline(line.slice(5)) + '</h4>'); continue; }
+    if (line.startsWith('### ')) { result.push('<h3>' + processInline(line.slice(4)) + '</h3>'); continue; }
+    if (line.startsWith('## ')) { result.push('<h2>' + processInline(line.slice(3)) + '</h2>'); continue; }
+    if (line.startsWith('# ')) { result.push('<h1>' + processInline(line.slice(2)) + '</h1>'); continue; }
+    
+    // Blockquotes
+    if (line.startsWith('> ')) {
+      result.push('<blockquote>' + processInline(line.slice(2)) + '</blockquote>');
+      continue;
+    }
+    
+    // Images
+    line = line.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" loading="lazy">');
+    
+    // Tables
+    if (line.includes('|') && line.split('|').filter(s => s.trim()).length > 0) {
+      if (line.trim().match(/^[\|:\- ]+$/)) {
+        // Separator row - skip
+        continue;
+      }
+      if (!inTable) {
+        inTable = true;
+        tableBuffer = [];
+      }
+      const cells = line.split('|').map(c => c.trim()).filter(c => c);
+      tableBuffer.push(cells);
+      continue;
+    } else {
+      if (inTable && tableBuffer.length > 0) {
+        result.push(buildTable(tableBuffer));
+        inTable = false;
+        tableBuffer = [];
+      }
+    }
+    
+    // Lists
+    const ulMatch = line.match(/^(\s*)[\-\*\+]\s+(.*)/);
+    const olMatch = line.match(/^(\s*)\d+\.\s+(.*)/);
+    
+    if (ulMatch || olMatch) {
+      const match = ulMatch || olMatch;
+      const indent = match[1].length;
+      const content = match[2];
+      const isOrdered = !!olMatch;
+      
+      if (!inList) {
+        inList = true;
+        result.push(isOrdered ? '<ol>' : '<ul>');
+      }
+      result.push(`${'  '.repeat(indent)}<li>${processInline(content)}</li>`);
+      continue;
+    } else {
+      if (inList) {
+        const lastResult = result[result.length - 1];
+        result.push('</ul></li>');
+        inList = false;
+      }
+    }
+    
+    // Empty line
+    if (line.trim() === '') {
+      result.push('');
+      continue;
+    }
+    
+    // Paragraph
+    result.push('<p>' + processInline(line) + '</p>');
+  }
+  
+  // Close any open blocks
+  if (inCodeBlock) result.push('<pre><code>' + codeBuffer.join('\n') + '</code></pre>');
+  if (inTable && tableBuffer.length > 0) result.push(buildTable(tableBuffer));
+  if (inList) result.push(inList === 'ol' ? '</ol>' : '</ul>');
+  
+  return result.join('\n');
+}
+
+function processInline(text) {
+  // Images (already processed)
+  // Links
+  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+  // Bold + Italic
+  text = text.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+  // Bold
+  text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  text = text.replace(/__(.+?)__/g, '<strong>$1</strong>');
+  // Italic
+  text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  text = text.replace(/_(.+?)_/g, '<em>$1</em>');
+  // Inline code
+  text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+  // Strikethrough
+  text = text.replace(/~~(.+?)~~/g, '<del>$1</del>');
+  return text;
+}
+
+function buildTable(rows) {
+  let html = '<table>\n';
+  rows.forEach((row, i) => {
+    const tag = i === 0 ? 'th' : 'td';
+    html += '<tr>';
+    row.forEach(cell => {
+      html += `<${tag}>${processInline(cell)}</${tag}>`;
+    });
+    html += '</tr>\n';
+  });
+  html += '</table>';
+  return html;
+}
+
+function render() {
+  const text = document.getElementById('editor').value;
+  const preview = document.getElementById('preview');
+  
+  document.getElementById('charCount').textContent = `${text.length} chars`;
+  document.getElementById('wordCount').textContent = `${text.trim() ? text.trim().split(/\s+/).length : 0} words`;
+  
+  if (text.trim() === '') {
+    preview.innerHTML = '<div class="empty-preview">📝 Start typing Markdown...<br><span style="font-size:0.8rem;color:#555;margin-top:8px;display:block">The preview will appear here</span></div>';
+    return;
+  }
+  
+  preview.innerHTML = renderMarkdown(text);
+}
+
+function insertMarkdown(before, after) {
+  const editor = document.getElementById('editor');
+  const start = editor.selectionStart;
+  const end = editor.selectionEnd;
+  const selected = editor.value.substring(start, end);
+  const replacement = before + (selected || 'text') + after;
+  editor.setRangeText(replacement, start, end, 'end');
+  render();
+  editor.focus();
+}
+
+function loadSample() {
+  document.getElementById('editor').value = `# Welcome to Markdown Previewer
+
+## Text Formatting
+
+This text shows **bold**, *italic*, ~~strikethrough~~, and \`inline code\`.
+
+## Links & Images
+
+Check out [GitHub](https://github.com) for more info.
+
+## Blockquotes
+
+> The best way to predict the future is to invent it.
+> — Alan Kay
+
+## Code Blocks
+
+\`\`\`javascript
+function greet(name) {
+  return \`Hello, \${name}!\`;
+}
+console.log(greet('World'));
+\`\`\`
+
+## Lists
+
+### Unordered
+- React
+- Vue
+- Svelte
+  - Sub-framework
+  - Another item
+
+### Ordered
+1. First item
+2. Second item
+3. Third item
+
+## Tables
+
+| Feature | Status | Priority |
+|---------|--------|----------|
+| Markdown | ✅ Done | High |
+| Preview | ✅ Done | High |
+| Export | 🚧 In Progress | Medium |
+
+## Horizontal Rule
+
+---
+
+## Nested Content
+
+> **Tip:** You can combine **formatting** inside \`blockquotes\` and other elements.
+
+> *"Any sufficiently advanced technology is indistinguishable from magic."*
+> — Arthur C. Clarke
+
+---
+
+*Happy editing!* 🎉`;
+  render();
+}
+
+render();
+</script>
+</body>
+</html>

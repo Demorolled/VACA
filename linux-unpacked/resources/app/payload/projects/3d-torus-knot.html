@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>🌀 3D Torus Knot</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #07090f; font-family: 'Segoe UI', system-ui, sans-serif; }
+  #scene { position: fixed; inset: 0; }
+  canvas { display: block; }
+  #hud {
+    position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 10;
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(14, 16, 26, 0.82); border: 1px solid rgba(210, 180, 255, 0.3);
+    border-radius: 12px; padding: 10px 16px; backdrop-filter: blur(8px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.5); color: #e8ddff; font-size: 14px; user-select: none;
+  }
+  #hud button {
+    background: rgba(160, 110, 255, 0.16); color: #d9c8ff; border: 1px solid rgba(190,150,255,0.4);
+    border-radius: 8px; padding: 5px 11px; font-size: 13px; cursor: pointer; transition: all 0.15s;
+  }
+  #hud button:hover { background: rgba(160,110,255,0.35); color: #fff; transform: translateY(-1px); }
+  #hint { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 10;
+    color: rgba(200, 185, 230, 0.5); font-size: 12.5px; white-space: nowrap; }
+  #fallback { display: none; position: fixed; inset: 0; align-items: center; justify-content: center;
+    color: #ff9c9c; font-size: 16px; padding: 24px; text-align: center; z-index: 20; }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+<div id="scene"></div>
+<div id="fallback">3D unavailable — could not load Three.js (CDN blocked or offline).</div>
+<div id="hud">
+  <span>🌀 Metallic Knot</span>
+  <button id="spin">Pause spin</button>
+  <button id="colorBtn">Recolor</button>
+</div>
+<div id="hint">Drag to orbit · Scroll to zoom · Toggle spin / recolor the metal</div>
+
+<script>
+(function () {
+  'use strict';
+  if (typeof THREE === 'undefined') { document.getElementById('fallback').style.display = 'flex'; return; }
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x07090f);
+  scene.fog = new THREE.Fog(0x07090f, 18, 44);
+
+  const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 200);
+  camera.position.set(0, 2.2, 7);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  document.getElementById('scene').appendChild(renderer.domElement);
+
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.minDistance = 3.5;
+  controls.maxDistance = 16;
+  controls.target.set(0, 0, 0);
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.3));
+  const key = new THREE.DirectionalLight(0xfff2dd, 1.4);
+  key.position.set(4, 6, 5);
+  key.castShadow = true;
+  key.shadow.mapSize.set(1024, 1024);
+  key.shadow.bias = -0.0004;
+  scene.add(key);
+  const cool = new THREE.DirectionalLight(0x88bbff, 0.5);
+  cool.position.set(-4, 2, -4);
+  scene.add(cool);
+  const back = new THREE.DirectionalLight(0xff88aa, 0.3);
+  back.position.set(0, -2, -5);
+  scene.add(back);
+
+  // ground mirror-ish disc
+  const floor = new THREE.Mesh(
+    new THREE.CircleGeometry(5, 64),
+    new THREE.MeshStandardMaterial({ color: 0x0e1018, metalness: 0.6, roughness: 0.35 })
+  );
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.y = -1.6;
+  floor.receiveShadow = true;
+  scene.add(floor);
+
+  // starfield + orbiting sparkle particles
+  (function stars() {
+    const n = 1000, pos = new Float32Array(n * 3);
+    for (let i = 0; i < n * 3; i++) pos[i] = (Math.random() - 0.5) * 60;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    scene.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffffff, size: 0.09, transparent: true, opacity: 0.75, fog: false })));
+  })();
+
+  const orbitParticles = [];
+  (function orbitDust() {
+    for (let i = 0; i < 140; i++) {
+      const m = new THREE.Mesh(new THREE.SphereGeometry(0.02, 6, 6),
+        new THREE.MeshBasicMaterial({ color: 0xc9b8ff, transparent: true, opacity: 0.7 }));
+      m.userData = { radius: 2.6 + Math.random() * 1.6, speed: (0.3 + Math.random()) * (Math.random() < 0.5 ? 1 : -1), ph: Math.random() * Math.PI * 2, tilt: (Math.random() - 0.5) * 0.9 };
+      scene.add(m);
+      orbitParticles.push(m);
+    }
+  })();
+
+  // ── The knot ────────────────────────────────────────────────────────────
+  const knotColors = [0xd4af37, 0x66ddff, 0xff77aa, 0x99ff77, 0xbb99ff];
+  let colorIdx = 0;
+  const knot = new THREE.Mesh(
+    new THREE.TorusKnotGeometry(1.1, 0.32, 220, 40, 2, 3),
+    new THREE.MeshStandardMaterial({ color: knotColors[0], metalness: 0.92, roughness: 0.18 })
+  );
+  knot.castShadow = true;
+  knot.position.y = 0.4;
+  scene.add(knot);
+
+  document.getElementById('colorBtn').addEventListener('click', () => {
+    colorIdx = (colorIdx + 1) % knotColors.length;
+    knot.material.color.setHex(knotColors[colorIdx]);
+  });
+
+  let spinning = true;
+  document.getElementById('spin').addEventListener('click', () => {
+    spinning = !spinning;
+    document.getElementById('spin').textContent = spinning ? 'Pause spin' : 'Resume spin';
+  });
+
+  window.addEventListener('resize', () => {
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+
+  let t = 0;
+  function animate() {
+    requestAnimationFrame(animate);
+    t += 0.016;
+    if (spinning) {
+      knot.rotation.x += 0.005;
+      knot.rotation.y += 0.012;
+      knot.rotation.z += 0.004;
+    }
+    orbitParticles.forEach(p => {
+      const a = p.userData.ph + t * p.userData.speed;
+      p.position.set(Math.cos(a) * p.userData.radius, Math.sin(a) * p.userData.tilt * 1.2, Math.sin(a) * p.userData.radius);
+    });
+    controls.update();
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  window.__vaca3d = {
+    spinning: () => spinning,
+    color: () => '#' + knot.material.color.getHexString(),
+    recolor: () => { colorIdx = (colorIdx + 1) % knotColors.length; knot.material.color.setHex(knotColors[colorIdx]); },
+  };
+})();
+</script>
+</body>
+</html>

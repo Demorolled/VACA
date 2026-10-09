@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>🌀 3D Maze Explorer</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0e18; font-family: 'Segoe UI', system-ui, sans-serif; }
+  #scene { position: fixed; inset: 0; }
+  canvas { display: block; }
+  #hud {
+    position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 10;
+    background: rgba(12, 18, 32, 0.82); border: 1px solid rgba(90, 160, 255, 0.3);
+    border-radius: 12px; padding: 9px 16px; backdrop-filter: blur(8px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.5); color: #e4ecff; font-size: 14px; user-select: none;
+    display: flex; align-items: center; gap: 14px;
+  }
+  #hud button {
+    background: rgba(70, 130, 255, 0.18); color: #c9dcff; border: 1px solid rgba(120,170,255,0.4);
+    border-radius: 8px; padding: 5px 11px; font-size: 13px; cursor: pointer; transition: all 0.15s;
+  }
+  #hud button:hover { background: rgba(70,130,255,0.35); color: #fff; }
+  #minimap {
+    width: 132px; height: 132px; border: 1px solid rgba(120,170,255,0.35); border-radius: 8px;
+    background: #0d1526; image-rendering: pixelated;
+  }
+  #msg {
+    position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%); z-index: 10;
+    color: #7dffa8; font-size: 18px; font-weight: 600; text-shadow: 0 2px 10px rgba(0,0,0,0.7);
+    opacity: 0; transition: opacity 0.3s; pointer-events: none;
+  }
+  #hint { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 10;
+    color: rgba(170, 190, 220, 0.55); font-size: 12.5px; white-space: nowrap; }
+  #fallback { display: none; position: fixed; inset: 0; align-items: center; justify-content: center;
+    color: #ff9c9c; font-size: 16px; padding: 24px; text-align: center; z-index: 20; }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+<div id="scene"></div>
+<div id="fallback">3D unavailable — could not load Three.js (CDN blocked or offline).</div>
+<div id="hud">
+  <span>🌀 Maze</span>
+  <canvas id="minimap" width="132" height="132"></canvas>
+  <button id="newMaze">New Maze</button>
+</div>
+<div id="msg">Exit found! 🎉</div>
+<div id="hint">W A S D move · A/D also turn · Arrow keys turn · reach the green portal</div>
+
+<script>
+(function () {
+  'use strict';
+  if (typeof THREE === 'undefined') { document.getElementById('fallback').style.display = 'flex'; return; }
+
+  const SIZE = 17;               // odd so the recursive backtracker works cleanly
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0a0e18);
+  scene.fog = new THREE.Fog(0x0a0e18, 12, 30);
+
+  const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 200);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  document.getElementById('scene').appendChild(renderer.domElement);
+
+  scene.add(new THREE.AmbientLight(0x334466, 0.8));
+  const key = new THREE.DirectionalLight(0xffffff, 0.9);
+  key.position.set(8, 12, 6);
+  key.castShadow = true;
+  key.shadow.mapSize.set(1024, 1024);
+  key.shadow.camera.left = -14; key.shadow.camera.right = 14;
+  key.shadow.camera.top = 14;   key.shadow.camera.bottom = -14;
+  scene.add(key);
+
+  // ── Maze generation (recursive backtracker) ─────────────────────────────
+  let open = [];      // SIZE x SIZE bool grid
+  let wallGroup = null;
+  let floorMesh = null;
+  let exitMesh = null;
+  let player = { x: 1.5, z: 1.5, yaw: 0 };
+
+  function generateMaze() {
+    open = Array.from({ length: SIZE }, () => Array(SIZE).fill(false));
+    const stack = [[1, 1]];
+    open[1][1] = true;
+    const dirs = [[0, -2], [0, 2], [-2, 0], [2, 0]];
+    while (stack.length) {
+      const [cx, cz] = stack[stack.length - 1];
+      const cands = [];
+      for (const [dx, dz] of dirs) {
+        const nx = cx + dx, nz = cz + dz;
+        if (nx > 0 && nx < SIZE - 1 && nz > 0 && nz < SIZE - 1 && !open[nx][nz]) cands.push([nx, nz]);
+      }
+      if (cands.length === 0) { stack.pop(); continue; }
+      const [nx, nz] = cands[Math.floor(Math.random() * cands.length)];
+      open[(cx + nx) / 2][(cz + nz) / 2] = true;
+      open[nx][nz] = true;
+      stack.push([nx, nz]);
+    }
+    buildWorld();
+  }
+
+  function buildWorld() {
+    if (wallGroup) { scene.remove(wallGroup); }
+    if (floorMesh) { scene.remove(floorMesh); }
+    if (exitMesh) { scene.remove(exitMesh); }
+    wallGroup = new THREE.Group();
+
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(SIZE, SIZE),
+      new THREE.MeshStandardMaterial({ color: 0x1a2540, roughness: 0.9 })
+    );
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.set(SIZE / 2, 0, SIZE / 2);
+    floor.receiveShadow = true;
+    scene.add(floor);
+    floorMesh = floor;
+
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0x3d5a8c, roughness: 0.7 });
+    for (let x = 0; x < SIZE; x++) for (let z = 0; z < SIZE; z++) {
+      if (open[x][z]) continue;
+      const w = new THREE.Mesh(new THREE.BoxGeometry(1, 2.4, 1), wallMat);
+      w.position.set(x + 0.5, 1.2, z + 0.5);
+      w.castShadow = true;
+      w.receiveShadow = true;
+      wallGroup.add(w);
+    }
+    scene.add(wallGroup);
+
+    // exit portal (green glow) at bottom-right open cell
+    const exit = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.5, 0.5, 2.4, 24),
+      new THREE.MeshStandardMaterial({ color: 0x22ff88, emissive: 0x0f7a3d, emissiveIntensity: 0.9 })
+    );
+    exit.position.set(SIZE - 1.5, 1.2, SIZE - 1.5);
+    exit.castShadow = true;
+    scene.add(exit);
+    exitMesh = exit;
+
+    player = { x: 1.5, z: 1.5, yaw: Math.PI / 4 };
+    updateCamera();
+  }
+
+  // ── First-person controls ───────────────────────────────────────────────
+  const keys = {};
+  addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; e.preventDefault(); });
+  addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+
+  function cellBlocked(cx, cz) {
+    if (cx < 0 || cz < 0 || cx >= SIZE || cz >= SIZE) return true;
+    return !open[Math.floor(cx)][Math.floor(cz)];
+  }
+  function tryMove(nx, nz) {
+    const margin = 0.32;
+    // check the 4 corners of the player's footprint against wall cells
+    const corners = [[nx + margin, nz + margin], [nx - margin, nz + margin],
+                     [nx + margin, nz - margin], [nx - margin, nz - margin]];
+    for (const [cx, cz] of corners) {
+      if (cellBlocked(cx, cz)) return false;
+    }
+    player.x = nx; player.z = nz;
+    return true;
+  }
+  function updateCamera() {
+    camera.position.set(player.x, 1.5, player.z);
+    camera.rotation.order = 'YXZ';
+    camera.rotation.y = player.yaw;
+    camera.rotation.x = 0;
+  }
+
+  // ── Minimap ─────────────────────────────────────────────────────────────
+  const mm = document.getElementById('minimap');
+  const mmCtx = mm.getContext('2d');
+  function drawMinimap() {
+    mmCtx.fillStyle = '#0d1526'; mmCtx.fillRect(0, 0, 132, 132);
+    const s = 132 / SIZE;
+    for (let x = 0; x < SIZE; x++) for (let z = 0; z < SIZE; z++) {
+      mmCtx.fillStyle = open[x][z] ? '#1d2c4d' : '#5a7bb0';
+      mmCtx.fillRect(x * s, z * s, s, s);
+    }
+    mmCtx.fillStyle = '#22ff88'; mmCtx.fillRect((SIZE - 2) * s, (SIZE - 2) * s, s, s);
+    mmCtx.fillStyle = '#ffffff';
+    mmCtx.beginPath(); mmCtx.arc(player.x * s, player.z * s, 3, 0, Math.PI * 2); mmCtx.fill();
+    mmCtx.strokeStyle = '#ffffff';
+    mmCtx.beginPath(); mmCtx.moveTo(player.x * s, player.z * s);
+    mmCtx.lineTo((player.x + Math.cos(player.yaw) * 0.6) * s, (player.z + Math.sin(player.yaw) * 0.6) * s);
+    mmCtx.stroke();
+  }
+
+  // ── Game loop ───────────────────────────────────────────────────────────
+  let won = false;
+  const msgEl = document.getElementById('msg');
+
+  function update(dt) {
+    const turn = (keys['a'] || keys['arrowleft'] ? 1 : 0) - (keys['d'] || keys['arrowright'] ? 1 : 0);
+    player.yaw += turn * 2.4 * dt;
+    const fwd = (keys['w'] || keys['arrowup'] ? 1 : 0) - (keys['s'] || keys['arrowdown'] ? 1 : 0);
+    const speed = 4.2;
+    const nx = player.x + Math.cos(player.yaw) * fwd * speed * dt;
+    const nz = player.z + Math.sin(player.yaw) * fwd * speed * dt;
+    if (fwd !== 0 && tryMove(nx, nz)) { /* moved */ }
+    updateCamera();
+    if (!won) {
+      const d = Math.hypot(player.x - (SIZE - 1.5), player.z - (SIZE - 1.5));
+      if (d < 0.7) {
+        won = true;
+        msgEl.style.opacity = 1;
+        setTimeout(() => { msgEl.style.opacity = 0; }, 2500);
+      }
+    }
+    drawMinimap();
+  }
+
+  let last = null;
+  function animate(now) {
+    requestAnimationFrame(animate);
+    // Guard the very first frame: the initial call may have no timestamp,
+    // and a NaN dt would poison player.yaw permanently (NaN + 0 === NaN).
+    if (last === null) last = now;
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    update(dt);
+    renderer.render(scene, camera);
+  }
+
+  document.getElementById('newMaze').addEventListener('click', () => { won = false; generateMaze(); });
+  window.addEventListener('resize', () => {
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+
+  generateMaze();
+  requestAnimationFrame(animate);
+
+  window.__vaca3d = {
+    size: SIZE,
+    pos: () => ({ x: +player.x.toFixed(2), z: +player.z.toFixed(2), yaw: +player.yaw.toFixed(2) }),
+    reset: () => { won = false; generateMaze(); },
+  };
+})();
+</script>
+</body>
+</html>

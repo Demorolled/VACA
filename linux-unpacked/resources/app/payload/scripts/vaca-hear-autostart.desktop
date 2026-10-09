@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=VACA Hear
+Comment=Select-to-speak daemon — speaks highlighted text with VACA's voice
+Exec=bash -c "sleep 12; tmux kill-session -t vaca-hear 2>/dev/null; tmux new-session -d -s vaca-hear '/home/final-flash1/miniconda3/bin/python3 /home/final-flash1/Desktop/visual-ai-architect/scripts/vaca-hear.py > /home/final-flash1/Desktop/visual-ai-architect/scripts/vaca-hear.log 2>&1'"
+Icon=audio-input-microphone
+Terminal=false
+X-GNOME-Autostart-enabled=true
+X-GNOME-Autostart-Delay=12

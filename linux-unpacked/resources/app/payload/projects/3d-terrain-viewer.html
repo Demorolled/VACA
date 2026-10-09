@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>🏔️ 3D Terrain Viewer</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #0b1119; font-family: 'Segoe UI', system-ui, sans-serif; }
+  #scene { position: fixed; inset: 0; }
+  canvas { display: block; }
+  #hud {
+    position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 10;
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(14, 20, 32, 0.82); border: 1px solid rgba(110, 190, 255, 0.3);
+    border-radius: 12px; padding: 10px 16px; backdrop-filter: blur(8px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.5); color: #dbe8ff; font-size: 14px; user-select: none;
+  }
+  #hud button {
+    background: rgba(80, 150, 255, 0.18); color: #c9dcff; border: 1px solid rgba(120,170,255,0.4);
+    border-radius: 8px; padding: 5px 11px; font-size: 13px; cursor: pointer; transition: all 0.15s;
+  }
+  #hud button:hover { background: rgba(80,150,255,0.35); color: #fff; transform: translateY(-1px); }
+  #hud input[type=range] { width: 110px; accent-color: #66aaff; }
+  #elev {
+    position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 10;
+    background: rgba(14, 20, 32, 0.8); border: 1px solid rgba(110, 190, 255, 0.25);
+    border-radius: 20px; padding: 6px 16px; color: #a8c8ff; font-size: 12.5px;
+  }
+  #hint { position: fixed; bottom: 48px; left: 50%; transform: translateX(-50%); z-index: 10;
+    color: rgba(170, 195, 225, 0.5); font-size: 12px; white-space: nowrap; }
+  #fallback { display: none; position: fixed; inset: 0; align-items: center; justify-content: center;
+    color: #ff9c9c; font-size: 16px; padding: 24px; text-align: center; z-index: 20; }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+<div id="scene"></div>
+<div id="fallback">3D unavailable — could not load Three.js (CDN blocked or offline).</div>
+<div id="hud">
+  <span>🏔️ Terrain</span>
+  <button id="regenerate">Regenerate</button>
+  <label style="font-size:12px;color:#8fb0ff">Roughness <input type="range" id="rough" min="1" max="20" value="8"></label>
+</div>
+<div id="hint">Drag to orbit · Scroll to zoom · Hover the terrain for elevation</div>
+<div id="elev">Elevation: —</div>
+
+<script>
+(function () {
+  'use strict';
+  if (typeof THREE === 'undefined') { document.getElementById('fallback').style.display = 'flex'; return; }
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0b1119);
+  scene.fog = new THREE.Fog(0x0b1119, 30, 60);
+
+  const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 200);
+  camera.position.set(16, 12, 18);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  document.getElementById('scene').appendChild(renderer.domElement);
+
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.minDistance = 8;
+  controls.maxDistance = 60;
+  controls.target.set(0, 2, 0);
+  controls.maxPolarAngle = Math.PI / 2.15;
+
+  scene.add(new THREE.AmbientLight(0x8899bb, 0.6));
+  const sun = new THREE.DirectionalLight(0xfff2dd, 1.2);
+  sun.position.set(12, 18, 8);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.camera.left = -18; sun.shadow.camera.right = 18;
+  sun.shadow.camera.top = 18;   sun.shadow.camera.bottom = -18;
+  sun.shadow.bias = -0.0004;
+  scene.add(sun);
+  const rim = new THREE.DirectionalLight(0x5588ff, 0.35);
+  rim.position.set(-10, 6, -12);
+  scene.add(rim);
+
+  (function stars() {
+    const n = 600, pos = new Float32Array(n * 3);
+    for (let i = 0; i < n * 3; i++) pos[i] = (Math.random() - 0.5) * 140;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    scene.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffffff, size: 0.14, transparent: true, opacity: 0.7, fog: false })));
+  })();
+
+  // ── Value noise (deterministic-ish, seeded) ─────────────────────────────
+  let seed = 1337;
+  function rnd() { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }
+  function smooth(t) { return t * t * (3 - 2 * t); }
+  function noise2d(x, z) {
+    const xi = Math.floor(x), zi = Math.floor(z);
+    const xf = x - xi, zf = z - zi;
+    const v00 = rnd(), v10 = rnd(), v01 = rnd(), v11 = rnd();
+    const u = smooth(xf), v = smooth(zf);
+    return (1 - v) * ((1 - u) * v00 + u * v10) + v * ((1 - u) * v01 + u * v11);
+  }
+  function fbm(x, z, octaves) {
+    let total = 0, amp = 1, freq = 1, max = 0;
+    for (let i = 0; i < octaves; i++) {
+      seed = 1337 + i * 101; // per-octave seed
+      total += noise2d(x * freq, z * freq) * amp;
+      max += amp;
+      amp *= 0.5; freq *= 2;
+    }
+    return total / max;
+  }
+
+  // ── Terrain mesh ────────────────────────────────────────────────────────
+  const SIZE = 26;
+  const SEGS = 96;
+  let terrain = null;
+  let water = null;
+
+  const COLORS = {
+    deep:   new THREE.Color(0x1a5fa8),
+    shallow: new THREE.Color(0x3f9fd8),
+    sand:   new THREE.Color(0xd8c07a),
+    grass:  new THREE.Color(0x4f8f3f),
+    rock:   new THREE.Color(0x7a7268),
+    snow:   new THREE.Color(0xf2f2f2),
+  };
+
+  function buildTerrain(rough) {
+    if (terrain) { scene.remove(terrain); terrain.geometry.dispose(); terrain.material.dispose(); }
+    if (water) { scene.remove(water); water.geometry.dispose(); water.material.dispose(); }
+
+    seed = 42;
+    const geo = new THREE.PlaneGeometry(SIZE, SIZE, SEGS, SEGS);
+    geo.rotateX(-Math.PI / 2);
+    const posAttr = geo.attributes.position;
+    const heights = new Float32Array(posAttr.count);
+    let maxH = 0;
+    for (let i = 0; i < posAttr.count; i++) {
+      const x = posAttr.getX(i), z = posAttr.getZ(i);
+      const h = (fbm(x * 0.12, z * 0.12, 5) - 0.5) * 2 * rough;
+      heights[i] = h;
+      posAttr.setY(i, h);
+      if (Math.abs(h) > maxH) maxH = Math.abs(h);
+    }
+    geo.computeVertexNormals();
+
+    // vertex colors by elevation
+    const colors = new Float32Array(posAttr.count * 3);
+    const tmp = new THREE.Color();
+    for (let i = 0; i < posAttr.count; i++) {
+      const h = heights[i];
+      let c;
+      if (h < -1.2) c = COLORS.deep;
+      else if (h < -0.3) c = COLORS.shallow;
+      else if (h < 0.15) c = COLORS.sand;
+      else if (h < 2.2) c = COLORS.grass;
+      else if (h < 4.5) c = COLORS.rock;
+      else c = COLORS.snow;
+      tmp.copy(c);
+      // blend grass→snow near the top for a nicer gradient
+      if (h > 2.2 && h < 4.5) {
+        const k = (h - 2.2) / 2.3;
+        tmp.lerp(COLORS.rock, k);
+      }
+      colors[i * 3] = tmp.r; colors[i * 3 + 1] = tmp.g; colors[i * 3 + 2] = tmp.b;
+    }
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.85, metalness: 0.05 });
+    terrain = new THREE.Mesh(geo, mat);
+    terrain.castShadow = true;
+    terrain.receiveShadow = true;
+    scene.add(terrain);
+
+    // water plane at sea level
+    const w = new THREE.Mesh(
+      new THREE.PlaneGeometry(SIZE * 1.02, SIZE * 1.02),
+      new THREE.MeshStandardMaterial({ color: 0x2a6fb8, transparent: true, opacity: 0.72, roughness: 0.15, metalness: 0.2 })
+    );
+    w.rotation.x = -Math.PI / 2;
+    w.position.y = -0.5;
+    w.receiveShadow = true;
+    scene.add(w);
+    water = w;
+  }
+
+  // ── Hover elevation readout ─────────────────────────────────────────────
+  const raycaster = new THREE.Raycaster();
+  const pointer = new THREE.Vector2();
+  const elevEl = document.getElementById('elev');
+  renderer.domElement.addEventListener('pointermove', (e) => {
+    const rect = renderer.domElement.getBoundingClientRect();
+    pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    raycaster.setFromCamera(pointer, camera);
+    const hit = raycaster.intersectObject(terrain)[0];
+    if (hit) elevEl.textContent = 'Elevation: ' + hit.point.y.toFixed(1) + ' m';
+    else elevEl.textContent = 'Elevation: —';
+  });
+
+  // ── Controls ────────────────────────────────────────────────────────────
+  document.getElementById('regenerate').addEventListener('click', () => {
+    buildTerrain(parseInt(document.getElementById('rough').value, 10));
+  });
+  document.getElementById('rough').addEventListener('input', (e) => {
+    buildTerrain(parseInt(e.target.value, 10));
+  });
+
+  window.addEventListener('resize', () => {
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+
+  // ── Loop ────────────────────────────────────────────────────────────────
+  let t = 0;
+  function animate() {
+    requestAnimationFrame(animate);
+    t += 0.016;
+    if (water) water.position.y = -0.5 + Math.sin(t * 0.8) * 0.05;
+    controls.update();
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  buildTerrain(8);
+
+  window.__vaca3d = {
+    regenerate: () => buildTerrain(parseInt(document.getElementById('rough').value, 10)),
+    heightAt: (x, z) => { const h = (fbm(x * 0.12, z * 0.12, 5) - 0.5) * 2 * 8; return +h.toFixed(2); },
+  };
+})();
+</script>
+</body>
+</html>

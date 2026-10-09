@@ -1,0 +1,166 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Layout Builder</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#ccc;min-height:100vh;padding:12px;display:flex;justify-content:center}.container{max-width:1100px;width:100%}h1{color:#00d9ff;font-size:1rem;margin-bottom:2px;text-align:center}p.sub{color:#555;font-size:0.6rem;margin-bottom:8px;text-align:center}.flex{display:flex;gap:10px}.sidebar{width:200px;flex-shrink:0}.main{flex:1}.panel{background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:8px;margin-bottom:6px}.panel-title{color:#888;font-size:0.5rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px}.btn{padding:4px 10px;border:1px solid rgba(255,255,255,0.06);border-radius:4px;background:transparent;color:#888;cursor:pointer;font-size:0.5rem;font-family:inherit;transition:0.1s;margin:1px}.btn:hover{border-color:#00d9ff;color:#ccc}.btn.primary{background:rgba(0,217,255,0.08);border-color:rgba(0,217,255,0.2);color:#00d9ff}.btn.active{background:rgba(0,217,255,0.08);border-color:#00d9ff;color:#00d9ff}.btn.accent{background:rgba(74,222,128,0.08);border-color:rgba(74,222,128,0.2);color:#4ade80}.prop-row{display:flex;align-items:center;gap:6px;margin:3px 0;flex-wrap:wrap}.prop-row label{font-size:0.45rem;color:#555;min-width:50px}.prop-row input[type=number]{width:46px;padding:3px 4px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem;font-family:inherit;text-align:center}.prop-row input[type=number]:focus{outline:none;border-color:#00d9ff}.prop-row select{flex:1;padding:3px 4px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem;font-family:inherit}.prop-row input[type=color]{width:30px;height:24px;border:none;border-radius:3px;cursor:pointer;background:none;padding:0}.prop-row input[type=color]::-webkit-color-swatch-wrapper{padding:0}.prop-row input[type=color]::-webkit-color-swatch{border:1px solid rgba(255,255,255,0.1);border-radius:3px}#previewArea{min-height:320px;border:2px solid rgba(255,255,255,0.06);border-radius:6px;overflow:auto;display:flex;gap:10px;padding:12px;transition:all 0.2s;background:rgba(255,255,255,0.01)}.layout-item{background:rgba(0,217,255,0.04);border:1px solid rgba(0,217,255,0.1);border-radius:4px;padding:10px;text-align:center;font-size:0.5rem;color:#666;min-height:60px;display:flex;align-items:center;justify-content:center;transition:all 0.2s}.layout-item:hover{border-color:rgba(0,217,255,0.3);background:rgba(0,217,255,0.06)}.layout-item.dragging{opacity:0.5}.layout-item .item-del{display:none;position:absolute;top:2px;right:2px;background:none;border:none;color:#555;cursor:pointer;font-size:0.5rem}.layout-item:hover .item-del{display:block}.color-swatch{display:flex;gap:4px;flex-wrap:wrap}.color-swatch input[type=color]{width:24px;height:20px;border-radius:2px;cursor:pointer;padding:0;border:1px solid rgba(255,255,255,0.1)}.code-out{font-family:'Courier New',monospace;font-size:0.5rem;color:#666;padding:6px;background:rgba(255,255,255,0.02);border-radius:4px;max-height:120px;overflow:auto;white-space:pre-wrap}.hint{font-size:0.45rem;color:#444;padding:4px}</style></head><body><div class="container">
+<h1>🧩 Layout Builder</h1><p class="sub">Build CSS Grid &amp; Flexbox layouts with live preview and export</p>
+<div class="flex">
+<div class="sidebar">
+<div class="panel">
+<div class="panel-title">Layout Type</div>
+<button class="btn active" id="flexBtn" onclick="setLayout('flex')">📐 Flexbox</button>
+<button class="btn" id="gridBtn" onclick="setLayout('grid')">🔲 CSS Grid</button>
+</div>
+<div class="panel">
+<div class="panel-title">Items</div>
+<button class="btn primary" onclick="addItem()">➕ Add Item</button>
+<button class="btn" onclick="removeLastItem()">➖ Remove Last</button>
+<div style="margin-top:4px;font-size:0.45rem;color:#555">Items: <span id="itemCount">3</span></div>
+</div>
+<div class="panel">
+<div class="panel-title">Presets</div>
+<button class="btn" onclick="loadPreset('flex-start')">Flex Start</button>
+<button class="btn" onclick="loadPreset('flex-center')">Flex Center</button>
+<button class="btn" onclick="loadPreset('flex-space')">Flex Space-Between</button>
+<button class="btn" onclick="loadPreset('grid-3col')">3 Column Grid</button>
+<button class="btn" onclick="loadPreset('grid-asymmetric')">Asymmetric Grid</button>
+</div>
+<div class="panel">
+<div class="panel-title">Export</div>
+<button class="btn primary" onclick="exportCSS()" style="width:100%">📋 Copy CSS</button>
+<button class="btn" onclick="exportHTML()" style="width:100%;margin-top:2px">📋 Copy HTML</button>
+</div>
+</div>
+<div class="main">
+<div class="panel">
+<div class="panel-title">Live Preview</div>
+<div id="previewArea"></div>
+</div>
+<div class="flex" style="gap:10px">
+<div class="panel" style="flex:1">
+<div class="panel-title">Layout Properties</div>
+<div id="layoutProps"></div>
+</div>
+<div class="panel" style="flex:1">
+<div class="panel-title">Item Styles</div>
+<div class="hint">Select an item to edit its individual styles</div>
+<div id="itemProps"><div style="color:#555;font-size:0.45rem;padding:4px">Click an item to edit</div></div>
+</div>
+</div>
+<div class="panel">
+<div class="panel-title">Generated CSS</div>
+<pre class="code-out" id="cssOutput">/* CSS will appear here */</pre>
+</div>
+</div></div></div>
+<script>
+let layoutType='flex',items=[],selectedItem=null,idCounter=1;
+const layoutState={
+  flexDirection:'row',flexWrap:'wrap',justifyContent:'flex-start',alignItems:'stretch',gap:10,
+  gridColumns:'1fr 1fr 1fr',gridRows:'auto',gridGap:10
+};
+
+function init(){
+  for(let i=0;i<4;i++){items.push({id:idCounter++,label:`Item ${idCounter}`,bg:'rgba(0,217,255,0.04)',w:'',h:'60px',order:0,flex:'',alignSelf:''})}
+  render();saveToStorage();
+}
+
+function setLayout(type){
+  layoutType=type;
+  document.getElementById('flexBtn').classList.toggle('active',type==='flex');
+  document.getElementById('gridBtn').classList.toggle('active',type==='grid');
+  render();saveToStorage();
+}
+
+function addItem(){items.push({id:idCounter++,label:`Item ${idCounter}`,bg:'rgba(0,217,255,0.04)',w:'',h:'60px',order:0,flex:'',alignSelf:''});render();saveToStorage()}
+function removeLastItem(){if(items.length>1){items.pop();if(selectedItem&&selectedItem>=items.length)selectedItem=null;render();saveToStorage()}}
+function removeItem(id){items=items.filter(it=>it.id!==id);if(selectedItem===id)selectedItem=null;render();saveToStorage()}
+
+function render(){
+  const preview=document.getElementById('previewArea');
+  preview.style.display='flex';
+  if(layoutType==='flex'){
+    preview.style.display='flex';
+    preview.style.flexDirection=layoutState.flexDirection;
+    preview.style.flexWrap=layoutState.flexWrap;
+    preview.style.justifyContent=layoutState.justifyContent;
+    preview.style.alignItems=layoutState.alignItems;
+    preview.style.gap=layoutState.gap+'px';
+    preview.style.gridTemplateColumns='';
+    preview.style.gridTemplateRows='';
+  }else{
+    preview.style.display='grid';
+    preview.style.gridTemplateColumns=layoutState.gridColumns;
+    preview.style.gridTemplateRows=layoutState.gridRows;
+    preview.style.gap=layoutState.gridGap+'px';
+    preview.style.flexDirection='';preview.style.flexWrap='';preview.style.justifyContent='';preview.style.alignItems='';
+  }
+  preview.innerHTML=items.map(it=>{
+    const sel=selectedItem===it.id?' style="border-color:#00d9ff;background:rgba(0,217,255,0.08)"':'';
+    return `<div class="layout-item" data-id="${it.id}" style="cursor:pointer;position:relative;background:${it.bg};height:${it.h};${it.w?'width:'+it.w+';':''}order:${it.order};flex:${it.flex||''};align-self:${it.alignSelf||''}"${sel}>${escapeHTML(it.label)}<button class="item-del" onclick="removeItem(${it.id})">✕</button></div>`;
+  }).join('');
+  preview.querySelectorAll('.layout-item').forEach(el=>{el.addEventListener('click',e=>{if(e.target.closest('.item-del'))return;selectedItem=parseInt(el.dataset.id);render();renderItemProps()})});
+  document.getElementById('itemCount').textContent=items.length;
+  renderLayoutProps();
+  renderItemProps();
+  updateCSS();
+}
+
+function renderLayoutProps(){
+  const props=document.getElementById('layoutProps');
+  if(layoutType==='flex'){
+    props.innerHTML=`
+<div class="prop-row"><label>Direction</label><select onchange="layoutState.flexDirection=this.value;render();saveToStorage()"><option ${layoutState.flexDirection==='row'?'selected':''}>row</option><option ${layoutState.flexDirection==='column'?'selected':''}>column</option><option ${layoutState.flexDirection==='row-reverse'?'selected':''}>row-reverse</option><option ${layoutState.flexDirection==='column-reverse'?'selected':''}>column-reverse</option></select></div>
+<div class="prop-row"><label>Wrap</label><select onchange="layoutState.flexWrap=this.value;render();saveToStorage()"><option ${layoutState.flexWrap==='nowrap'?'selected':''}>nowrap</option><option ${layoutState.flexWrap==='wrap'?'selected':''}>wrap</option><option ${layoutState.flexWrap==='wrap-reverse'?'selected':''}>wrap-reverse</option></select></div>
+<div class="prop-row"><label>Justify</label><select onchange="layoutState.justifyContent=this.value;render();saveToStorage()"><option ${layoutState.justifyContent==='flex-start'?'selected':''}>flex-start</option><option ${layoutState.justifyContent==='center'?'selected':''}>center</option><option ${layoutState.justifyContent==='flex-end'?'selected':''}>flex-end</option><option ${layoutState.justifyContent==='space-between'?'selected':''}>space-between</option><option ${layoutState.justifyContent==='space-around'?'selected':''}>space-around</option><option ${layoutState.justifyContent==='space-evenly'?'selected':''}>space-evenly</option></select></div>
+<div class="prop-row"><label>Align</label><select onchange="layoutState.alignItems=this.value;render();saveToStorage()"><option ${layoutState.alignItems==='stretch'?'selected':''}>stretch</option><option ${layoutState.alignItems==='flex-start'?'selected':''}>flex-start</option><option ${layoutState.alignItems==='center'?'selected':''}>center</option><option ${layoutState.alignItems==='flex-end'?'selected':''}>flex-end</option><option ${layoutState.alignItems==='baseline'?'selected':''}>baseline</option></select></div>
+<div class="prop-row"><label>Gap</label><input type="number" value="${layoutState.gap}" onchange="layoutState.gap=parseInt(this.value)||0;render();saveToStorage()">px</div>`;
+  }else{
+    props.innerHTML=`
+<div class="prop-row"><label>Columns</label><input value="${layoutState.gridColumns}" onchange="layoutState.gridColumns=this.value;render();saveToStorage()" style="flex:1;padding:3px 4px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem"></div>
+<div class="prop-row"><label>Rows</label><input value="${layoutState.gridRows}" onchange="layoutState.gridRows=this.value;render();saveToStorage()" style="flex:1;padding:3px 4px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem"></div>
+<div class="prop-row"><label>Gap</label><input type="number" value="${layoutState.gridGap}" onchange="layoutState.gridGap=parseInt(this.value)||0;render();saveToStorage()">px</div>`;
+  }
+}
+
+function renderItemProps(){
+  const props=document.getElementById('itemProps');
+  const it=items.find(i=>i.id===selectedItem);
+  if(!it){props.innerHTML='<div style="color:#555;font-size:0.45rem;padding:4px">Click an item to edit</div>';return}
+  const colors=['rgba(0,217,255,0.04)','rgba(74,222,128,0.04)','rgba(248,113,113,0.04)','rgba(250,204,21,0.04)','rgba(192,132,252,0.04)','rgba(248,113,113,0.04)','rgba(34,211,238,0.04)','rgba(251,146,60,0.04)'];
+  props.innerHTML=`
+<div class="prop-row"><label>Label</label><input style="flex:1;padding:3px 4px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem" value="${escapeHTML(it.label)}" onchange="it=items.find(i=>i.id===${it.id});if(it){it.label=this.value;render();saveToStorage()}"></div>
+<div class="prop-row"><label>Background</label><div class="color-swatch">${colors.map(c=>`<input type="color" value="${c.replace('rgba(','').replace(')','').split(',')[0]==='0'?'#0a0a14':c}">`).join('')}</div></div>
+<div class="prop-row"><label>Height</label><input type="number" value="${parseInt(it.h)||60}" onchange="it=items.find(i=>i.id===${it.id});if(it){it.h=this.value+'px';render();saveToStorage()}">px</div>
+<div class="prop-row"><label>Width</label><input type="text" value="${it.w}" placeholder="auto" onchange="it=items.find(i=>i.id===${it.id});if(it){it.w=this.value;render();saveToStorage()}" style="flex:1;padding:3px 4px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem"></div>
+<div class="prop-row"><label>Order</label><input type="number" value="${it.order}" onchange="it=items.find(i=>i.id===${it.id});if(it){it.order=parseInt(this.value)||0;render();saveToStorage()}"></div>
+<div class="prop-row"><label>Flex</label><input type="text" value="${it.flex}" placeholder="1" onchange="it=items.find(i=>i.id===${it.id});if(it){it.flex=this.value;render();saveToStorage()}" style="flex:1;padding:3px 4px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem"></div>
+<div class="prop-row"><label>Align Self</label><select onchange="it=items.find(i=>i.id===${it.id});if(it){it.alignSelf=this.value;render();saveToStorage()}"><option value="">auto</option><option ${it.alignSelf==='flex-start'?'selected':''}>flex-start</option><option ${it.alignSelf==='center'?'selected':''}>center</option><option ${it.alignSelf==='flex-end'?'selected':''}>flex-end</option><option ${it.alignSelf==='stretch'?'selected':''}>stretch</option></select></div>`;
+}
+
+function updateCSS(){
+  let css=layoutType==='flex'?
+`.container {\n  display: flex;\n  flex-direction: ${layoutState.flexDirection};\n  flex-wrap: ${layoutState.flexWrap};\n  justify-content: ${layoutState.justifyContent};\n  align-items: ${layoutState.alignItems};\n  gap: ${layoutState.gap}px;\n}`:
+`.container {\n  display: grid;\n  grid-template-columns: ${layoutState.gridColumns};\n  grid-template-rows: ${layoutState.gridRows};\n  gap: ${layoutState.gridGap}px;\n}`;
+  css+='\n\n.item {\n  /* Individual item styles */\n}';
+  if(items.some(it=>it.flex)){const flexItems=items.filter(it=>it.flex);css+='\n\n/* Custom flex items */';flexItems.forEach(it=>{css+=`\n.item-${it.id} { flex: ${it.flex}; order: ${it.order}; }`})}
+  document.getElementById('cssOutput').textContent=css;
+}
+
+function loadPreset(name){
+  const presets={
+    'flex-start':()=>{layoutType='flex';layoutState.flexDirection='row';layoutState.justifyContent='flex-start';layoutState.alignItems='stretch';layoutState.gap=10;items=[{id:1,label:'Item 1',bg:'rgba(0,217,255,0.04)',w:'',h:'60px',order:0,flex:'',alignSelf:''},{id:2,label:'Item 2',bg:'rgba(74,222,128,0.04)',w:'',h:'60px',order:0,flex:'',alignSelf:''},{id:3,label:'Item 3',bg:'rgba(248,113,113,0.04)',w:'',h:'60px',order:0,flex:'',alignSelf:''}]},
+    'flex-center':()=>{layoutType='flex';layoutState.justifyContent='center';layoutState.alignItems='center';layoutState.gap=15;items=[{id:1,label:'Center',bg:'rgba(0,217,255,0.04)',w:'80px',h:'80px',order:0,flex:'',alignSelf:''},{id:2,label:'Middle',bg:'rgba(74,222,128,0.04)',w:'80px',h:'80px',order:0,flex:'',alignSelf:''}]},
+    'flex-space':()=>{layoutType='flex';layoutState.justifyContent='space-between';layoutState.gap=0;items=[{id:1,label:'Left',bg:'rgba(0,217,255,0.04)',w:'',h:'60px',order:0,flex:'1',alignSelf:''},{id:2,label:'Center',bg:'rgba(74,222,128,0.04)',w:'',h:'60px',order:0,flex:'1',alignSelf:''},{id:3,label:'Right',bg:'rgba(248,113,113,0.04)',w:'',h:'60px',order:0,flex:'1',alignSelf:''}]},
+    'grid-3col':()=>{layoutType='grid';layoutState.gridColumns='1fr 1fr 1fr';layoutState.gridRows='auto';layoutState.gridGap=12;items=[{id:1,label:'Col 1',bg:'rgba(0,217,255,0.04)',w:'',h:'80px',order:0,flex:'',alignSelf:''},{id:2,label:'Col 2',bg:'rgba(74,222,128,0.04)',w:'',h:'80px',order:0,flex:'',alignSelf:''},{id:3,label:'Col 3',bg:'rgba(248,113,113,0.04)',w:'',h:'80px',order:0,flex:'',alignSelf:''},{id:4,label:'Row 2-1',bg:'rgba(250,204,21,0.04)',w:'',h:'60px',order:0,flex:'',alignSelf:''},{id:5,label:'Row 2-2',bg:'rgba(192,132,252,0.04)',w:'',h:'60px',order:0,flex:'',alignSelf:''},{id:6,label:'Row 2-3',bg:'rgba(34,211,238,0.04)',w:'',h:'60px',order:0,flex:'',alignSelf:''}]},
+    'grid-asymmetric':()=>{layoutType='grid';layoutState.gridColumns='2fr 1fr';layoutState.gridRows='1fr 1fr';layoutState.gridGap=12;items=[{id:1,label:'Main',bg:'rgba(0,217,255,0.04)',w:'',h:'120px',order:0,flex:'',alignSelf:''},{id:2,label:'Sidebar',bg:'rgba(74,222,128,0.04)',w:'',h:'120px',order:0,flex:'',alignSelf:''},{id:3,label:'Footer',bg:'rgba(248,113,113,0.04)',w:'',h:'40px',order:0,flex:'',alignSelf:''}]}
+  };
+  presets[name]();
+  selectedItem=null;
+  setLayout(layoutType);
+  render();saveToStorage();
+}
+
+function exportCSS(){navigator.clipboard.writeText(document.getElementById('cssOutput').textContent).then(()=>showToast('CSS copied!'))}
+function exportHTML(){const itemsHTML=items.map(it=>`  <div class="item">${escapeHTML(it.label)}</div>`).join('\n');const html=`<div class="container">\n${itemsHTML}\n</div>`;navigator.clipboard.writeText(html).then(()=>showToast('HTML copied!'))}
+function showToast(m){const t=document.createElement('div');t.textContent=m;Object.assign(t.style,{position:'fixed',bottom:20,left:'50%',transform:'translateX(-50%)',background:'rgba(0,217,255,0.15)',color:'#00d9ff',padding:'6px 16px',borderRadius:'4px',fontSize:'0.55rem',zIndex:999,transition:'opacity 0.2s',border:'1px solid rgba(0,217,255,0.2)'});document.body.appendChild(t);setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),300)},2000)}
+function escapeHTML(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function saveToStorage(){try{localStorage.setItem('layoutbuilder_data',JSON.stringify({layoutType,items,layoutState,selectedItem:null}))}catch(e){}}
+function loadFromStorage(){try{const d=JSON.parse(localStorage.getItem('layoutbuilder_data'));if(d&&d.items){layoutType=d.layoutType;items=d.items;Object.assign(layoutState,d.layoutState);return true}}catch(e){}return false}
+if(!loadFromStorage())init();else{setLayout(layoutType);render()}
+</script></body></html>

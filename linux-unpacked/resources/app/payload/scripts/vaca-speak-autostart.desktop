@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=VACA Speak
+Comment=Auto-speaks the assistant's responses with VACA's voice
+Exec=bash -c "sleep 15; tmux kill-session -t vaca-speak 2>/dev/null; tmux new-session -d -s vaca-speak '/home/final-flash1/miniconda3/bin/python3 /home/final-flash1/Desktop/visual-ai-architect/scripts/vaca-auto-speak.py > /home/final-flash1/Desktop/visual-ai-architect/scripts/vaca-auto-speak.log 2>&1'"
+Icon=audio-input-microphone
+Terminal=false
+X-GNOME-Autostart-enabled=true
+X-GNOME-Autostart-Delay=15

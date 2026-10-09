@@ -1,0 +1,81 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Inference Engine</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#ccc;min-height:100vh;padding:20px;display:flex;justify-content:center}.container{max-width:700px;width:100%}h1{color:#00d9ff;font-size:1.1rem;text-align:center;margin-bottom:4px}p.sub{color:#555;font-size:0.65rem;text-align:center;margin-bottom:12px}.panels{display:flex;gap:12px;flex-wrap:wrap}.panel{flex:1;min-width:200px;background:#12121e;border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:12px;font-size:0.6rem}.panel h3{color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.3px;font-size:0.6rem}.controls{display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap}.controls button,.controls input{padding:4px 8px;border:1px solid rgba(255,255,255,0.06);border-radius:3px;background:transparent;color:#888;cursor:pointer;font-size:0.5rem;font-family:inherit}.controls button:hover{border-color:#00d9ff;color:#ccc}.controls button.primary{background:rgba(0,217,255,0.1);color:#00d9ff}.controls input{flex:1;color:#ccc;outline:none}.controls input:focus{border-color:#00d9ff}.item{padding:3px 6px;margin-bottom:2px;background:rgba(255,255,255,0.02);border-radius:3px;display:flex;justify-content:space-between;color:#aaa;font-size:0.55rem}.item .del{cursor:pointer;color:#555}.item .del:hover{color:#f87171}.rule-item{padding:4px 6px;margin-bottom:3px;background:rgba(0,217,255,0.03);border:1px solid rgba(0,217,255,0.06);border-radius:3px;font-size:0.5rem;color:#888}.log{height:100px;overflow-y:auto;background:rgba(0,0,0,0.2);border-radius:4px;padding:6px;font-size:0.5rem;color:#555;margin-top:6px;line-height:1.6}.log .inf{color:#00d9ff}.log .fac{color:#4ade80}</style></head><body>
+<div class="container">
+<h1>🧠 Inference Engine</h1><p class="sub">Forward Chaining Rule Engine — Add facts and rules, then infer new knowledge</p>
+<div class="controls" style="justify-content:center">
+<button onclick="runForwardChain()" class="primary">▶ Forward Chain</button>
+<button onclick="resetAll()">🔄 Reset</button>
+<button onclick="loadDemo()">📚 Demo</button>
+</div>
+<div class="panels">
+<div class="panel"><h3>📋 Facts</h3>
+<div class="controls"><input id="factInput" placeholder="e.g., has_feathers" onkeydown="if(event.key==='Enter')addFact()"><button onclick="addFact()">➕</button></div>
+<div id="factsList"></div></div>
+<div class="panel"><h3>📐 Rules</h3>
+<div class="controls"><input id="ruleInput" placeholder="IF has_feathers AND flies IS bird" onkeydown="if(event.key==='Enter')addRule()"><button onclick="addRule()">➕</button></div>
+<div id="rulesList"></div></div>
+<div class="panel"><h3>📜 Inference Log</h3>
+<div class="log" id="inferenceLog">Ready. Add facts and rules, then run Forward Chain.</div></div>
+</div></div>
+<script>
+let facts=[],rules=[],inferred=new Set();
+
+function escapeHTML(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+function addFact(){const v=document.getElementById('factInput').value.trim().toLowerCase();if(!v||facts.includes(v))return;facts.push(v);document.getElementById('factInput').value='';render();saveToStorage()}
+function removeFact(i){facts.splice(i,1);render();saveToStorage()}
+function addRule(){const v=document.getElementById('ruleInput').value.trim();if(!v||rules.includes(v))return;rules.push(v);document.getElementById('ruleInput').value='';render();saveToStorage()}
+function removeRule(i){rules.splice(i,1);render();saveToStorage()}
+
+function parseRule(rule){
+  // Format: IF cond1 AND cond2 IS conclusion
+  const match=rule.match(/^IF\s+(.+)\s+IS\s+(.+)$/i);
+  if(!match)return null;
+  const conditions=match[1].split(/\s+AND\s+/i).map(s=>s.trim().toLowerCase());
+  const conclusion=match[2].trim().toLowerCase();
+  return{conditions,conclusion};
+}
+
+function runForwardChain(){
+  const log=document.getElementById('inferenceLog');
+  log.innerHTML='';inferred=new Set();
+  const derived=new Set(facts);
+  let changed=true,iterations=0;
+  log.innerHTML+=`<div class="inf">▶ Starting forward chaining...</div>`;
+  log.innerHTML+=`<div class="fac">  Initial facts: ${[...derived].map(escapeHTML).join(', ')}</div>`;
+
+  while(changed&&iterations<50){
+    changed=false;iterations++;
+    for(const rule of rules){
+      const parsed=parseRule(rule);
+      if(!parsed){      log.innerHTML+=`<div>  ⚠️ Invalid rule: ${escapeHTML(rule)}</div>`;continue}
+      const allMatch=parsed.conditions.every(c=>derived.has(c));
+      if(allMatch&&!derived.has(parsed.conclusion)&&!inferred.has(parsed.conclusion)){
+        derived.add(parsed.conclusion);inferred.add(parsed.conclusion);changed=true;
+        log.innerHTML+=`<div class="fac">  ✅ Inferred: ${escapeHTML(parsed.conclusion)}</div>`;
+      }
+    }
+  }
+  
+  facts=[...derived];
+  log.innerHTML+=`<div class="inf">⏹ Done (${iterations} iterations)</div>`;
+  log.innerHTML+=`<div class="fac">  Total facts: ${facts.length}, New: ${inferred.size}</div>`;
+  render();saveToStorage();
+}
+
+function loadDemo(){
+  facts=['has_feathers','has_wings','flies','lives_in_nest','has_fur','has_tail','barks','lives_in_house'];
+  rules=['IF has_feathers AND flies IS bird','IF has_fur AND has_tail IS mammal','IF has_fur AND barks IS dog','IF bird AND lives_in_nest IS sparrow','IF mammal AND barks IS canine'];
+  render();saveToStorage();runForwardChain();
+}
+
+function resetAll(){facts=[];rules=[];inferred=new Set();document.getElementById('inferenceLog').innerHTML='Reset.';render();saveToStorage()}
+function render(){
+document.getElementById('factsList').innerHTML=facts.map((f,i)=>`<div class="item"><span>${escapeHTML(f)}</span><span class="del" onclick="removeFact(${i})">×</span></div>`).join('');
+document.getElementById('rulesList').innerHTML=rules.map((r,i)=>`<div class="rule-item"><span>${escapeHTML(r)}</span><span style="float:right;cursor:pointer;color:#555" onclick="removeRule(${i})">×</span></div>`).join('');
+}
+function saveToStorage(){try{localStorage.setItem('inference_data',JSON.stringify({facts,rules}))}catch(e){}}
+function loadFromStorage(){try{const d=JSON.parse(localStorage.getItem('inference_data'));if(d&&d.facts){facts=d.facts;rules=d.rules;return true}}catch(e){}return false}
+if(!loadFromStorage())loadDemo();
+render();
+</script>
+</body></html>

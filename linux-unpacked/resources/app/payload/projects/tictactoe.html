@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html><head><title>Tic-Tac-Toe</title><style>
+body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#1a1a2e;color:#fff}
+.game{text-align:center}
+h1{color:#00d9ff;margin-bottom:16px}
+.board{display:grid;grid-template-columns:repeat(3,80px);gap:4px;margin:0 auto}
+.cell{width:80px;height:80px;font-size:32px;background:#252542;border:1px solid #4a4a6a;cursor:pointer;color:#fff;display:flex;align-items:center;justify-content:center;transition:.15s}
+.cell:hover{background:#2d2d5a;border-color:#00d9ff}
+.status{margin:16px 0;font-size:18px;color:#aaa}
+.reset{padding:8px 24px;font-size:14px;background:#00d9ff;border:none;color:#0f0f1a;cursor:pointer;font-weight:600}
+</style></head><body>
+<div class="game"><h1>⎔ Tic-Tac-Toe</h1>
+<div class="board" id="board"></div>
+<div class="status" id="status">Your turn (X)</div>
+<button class="reset" onclick="init()">↻ Reset</button>
+</div>
+<script>
+let board=[],turn='X',gameOver=false
+const wins=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]]
+function init(){board=Array(9).fill(null);turn='X';gameOver=false;render();document.getElementById('status').textContent='Your turn (X)'}
+function render(){const b=document.getElementById('board');b.innerHTML='';board.forEach((c,i)=>{const d=document.createElement('div');d.className='cell';d.textContent=c||'';d.onclick=()=>move(i);b.appendChild(d)})}
+function move(i){if(board[i]||gameOver)return;board[i]=turn;render();const w=wins.find(p=>p.every(j=>board[j]===turn));if(w){gameOver=true;document.getElementById('status').textContent=`${turn} wins! 🎉`;return}
+if(board.every(c=>c)){gameOver=true;document.getElementById('status').textContent='Draw!';return}
+turn=turn==='X'?'O':'X';document.getElementById('status').textContent=`${turn}'s turn`}
+init()
+</script></body></html>

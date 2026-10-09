@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pixel Art Studio</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#ccc;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+header{display:flex;align-items:center;padding:4px 10px;background:#12121e;border-bottom:1px solid rgba(255,255,255,0.06);gap:6px;flex-shrink:0}
+header h1{color:#00d9ff;font-size:0.85rem}header h1 small{color:#555;font-size:0.5rem;font-weight:400}
+.toolbar{display:flex;gap:2px}
+.toolbar button{padding:4px 8px;border:1px solid rgba(255,255,255,0.06);border-radius:3px;background:transparent;color:#888;cursor:pointer;font-size:0.5rem;font-family:inherit;transition:0.1s}
+.toolbar button:hover{border-color:#00d9ff;color:#ccc}
+.toolbar button.active{border-color:#00d9ff;color:#00d9ff;background:rgba(0,217,255,0.1)}
+.toolbar button.primary{background:rgba(0,217,255,0.1);border-color:rgba(0,217,255,0.2);color:#00d9ff}
+.main{flex:1;display:flex;overflow:hidden}
+.canvas-wrap{flex:1;display:flex;align-items:center;justify-content:center;background:#080810;overflow:hidden}
+canvas#pixelCanvas{image-rendering:pixelated;cursor:crosshair;border:1px solid rgba(255,255,255,0.06)}
+.sidebar{width:200px;background:#12121e;border-left:1px solid rgba(255,255,255,0.06);overflow-y:auto;flex-shrink:0;padding:10px;font-size:0.6rem}
+.sidebar h3{font-size:0.6rem;color:#888;margin-bottom:4px;margin-top:8px;text-transform:uppercase;letter-spacing:0.3px}
+.sidebar h3:first-child{margin-top:0}
+.palette{display:grid;grid-template-columns:repeat(8,1fr);gap:3px;margin-bottom:8px}
+.palette div{aspect-ratio:1;border-radius:3px;cursor:pointer;border:2px solid transparent;transition:0.1s}
+.palette div:hover{transform:scale(1.1)}
+.palette div.active{border-color:#fff;box-shadow:0 0 4px rgba(255,255,255,0.3)}
+.tools{display:grid;grid-template-columns:repeat(4,1fr);gap:2px;margin-bottom:8px}
+.tools button{padding:6px;border:1px solid rgba(255,255,255,0.06);border-radius:3px;background:transparent;color:#888;cursor:pointer;font-size:0.5rem;font-family:inherit;transition:0.1s}
+.tools button:hover{border-color:#00d9ff;color:#ccc}
+.tools button.active{border-color:#00d9ff;color:#00d9ff;background:rgba(0,217,255,0.05)}
+.frame-nav{display:flex;gap:4px;align-items:center;margin-bottom:6px}
+.frame-nav button{padding:3px 8px;border:1px solid rgba(255,255,255,0.06);border-radius:3px;background:transparent;color:#888;cursor:pointer;font-size:0.45rem;font-family:inherit}
+.frame-nav button:hover{border-color:#00d9ff}
+.frame-nav .fcount{color:#555;font-size:0.5rem;flex:1;text-align:right}
+.size-info{font-size:0.5rem;color:#444;padding:4px;background:rgba(0,0,0,0.2);border-radius:3px;margin-bottom:6px;display:flex;justify-content:space-between}
+</style>
+</head>
+<body>
+<header>
+  <h1>🎨 Pixel Art Studio <small>Animation · Palette · Export</small></h1>
+  <div class="toolbar">
+    <select id="gridSize" onchange="resizeGrid()" style="padding:2px 6px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.06);border-radius:3px;color:#888;font-family:inherit;font-size:0.5rem;outline:none">
+      <option value="16">16×16</option><option value="32" selected>32×32</option><option value="48">48×48</option><option value="64">64×64</option>
+    </select>
+    <button onclick="exportPNG()" class="primary">💾 PNG</button>
+    <button onclick="exportGIF()">🎞️ GIF</button>
+    <button onclick="clearCanvas()">🗑️ Clear</button>
+    <button onclick="togglePreview()">👁 Preview</button>
+  </div>
+</header>
+<div class="main">
+  <div class="canvas-wrap" id="canvasWrap">
+    <canvas id="pixelCanvas"></canvas>
+  </div>
+  <div class="sidebar">
+    <h3>🎨 Palette</h3>
+    <div class="palette" id="palette"></div>
+    <h3>🛠️ Tools</h3>
+    <div class="tools">
+      <button class="active" data-tool="pen" onclick="setTool('pen')">✏️ Pen</button>
+      <button data-tool="fill" onclick="setTool('fill')">🪣 Fill</button>
+      <button data-tool="picker" onclick="setTool('picker')">💉 Pick</button>
+      <button data-tool="eraser" onclick="setTool('eraser')">🧹 Erase</button>
+    </div>
+    <h3>🎞️ Animation</h3>
+    <div class="frame-nav">
+      <button onclick="prevFrame()">◀</button>
+      <span id="frameDisplay" style="color:#00d9ff;font-size:0.55rem">1/1</span>
+      <button onclick="nextFrame()">▶</button>
+      <button onclick="addFrame()" style="margin-left:4px">➕</button>
+      <button onclick="duplicateFrame()">📋</button>
+      <button onclick="deleteFrame()">🗑️</button>
+      <button onclick="togglePlayAnim()" id="playAnimBtn">▶ Play</button>
+    </div>
+    <div class="size-info">
+      <span id="canvasSize">32×32</span>
+      <span>Zoom: <span id="zoomLevel">1×</span></span>
+    </div>
+  </div>
+</div>
+
+<script>
+const canvas=document.getElementById('pixelCanvas'),ctx=canvas.getContext('2d');
+let gridSize=32,pixelSize=16;
+let palette=['#000000','#ffffff','#ff0040','#00d9ff','#4ade80','#fbbf24','#a78bfa','#f87171',
+  '#ff6633','#ffcc00','#33cc66','#3399ff','#9933ff','#ff3399','#00cccc','#666666',
+  '#333333','#cccccc','#ff9999','#99ff99','#9999ff','#ffff99','#ffcc99','#cc99ff'];
+let selectedColor='#ff0040',currentTool='pen';
+let frames=[[[]]],currentFrame=0,isPlaying=false,playInterval=null;
+let zoom=1,isDrawing=false,startX,startY;
+
+function init(){
+  initPalette();
+  resizeGrid();
+  canvas.addEventListener('mousedown',onMouseDown);
+  canvas.addEventListener('mousemove',onMouseMove);
+  canvas.addEventListener('mouseup',onMouseUp);
+  canvas.addEventListener('mouseleave',onMouseUp);
+  window.addEventListener('resize',fitCanvas);
+}
+
+function initPalette(){
+  const p=document.getElementById('palette');
+  p.innerHTML='';
+  palette.forEach((c,i)=>{
+    const div=document.createElement('div');
+    div.style.background=c;
+    div.className=i===0?'active':'';
+    div.onclick=()=>{
+      selectedColor=c;
+      document.querySelectorAll('.palette div').forEach(d=>d.classList.remove('active'));
+      div.classList.add('active');
+    };
+    p.appendChild(div);
+  });
+}
+
+function resizeGrid(){
+  gridSize=parseInt(document.getElementById('gridSize').value);
+  pixelSize=Math.max(4,Math.floor(600/gridSize));
+  zoom=1;
+  // Ensure each frame has the right size
+  frames.forEach((frame,i)=>{
+    while(frame.length<gridSize*gridSize)frame.push(0);
+  });
+  canvas.width=gridSize*pixelSize;canvas.height=gridSize*pixelSize;
+  document.getElementById('canvasSize').textContent=`${gridSize}×${gridSize}`;
+  document.getElementById('zoomLevel').textContent=`${zoom}×`;
+  render();
+  fitCanvas();
+}
+
+function fitCanvas(){
+  const wrap=document.getElementById('canvasWrap');
+  const maxW=wrap.clientWidth*0.9,maxH=wrap.clientHeight*0.9;
+  const imgW=gridSize*pixelSize,imgH=gridSize*pixelSize;
+  const scaleX=maxW/imgW,scaleY=maxH/imgH;
+  const s=Math.min(1,scaleX,scaleY);
+  canvas.style.transform=`scale(${s})`;
+  canvas.style.transformOrigin='center center';
+}
+
+function getPixelIndex(x,y){return y*gridSize+x}
+function getPixel(e){
+  const rect=canvas.getBoundingClientRect();
+  const scale=canvas.width/rect.width;
+  return {x:Math.floor((e.clientX-rect.left)*scale/pixelSize),y:Math.floor((e.clientY-rect.top)*scale/pixelSize)};
+}
+
+function setPixel(x,y,color){
+  if(x<0||x>=gridSize||y<0||y>=gridSize)return;
+  const idx=getPixelIndex(x,y);
+  frames[currentFrame][idx]=color;
+  render();
+}
+
+function floodFill(x,y,fillColor){
+  const idx=getPixelIndex(x,y);
+  const targetColor=frames[currentFrame][idx];
+  if(targetColor===fillColor)return;
+  const visited=new Set();
+  const stack=[{x,y}];
+  while(stack.length>0){
+    const {x:cx,y:cy}=stack.pop();
+    const key=cx+','+cy;
+    if(visited.has(key))continue;
+    visited.add(key);
+    if(cx<0||cx>=gridSize||cy<0||cy>=gridSize)continue;
+    const ci=getPixelIndex(cx,cy);
+    if(frames[currentFrame][ci]!==targetColor)continue;
+    frames[currentFrame][ci]=fillColor;
+    stack.push({x:cx+1,y:cy},{x:cx-1,y:cy},{x:cx,y:cy+1},{x:cx,y:cy-1});
+  }
+  render();
+}
+
+function onMouseDown(e){
+  const {x,y}=getPixel(e);
+  if(currentTool==='pen'){isDrawing=true;setPixel(x,y,selectedColor)}
+  else if(currentTool==='eraser'){isDrawing=true;setPixel(x,y,'#00000000')}
+  else if(currentTool==='fill'){floodFill(x,y,selectedColor)}
+  else if(currentTool==='picker'){
+    const idx=getPixelIndex(x,y);
+    const c=frames[currentFrame][idx];
+    if(c&&c!=='#00000000'){selectedColor=c;document.querySelectorAll('.palette div').forEach(d=>d.classList.toggle('active',d.style.background===c))}
+  }
+  startX=x;startY=y;
+}
+
+function onMouseMove(e){
+  if(!isDrawing)return;
+  const {x,y}=getPixel(e);
+  if(x===startX&&y===startY)return;
+  // Line interpolation
+  const dx=x-startX,dy=y-startY;
+  const steps=Math.max(Math.abs(dx),Math.abs(dy));
+  for(let i=0;i<=steps;i++){
+    const lx=Math.round(startX+(dx/steps)*i);
+    const ly=Math.round(startY+(dy/steps)*i);
+    if(currentTool==='pen')setPixel(lx,ly,selectedColor);
+    else if(currentTool==='eraser')setPixel(lx,ly,'#00000000');
+  }
+  startX=x;startY=y;
+}
+
+function onMouseUp(){isDrawing=false}
+
+function render(){
+  const sz=pixelSize;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  
+  // Checkered bg
+  for(let y=0;y<gridSize;y++)for(let x=0;x<gridSize;x++){
+    ctx.fillStyle=(x+y)%2===0?'#111122':'#0e0e1a';
+    ctx.fillRect(x*sz,y*sz,sz,sz);
+  }
+  
+  // Pixels
+  const frame=frames[currentFrame];
+  for(let y=0;y<gridSize;y++)for(let x=0;x<gridSize;x++){
+    const idx=getPixelIndex(x,y);
+    const color=frame[idx]||'#00000000';
+    if(color!=='#00000000'){
+      ctx.fillStyle=color;
+      ctx.fillRect(x*sz,y*sz,sz,sz);
+    }
+  }
+  
+  // Grid lines
+  if(gridSize<=32){
+    ctx.strokeStyle='rgba(255,255,255,0.04)';ctx.lineWidth=0.5;
+    for(let x=0;x<=gridSize;x++){ctx.beginPath();ctx.moveTo(x*sz,0);ctx.lineTo(x*sz,canvas.height);ctx.stroke()}
+    for(let y=0;y<=gridSize;y++){ctx.beginPath();ctx.moveTo(0,y*sz);ctx.lineTo(canvas.width,y*sz);ctx.stroke()}
+  }
+  
+  document.getElementById('frameDisplay').textContent=`${currentFrame+1}/${frames.length}`;
+}
+
+// ── FRAME MANAGEMENT ──
+function addFrame(){
+  const newFrame=[];
+  for(let i=0;i<gridSize*gridSize;i++)newFrame.push('#00000000');
+  frames.push(newFrame);
+  currentFrame=frames.length-1;
+  render();
+}
+
+function duplicateFrame(){
+  const copy=[...frames[currentFrame]];
+  frames.splice(currentFrame+1,0,copy);
+  currentFrame++;
+  render();
+}
+
+function deleteFrame(){
+  if(frames.length<=1)return;
+  frames.splice(currentFrame,1);
+  currentFrame=Math.min(currentFrame,frames.length-1);
+  render();
+}
+
+function prevFrame(){if(currentFrame>0){currentFrame--;render()}}
+function nextFrame(){if(currentFrame<frames.length-1){currentFrame++;render()}}
+
+function togglePlayAnim(){
+  if(isPlaying){
+    isPlaying=false;clearInterval(playInterval);
+    document.getElementById('playAnimBtn').textContent='▶ Play';
+    return;
+  }
+  isPlaying=true;
+  document.getElementById('playAnimBtn').textContent='⏸ Stop';
+  playInterval=setInterval(()=>{
+    currentFrame=(currentFrame+1)%frames.length;
+    render();
+  },200);
+}
+
+function togglePreview(){fitCanvas()}
+
+function setTool(tool){
+  currentTool=tool;
+  document.querySelectorAll('[data-tool]').forEach(b=>b.classList.toggle('active',b.dataset.tool===tool));
+}
+
+function clearCanvas(){
+  if(!confirm('Clear current frame?'))return;
+  for(let i=0;i<gridSize*gridSize;i++)frames[currentFrame][i]='#00000000';
+  render();
+}
+
+function exportPNG(){
+  const tempCanvas=document.createElement('canvas');
+  tempCanvas.width=gridSize*4;tempCanvas.height=gridSize*4;
+  const tctx=tempCanvas.getContext('2d');
+  tctx.imageSmoothingEnabled=false;
+  
+  const frame=frames[currentFrame];
+  for(let y=0;y<gridSize;y++)for(let x=0;x<gridSize;x++){
+    const idx=getPixelIndex(x,y);
+    const color=frame[idx]||'#00000000';
+    if(color!=='#00000000'){
+      tctx.fillStyle=color;
+      tctx.fillRect(x*4,y*4,4,4);
+    }
+  }
+  
+  const link=document.createElement('a');
+  link.download=`pixel-art-frame-${currentFrame+1}.png`;
+  link.href=tempCanvas.toDataURL();
+  link.click();
+}
+
+function exportGIF(){
+  // Simple sprite sheet export for animation frames
+  const tempCanvas=document.createElement('canvas');
+  tempCanvas.width=gridSize*4*frames.length;tempCanvas.height=gridSize*4;
+  const tctx=tempCanvas.getContext('2d');
+  tctx.imageSmoothingEnabled=false;
+  
+  frames.forEach((frame,fIdx)=>{
+    for(let y=0;y<gridSize;y++)for(let x=0;x<gridSize;x++){
+      const idx=getPixelIndex(x,y);
+      const color=frame[idx]||'#00000000';
+      if(color!=='#00000000'){
+        tctx.fillStyle=color;
+        tctx.fillRect(fIdx*gridSize*4+x*4,y*4,4,4);
+      }
+    }
+  });
+  
+  const link=document.createElement('a');
+  link.download=`pixel-art-sprite-sheet.png`;
+  link.href=tempCanvas.toDataURL();
+  link.click();
+}
+
+// ── KEYBOARD ──
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='SELECT')return;
+  if(e.key==='b')setTool('pen');
+  if(e.key==='g')setTool('fill');
+  if(e.key==='i')setTool('picker');
+  if(e.key==='e')setTool('eraser');
+  if(e.key==='ArrowLeft'){e.preventDefault();prevFrame()}
+  if(e.key==='ArrowRight'){e.preventDefault();nextFrame()}
+  if(e.key===' '){e.preventDefault();togglePlayAnim()}
+});
+
+// ── DEMO ──
+function loadDemo(){
+  // Draw a simple character on first frame
+  const demoPattern={
+    '5,3':'#ff0040','6,3':'#ff0040','7,3':'#ff0040','8,3':'#ff0040','9,3':'#ff0040','10,3':'#ff0040',
+    '5,4':'#ff0040','10,4':'#ff0040',
+    '4,5':'#ff0040','5,5':'#ffffff','6,5':'#ffffff','7,5':'#ffffff','8,5':'#ffffff','9,5':'#ffffff','10,5':'#ff0040','11,5':'#ff0040',
+    '4,6':'#ff0040','5,6':'#ffffff','6,6':'#000000','7,6':'#ffffff','8,6':'#ffffff','9,6':'#000000','10,6':'#ffffff','11,6':'#ff0040',
+    '4,7':'#ff0040','5,7':'#ffffff','6,7':'#ffffff','7,7':'#ffffff','8,7':'#ffffff','9,7':'#ffffff','10,7':'#ffffff','11,7':'#ff0040',
+    '5,8':'#ff0040','6,8':'#ffffff','7,8':'#ffffff','8,8':'#ffffff','9,8':'#ffffff','10,8':'#ff0040',
+    '5,9':'#ff0040','6,9':'#ff0040','10,9':'#ff0040','11,9':'#ff0040',
+    '3,10':'#ff0040','4,10':'#ff0040','6,10':'#ff0040','7,10':'#ff0040','8,10':'#ff0040','9,10':'#ff0040','11,10':'#ff0040','12,10':'#ff0040',
+    '3,11':'#ff0040','4,11':'#ff0040','5,11':'#ff0040','6,11':'#ff0040','7,11':'#ff0040','8,11':'#ff0040','9,11':'#ff0040','10,11':'#ff0040','11,11':'#ff0040','12,11':'#ff0040'
+  };
+  for(const [key,color] of Object.entries(demoPattern)){
+    const [x,y]=key.split(',').map(Number);
+    if(x<gridSize&&y<gridSize)setPixel(x,y,color);
+  }
+  // Second frame with slight variation
+  duplicateFrame();
+  // Modify some pixels
+  setPixel(7,6,'#ffffff');setPixel(8,6,'#ffffff');
+  setPixel(11,7,'#ff0040');
+  currentFrame=0;
+  render();
+}
+
+init();
+loadDemo();
+</script>
+</body>
+</html>

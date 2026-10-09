@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Text Adventure</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+  min-height: 100vh;
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.container { max-width: 750px; width: 100%; }
+h1 { color: #00d9ff; font-size: 1.5rem; text-align: center; margin-bottom: 4px; }
+.subtitle { color: #666; font-size: 0.8rem; text-align: center; margin-bottom: 12px; }
+.game-panel {
+  background: linear-gradient(145deg, #0d0d1a, #15152a);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  padding: 20px;
+  min-height: 500px;
+  display: flex;
+  flex-direction: column;
+}
+/* Story area */
+.story-area {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 400px;
+  padding: 8px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.message {
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  animation: fadeIn 0.3s;
+}
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.message.narrator {
+  background: rgba(0,217,255,0.04);
+  border: 1px solid rgba(0,217,255,0.06);
+  color: #b0c0d0;
+}
+.message.system {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  color: #d4a574;
+  font-style: italic;
+}
+.message.player {
+  background: rgba(74,222,128,0.06);
+  border: 1px solid rgba(74,222,128,0.1);
+  color: #4ade80;
+  align-self: flex-end;
+}
+.message.enemy {
+  background: rgba(248,113,113,0.06);
+  border: 1px solid rgba(248,113,113,0.1);
+  color: #f87171;
+}
+.message.item {
+  background: rgba(251,191,36,0.06);
+  border: 1px solid rgba(251,191,36,0.1);
+  color: #fbbf24;
+}
+/* Input area */
+.input-area {
+  display: flex;
+  gap: 8px;
+}
+.input-area input {
+  flex: 1;
+  padding: 10px 14px;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  color: #ccc;
+  font-size: 0.85rem;
+  outline: none;
+  font-family: inherit;
+}
+.input-area input:focus { border-color: #00d9ff; }
+.input-area button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #00d9ff, #0099ff);
+  color: #0f0f1a;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: 0.2s;
+}
+.input-area button:hover { box-shadow: 0 4px 15px rgba(0,217,255,0.3); }
+/* Status bar */
+.status-bar {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 8px;
+  font-size: 0.75rem;
+}
+.status-item { display: flex; align-items: center; gap: 4px; }
+.status-item .label { color: #666; }
+.status-item .value { color: #ccc; font-weight: 600; }
+.status-item .value.hp { color: #4ade80; }
+.status-item .value.damage { color: #f87171; }
+.health-bar {
+  width: 100px; height: 6px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.health-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4ade80, #fbbf24, #f87171);
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+/* Actions */
+.quick-actions {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.quick-actions .qbtn {
+  padding: 4px 10px;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 6px;
+  background: rgba(255,255,255,0.03);
+  color: #666;
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-family: inherit;
+  transition: 0.1s;
+}
+.quick-actions .qbtn:hover { border-color: #00d9ff; color: #00d9ff; background: rgba(0,217,255,0.06); }
+.inventory {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+  padding: 6px 8px;
+  background: rgba(0,0,0,0.15);
+  border-radius: 6px;
+}
+.inv-label { font-size: 0.65rem; color: #555; margin-right: 4px; }
+.inv-item {
+  padding: 2px 8px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 4px;
+  font-size: 0.65rem;
+  color: #888;
+}
+/* Start screen */
+.start-screen {
+  text-align: center;
+  padding: 40px 20px;
+}
+.start-screen h2 { color: #00d9ff; font-size: 1.3rem; margin-bottom: 8px; }
+.start-screen p { color: #888; font-size: 0.85rem; margin-bottom: 4px; line-height: 1.6; }
+.start-screen .start-btn {
+  margin-top: 20px;
+  padding: 12px 40px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #00d9ff, #0099ff);
+  color: #0f0f1a;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: 0.2s;
+}
+.start-screen .start-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,217,255,0.3); }
+.hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>⚔️ Text Adventure</h1>
+  <p class="subtitle">An interactive fantasy game engine</p>
+  <div class="game-panel">
+    <!-- Start Screen -->
+    <div id="startScreen" class="start-screen">
+      <h2>🏰 The Enchanted Keep</h2>
+      <p>You are a brave adventurer seeking the legendary Crystal of Eternity,</p>
+      <p>hidden deep within the ancient Enchanted Keep.</p>
+      <p style="color:#555;font-size:0.75rem;margin-top:12px">Explore · Fight · Collect · Survive</p>
+      <button class="start-btn" onclick="startGame()">⚔️ Begin Adventure</button>
+    </div>
+    
+    <!-- Game UI -->
+    <div id="gameUI" class="hidden">
+      <div class="status-bar">
+        <div class="status-item"><span class="label">❤️</span><span class="value hp" id="hpDisplay">100</span></div>
+        <div class="status-item"><div class="health-bar"><div class="health-fill" id="healthFill" style="width:100%"></div></div></div>
+        <div class="status-item"><span class="label">⚔️</span><span class="value damage" id="attackDisplay">10</span></div>
+        <div class="status-item"><span class="label">🛡️</span><span class="value" id="defenseDisplay">5</span></div>
+        <div class="status-item"><span class="label">🏆 XP</span><span class="value" id="xpDisplay">0</span></div>
+        <div class="status-item"><span class="label">📍</span><span class="value" id="roomDisplay">Entrance</span></div>
+      </div>
+      <div class="story-area" id="storyArea"></div>
+      <div class="inventory" id="inventoryArea">
+        <span class="inv-label">🎒</span>
+        <span style="color:#555;font-size:0.65rem">Empty</span>
+      </div>
+      <div class="quick-actions" id="quickActions">
+        <button class="qbtn" onclick="doAction('look')">👁️ Look</button>
+        <button class="qbtn" onclick="doAction('inventory')">🎒 Inventory</button>
+        <button class="qbtn" onclick="doAction('status')">📊 Status</button>
+        <button class="qbtn" onclick="doAction('help')">❓ Help</button>
+      </div>
+      <div class="input-area">
+        <input id="commandInput" placeholder="Type a command (e.g. go north, attack, take sword, use potion)" onkeydown="if(event.key==='Enter')handleCommand()" autocomplete="off">
+        <button onclick="handleCommand()">Send</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── GAME STATE ──
+let player = {};
+let currentRoom = null;
+let gameRooms = {};
+let gameRunning = false;
+
+// ── ROOM DEFINITIONS ──
+const ROOMS = {
+  entrance: {
+    name: 'Castle Entrance',
+    desc: 'You stand before the massive iron gates of the Enchanted Keep. Torches flicker in iron sconces. The gate is slightly ajar, revealing a dark courtyard beyond.',
+    exits: { north: 'courtyard' },
+    items: ['torch'],
+    enemies: [],
+    visited: false
+  },
+  courtyard: {
+    name: 'Shadowy Courtyard',
+    desc: 'A wide courtyard stretches before you, overgrown with twisted vines. Crumbling statues line the path. A great hall looms to the east, and a tower rises to the north.',
+    exits: { south: 'entrance', east: 'great_hall', north: 'tower_base' },
+    items: ['rusty_sword', 'health_potion'],
+    enemies: [{ name: 'Giant Rat', hp: 15, attack: 4, xp: 10 }],
+    visited: false
+  },
+  great_hall: {
+    name: 'Great Hall',
+    desc: 'The Great Hall is vast and cold. Faded banners hang from the rafters. A grand staircase ascends to the upper floors. Strange shadows dance at the edges of your vision.',
+    exits: { west: 'courtyard', up: 'library' },
+    items: ['shield', 'gold_coin'],
+    enemies: [{ name: 'Skeleton Guard', hp: 25, attack: 6, xp: 20 }],
+    visited: false
+  },
+  library: {
+    name: 'Ancient Library',
+    desc: 'Dusty bookshelves line every wall of this circular library. A faint magical glow emanates from a crystal orb on a pedestal. Scrolls are scattered across the floor.',
+    exits: { down: 'great_hall' },
+    items: ['magic_scroll', 'mana_potion'],
+    enemies: [],
+    visited: false
+  },
+  tower_base: {
+    name: 'Tower Base',
+    desc: 'A spiral staircase winds upward into darkness. The air is thick with the smell of ozone. Arcane symbols pulse faintly on the walls.',
+    exits: { south: 'courtyard', up: 'tower_top' },
+    items: ['rope'],
+    enemies: [{ name: 'Stone Golem', hp: 40, attack: 8, xp: 35 }],
+    visited: false
+  },
+  tower_top: {
+    name: 'Tower Summit',
+    desc: 'You emerge onto the tower summit. A crystal pedestal stands at the center, bathed in moonlight. The Crystal of Eternity floats above it, radiating pure energy. The final guardian awaits.',
+    exits: { down: 'tower_base' },
+    items: ['crystal_of_eternity'],
+    enemies: [{ name: 'Eternal Guardian', hp: 60, attack: 12, xp: 100 }],
+    visited: false,
+    boss: true
+  }
+};
+
+const ITEMS = {
+  torch: { name: 'Torch', desc: 'A flickering torch that illuminates dark places.', value: 1 },
+  rusty_sword: { name: 'Rusty Sword', desc: 'A worn but serviceable sword. (+5 attack)', value: 3, attackBonus: 5 },
+  health_potion: { name: 'Health Potion', desc: 'Restores 30 HP.', value: 2, healAmount: 30 },
+  shield: { name: 'Wooden Shield', desc: 'A sturdy shield. (+3 defense)', value: 3, defenseBonus: 3 },
+  gold_coin: { name: 'Gold Coin', desc: 'A shiny gold coin.', value: 5 },
+  magic_scroll: { name: 'Magic Scroll', desc: 'A scroll of fireball. Deals 20 damage.', value: 4, damageAmount: 20 },
+  mana_potion: { name: 'Mana Potion', desc: 'Restores energy. (+10 attack for 3 turns)', value: 2 },
+  rope: { name: 'Rope', desc: 'A sturdy rope. Useful for climbing.', value: 1 },
+  crystal_of_eternity: { name: '✦ Crystal of Eternity ✦', desc: 'The legendary artifact! You win!', value: 100 }
+};
+
+// ── GAME FUNCTIONS ──
+function startGame() {
+  document.getElementById('startScreen').classList.add('hidden');
+  document.getElementById('gameUI').classList.remove('hidden');
+  gameRunning = true;
+  
+  player = {
+    hp: 100, maxHp: 100,
+    attack: 8,
+    defense: 3,
+    xp: 0,
+    level: 1,
+    inventory: [],
+    gold: 0
+  };
+  
+  // Deep clone rooms with enemy state tracking
+  gameRooms = JSON.parse(JSON.stringify(ROOMS));
+  gameRooms.entrance.visited = true;
+  currentRoom = 'entrance';
+  
+  addMessage('narrator', '🏰 Welcome, brave adventurer!');
+  addMessage('narrator', 'Type commands to explore. Try: <b>look</b>, <b>go north</b>, <b>take torch</b>, <b>attack</b>');
+  lookRoom();
+  updateUI();
+  document.getElementById('commandInput').focus();
+}
+
+function addMessage(type, text) {
+  const area = document.getElementById('storyArea');
+  const msg = document.createElement('div');
+  msg.className = 'message ' + type;
+  msg.innerHTML = text;
+  area.appendChild(msg);
+  area.scrollTop = area.scrollHeight;
+}
+
+function lookRoom() {
+  const room = gameRooms[currentRoom];
+  if (!room) return;
+  
+  let text = `<b>📍 ${room.name}</b><br>${room.desc}`;
+  room.visited = true;
+  
+  // Exits
+  const exits = Object.keys(room.exits);
+  if (exits.length) text += `<br><span style="color:#888">Exits: ${exits.join(', ')}</span>`;
+  
+  // Items
+  if (room.items.length) {
+    text += `<br><span style="color:#fbbf24">You see: ${room.items.map(i => ITEMS[i] ? ITEMS[i].name : i).join(', ')}</span>`;
+  }
+  
+  // Enemies
+  const alive = room.enemies.filter(e => e.hp > 0);
+  if (alive.length) {
+    text += `<br><span style="color:#f87171">⚠️ Enemies: ${alive.map(e => `${e.name} (${e.hp} HP)`).join(', ')}</span>`;
+  }
+  
+  addMessage('narrator', text);
+  updateUI();
+}
+
+function updateUI() {
+  document.getElementById('hpDisplay').textContent = player.hp;
+  const hpPct = Math.max(0, (player.hp / player.maxHp) * 100);
+  document.getElementById('healthFill').style.width = hpPct + '%';
+  document.getElementById('attackDisplay').textContent = player.attack;
+  document.getElementById('defenseDisplay').textContent = player.defense;
+  document.getElementById('xpDisplay').textContent = player.xp;
+  document.getElementById('roomDisplay').textContent = gameRooms[currentRoom] ? gameRooms[currentRoom].name : '?';
+  
+  // Inventory
+  const invArea = document.getElementById('inventoryArea');
+  if (player.inventory.length === 0) {
+    invArea.innerHTML = '<span class="inv-label">🎒</span><span style="color:#555;font-size:0.65rem">Empty</span>';
+  } else {
+    invArea.innerHTML = '<span class="inv-label">🎒</span>' + player.inventory.map(i =>
+      `<span class="inv-item">${ITEMS[i] ? ITEMS[i].name : i}</span>`
+    ).join('');
+  }
+}
+
+function handleCommand() {
+  if (!gameRunning) return;
+  const input = document.getElementById('commandInput');
+  const cmd = input.value.trim().toLowerCase();
+  input.value = '';
+  if (!cmd) return;
+  
+  addMessage('player', cmd);
+  parseCommand(cmd);
+  updateUI();
+  document.getElementById('commandInput').focus();
+}
+
+function parseCommand(cmd) {
+  const parts = cmd.split(' ').filter(s => s);
+  const verb = parts[0];
+  const target = parts.slice(1).join(' ');
+  
+  if (checkGameOver()) return;
+  
+  switch (verb) {
+    case 'look': case 'l': lookRoom(); break;
+    case 'go': case 'north': case 'n': case 'south': case 's': case 'east': case 'e': case 'west': case 'w': case 'up': case 'u': case 'down': case 'd':
+      move(verb === 'go' ? target : verb);
+      break;
+    case 'take': case 'get': case 'grab': take(target); break;
+    case 'inventory': case 'i': showInventory(); break;
+    case 'use': use(target); break;
+    case 'attack': case 'hit': case 'fight': attack(target); break;
+    case 'status': case 'stats': showStatus(); break;
+    case 'help': case '?': showHelp(); break;
+    case 'drop': drop(target); break;
+    default: addMessage('system', `You can't "${cmd}". Try: go [direction], look, take [item], attack, use [item], inventory, status, help`);
+  }
+  
+  if (checkGameOver()) return;
+  checkBossDefeated();
+}
+
+function move(direction) {
+  const room = gameRooms[currentRoom];
+  const dirs = { 'north': 'north', 'n': 'north', 'south': 'south', 's': 'south', 'east': 'east', 'e': 'east', 'west': 'west', 'w': 'west', 'up': 'up', 'u': 'up', 'down': 'down', 'd': 'down' };
+  const dir = dirs[direction];
+  
+  if (!dir || !room.exits[dir]) {
+    addMessage('system', 'You can\'t go that way.');
+    return;
+  }
+  
+  const nextRoom = room.exits[dir];
+  currentRoom = nextRoom;
+  
+  const newRoom = gameRooms[nextRoom];
+  if (!newRoom.visited) {
+    const alive = newRoom.enemies.filter(e => e.hp > 0);
+    if (alive.length) {
+      addMessage('system', `⚠️ You enter ${newRoom.name} — enemies are here!`);
+    }
+    lookRoom();
+  } else {
+    addMessage('system', `You move ${dir} to ${newRoom.name}.`);
+    lookRoom();
+  }
+  updateUI();
+}
+
+function take(target) {
+  const room = gameRooms[currentRoom];
+  if (!target) { addMessage('system', 'Take what?'); return; }
+  
+  // Find matching item
+  const itemKey = room.items.find(i => i.includes(target) || (ITEMS[i] && ITEMS[i].name.toLowerCase().includes(target)));
+  if (!itemKey) { addMessage('system', 'There\'s no such item here.'); return; }
+  
+  room.items = room.items.filter(i => i !== itemKey);
+  player.inventory.push(itemKey);
+  const item = ITEMS[itemKey];
+  addMessage('item', `📦 You took: ${item ? item.name : itemKey}`);
+  updateUI();
+}
+
+function showInventory() {
+  if (player.inventory.length === 0) {
+    addMessage('system', 'Your inventory is empty.');
+  } else {
+    const list = player.inventory.map(i => {
+      const item = ITEMS[i];
+      return item ? `• ${item.name} — ${item.desc}` : `• ${i}`;
+    }).join('<br>');
+    addMessage('system', `🎒 <b>Inventory:</b><br>${list}`);
+  }
+}
+
+function use(target) {
+  if (!target) { addMessage('system', 'Use what?'); return; }
+  
+  const itemKey = player.inventory.find(i => i.includes(target) || (ITEMS[i] && ITEMS[i].name.toLowerCase().includes(target)));
+  if (!itemKey) { addMessage('system', 'You don\'t have that item.'); return; }
+  
+  const item = ITEMS[itemKey];
+  if (!item) { addMessage('system', 'You can\'t use that.'); return; }
+  
+  if (item.healAmount) {
+    player.hp = Math.min(player.maxHp, player.hp + item.healAmount);
+    player.inventory = player.inventory.filter(i => i !== itemKey);
+    addMessage('item', `💚 Used ${item.name}! Restored ${item.healAmount} HP. (HP: ${player.hp}/${player.maxHp})`);
+  } else if (item.damageAmount) {
+    // Fireball - attack all enemies
+    const room = gameRooms[currentRoom];
+    const alive = room.enemies.filter(e => e.hp > 0);
+    if (alive.length === 0) { addMessage('system', 'No enemies to attack.'); return; }
+    alive.forEach(e => { e.hp = Math.max(0, e.hp - item.damageAmount); });
+    player.inventory = player.inventory.filter(i => i !== itemKey);
+    addMessage('item', `🔥 Used ${item.name}! Dealt ${item.damageAmount} damage to all enemies!`);
+    checkEnemyDeath();
+  } else if (item.attackBonus) {
+    player.attack += item.attackBonus;
+    player.inventory = player.inventory.filter(i => i !== itemKey);
+    addMessage('item', `⚔️ Equipped ${item.name}! Attack is now ${player.attack}.`);
+  } else if (item.defenseBonus) {
+    player.defense += item.defenseBonus;
+    player.inventory = player.inventory.filter(i => i !== itemKey);
+    addMessage('item', `🛡️ Equipped ${item.name}! Defense is now ${player.defense}.`);
+  } else {
+    addMessage('system', `You examine the ${item.name}. ${item.desc}`);
+  }
+  updateUI();
+}
+
+function attack(target) {
+  const room = gameRooms[currentRoom];
+  const alive = room.enemies.filter(e => e.hp > 0);
+  if (alive.length === 0) { addMessage('system', 'There\'s nothing to attack here.'); return; }
+  
+  let enemy = alive[0];
+  if (target) {
+    const found = alive.find(e => e.name.toLowerCase().includes(target));
+    if (found) enemy = found;
+  }
+  
+  // Player attack
+  const dmg = Math.max(1, player.attack + Math.floor(Math.random() * 6) - 2);
+  enemy.hp = Math.max(0, enemy.hp - dmg);
+  addMessage('system', `⚔️ You attack ${enemy.name} for ${dmg} damage! (${enemy.hp} HP remaining)`);
+  
+  if (enemy.hp <= 0) {
+    addMessage('system', `💀 ${enemy.name} is defeated!`);
+    player.xp += enemy.xp;
+    checkLevelUp();
+    // Enemy drops gold
+    const gold = Math.floor(Math.random() * 5) + 1;
+    player.gold += gold;
+    addMessage('item', `🪙 You found ${gold} gold coins!`);
+    checkEnemyDeath();
+    return;
+  }
+  
+  // Enemy attack
+  const enemyDmg = Math.max(1, enemy.attack - player.defense + Math.floor(Math.random() * 3));
+  player.hp = Math.max(0, player.hp - enemyDmg);
+  addMessage('enemy', `💥 ${enemy.name} attacks you for ${enemyDmg} damage! (HP: ${player.hp}/${player.maxHp})`);
+  updateUI();
+}
+
+function checkEnemyDeath() {
+  const room = gameRooms[currentRoom];
+  const alive = room.enemies.filter(e => e.hp > 0);
+  if (alive.length === 0) {
+    addMessage('system', '✨ The room is clear of enemies!');
+    if (room.boss) {
+      setTimeout(() => {
+        addMessage('item', '🏆 <b>You have claimed the Crystal of Eternity! The Enchanted Keep is saved!</b>');
+        addMessage('system', '🎉 <b>Congratulations! You won!</b>');
+        gameRunning = false;
+      }, 500);
+    }
+  }
+}
+
+function checkBossDefeated() {
+  const towerTop = gameRooms.tower_top;
+  if (towerTop && towerTop.enemies.every(e => e.hp <= 0) && player.inventory.includes('crystal_of_eternity')) {
+    addMessage('item', '🌟 The Crystal of Eternity pulses with power! You have conquered the Enchanted Keep!');
+    addMessage('system', '🎉 <b>VICTORY! You are a true hero!</b>');
+    gameRunning = false;
+  }
+}
+
+function checkLevelUp() {
+  const xpNeeded = player.level * 30;
+  if (player.xp >= xpNeeded) {
+    player.level++;
+    player.maxHp += 10;
+    player.hp = Math.min(player.maxHp, player.hp + 20);
+    player.attack += 2;
+    player.defense += 1;
+    addMessage('system', `🌟 <b>Level Up! You are now level ${player.level}!</b> HP increased, attack +2, defense +1!`);
+  }
+}
+
+function showStatus() {
+  const room = gameRooms[currentRoom];
+  addMessage('system', `📊 <b>Status:</b><br>❤️ HP: ${player.hp}/${player.maxHp}<br>⚔️ Attack: ${player.attack}<br>🛡️ Defense: ${player.defense}<br>🏆 XP: ${player.xp} (Next: ${player.level * 30})<br>🎒 Items: ${player.inventory.length}<br>🪙 Gold: ${player.gold}<br>📍 Location: ${room ? room.name : '?'}`);
+}
+
+function showHelp() {
+  addMessage('system', `❓ <b>Commands:</b><br>• go [north/south/east/west/up/down]<br>• look — examine the room<br>• take [item] — pick up an item<br>• use [item] — use an item from inventory<br>• attack [enemy] — fight!<br>• inventory — check your bag<br>• status — view stats<br>• drop [item] — leave an item<br>• help — show this`);
+}
+
+function drop(target) {
+  if (!target) { addMessage('system', 'Drop what?'); return; }
+  const itemKey = player.inventory.find(i => i.includes(target));
+  if (!itemKey) { addMessage('system', 'You don\'t have that.'); return; }
+  player.inventory = player.inventory.filter(i => i !== itemKey);
+  gameRooms[currentRoom].items.push(itemKey);
+  addMessage('system', `You dropped ${ITEMS[itemKey] ? ITEMS[itemKey].name : itemKey}.`);
+}
+
+function checkGameOver() {
+  if (player.hp <= 0) {
+    addMessage('enemy', '💀 <b>You have been defeated! Game Over!</b>');
+    addMessage('system', 'Refresh the page to try again.');
+    gameRunning = false;
+    return true;
+  }
+  return false;
+}
+
+// Quick actions
+function doAction(action) {
+  parseCommand(action);
+}
+</script>
+</body>
+</html>

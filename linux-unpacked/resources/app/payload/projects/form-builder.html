@@ -1,0 +1,160 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Form Builder</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#ccc;min-height:100vh;padding:12px;display:flex;justify-content:center}.container{max-width:1100px;width:100%}h1{color:#00d9ff;font-size:1rem;margin-bottom:2px;text-align:center}p.sub{color:#555;font-size:0.6rem;margin-bottom:8px;text-align:center}.flex{display:flex;gap:10px}.sidebar{width:180px;flex-shrink:0}.canvas{flex:1;min-height:400px}.prop-panel{width:200px;flex-shrink:0}.panel{background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:8px;margin-bottom:6px}.panel-title{color:#888;font-size:0.5rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px}.field-item{padding:5px 8px;margin:2px 0;border:1px solid rgba(255,255,255,0.04);border-radius:4px;cursor:grab;font-size:0.5rem;color:#888;transition:0.1s;background:rgba(255,255,255,0.02);display:flex;align-items:center;gap:6px}.field-item:hover{border-color:#00d9ff;background:rgba(0,217,255,0.04);color:#ccc}.field-item:active{cursor:grabbing}#formCanvas{min-height:350px;border:2px dashed rgba(255,255,255,0.06);border-radius:6px;padding:12px;transition:border-color 0.2s}#formCanvas.drag-over{border-color:#00d9ff;background:rgba(0,217,255,0.03)}.form-field{border:1px solid transparent;padding:6px 8px;margin:3px 0;border-radius:4px;position:relative;display:flex;align-items:center;gap:8px;transition:0.1s;font-size:0.55rem}.form-field:hover{border-color:rgba(0,217,255,0.2);background:rgba(0,217,255,0.02)}.form-field.selected{border-color:#00d9ff;background:rgba(0,217,255,0.05)}.form-field label{color:#888;min-width:80px}.form-field input,.form-field select,.form-field textarea{flex:1;padding:4px 8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#ccc;font-family:inherit;font-size:0.5rem}.form-field input:focus,.form-field select:focus,.form-field textarea:focus{outline:none;border-color:#00d9ff}.form-field .field-del{position:absolute;right:4px;top:4px;background:none;border:none;color:#555;cursor:pointer;font-size:0.5rem;opacity:0;transition:0.1s}.form-field:hover .field-del{opacity:1}.form-field .field-del:hover{color:#f87171}.prop-row{margin:4px 0;display:flex;align-items:center;gap:6px}.prop-row label{font-size:0.45rem;color:#555;min-width:50px}.prop-row input,.prop-row select{flex:1;padding:3px 6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem;font-family:inherit}.prop-row input:focus,.prop-row select:focus{outline:none;border-color:#00d9ff}.prop-row input[type=checkbox]{flex:0;margin-left:auto}.btn{padding:4px 10px;border:1px solid rgba(255,255,255,0.06);border-radius:4px;background:transparent;color:#888;cursor:pointer;font-size:0.5rem;font-family:inherit;transition:0.1s}.btn:hover{border-color:#00d9ff;color:#ccc}.btn.primary{background:rgba(0,217,255,0.08);border-color:rgba(0,217,255,0.2);color:#00d9ff}.btn.accent{background:rgba(74,222,128,0.08);border-color:rgba(74,222,128,0.2);color:#4ade80}.field-options{font-size:0.45rem;color:#555}.field-options input{width:100%;padding:2px 4px;border:1px solid rgba(255,255,255,0.06);border-radius:2px;background:rgba(255,255,255,0.02);color:#888;font-size:0.45rem;font-family:inherit}.output-preview{font-size:0.5rem;color:#555;background:rgba(255,255,255,0.02);padding:6px;border-radius:4px;max-height:120px;overflow:auto;white-space:pre-wrap;font-family:'Courier New',monospace}</style></head><body><div class="container">
+<h1>📋 Form Builder</h1><p class="sub">Drag fields onto the canvas · Click to edit properties · Export HTML</p>
+<div class="flex">
+<div class="sidebar">
+<div class="panel">
+<div class="panel-title">Field Types</div>
+<div class="field-item" draggable="true" data-type="text">📝 Text Input</div>
+<div class="field-item" draggable="true" data-type="email">📧 Email</div>
+<div class="field-item" draggable="true" data-type="password">🔒 Password</div>
+<div class="field-item" draggable="true" data-type="textarea">📄 Textarea</div>
+<div class="field-item" draggable="true" data-type="number">🔢 Number</div>
+<div class="field-item" draggable="true" data-type="select">📋 Select</div>
+<div class="field-item" draggable="true" data-type="checkbox">☑ Checkbox</div>
+<div class="field-item" draggable="true" data-type="radio">◉ Radio Group</div>
+<div class="field-item" draggable="true" data-type="date">📅 Date</div>
+<div class="field-item" draggable="true" data-type="file">📎 File</div>
+</div>
+<div class="panel">
+<div class="panel-title">Actions</div>
+<button class="btn primary" onclick="exportHTML()" style="width:100%;margin-bottom:3px">📤 Export HTML</button>
+<button class="btn" onclick="clearAll()" style="width:100%;margin-bottom:3px">🗑️ Clear</button>
+<button class="btn" onclick="loadSample()" style="width:100%">📥 Load Sample</button>
+</div>
+</div>
+<div class="canvas">
+<div class="panel">
+<div class="panel-title">Form Canvas <span style="color:#555;font-weight:400">(drag fields here)</span></div>
+<div id="formCanvas" ondragover="onDragOver(event)" ondrop="onDrop(event)"></div>
+</div>
+<div class="panel">
+<div class="panel-title">HTML Output</div>
+<pre class="output-preview" id="htmlOutput">Drop fields to generate HTML</pre></div>
+</div>
+<div class="prop-panel">
+<div class="panel">
+<div class="panel-title">Properties</div>
+<div id="propEditor"><div style="color:#555;font-size:0.5rem;padding:8px;text-align:center">Select a field to edit</div></div>
+</div></div></div></div>
+<script>
+let fields=[],selectedId=null,idCounter=0;
+const FIELD_TYPES={
+  text:{label:'Text Input',attrs:{placeholder:'Enter text...',required:false}},
+  email:{label:'Email',attrs:{placeholder:'email@example.com',required:false}},
+  password:{label:'Password',attrs:{placeholder:'••••••••',required:false}},
+  textarea:{label:'Textarea',attrs:{placeholder:'Enter text...',rows:3,required:false}},
+  number:{label:'Number',attrs:{placeholder:'0',min:0,max:100,required:false}},
+  select:{label:'Select',attrs:{options:'Option 1,Option 2,Option 3',required:false}},
+  checkbox:{label:'Checkbox',attrs:{label:'I agree to terms',checked:false}},
+  radio:{label:'Radio Group',attrs:{options:'Choice 1,Choice 2,Choice 3',name:'radio_'}},
+  date:{label:'Date',attrs:{required:false}},
+  file:{label:'File',attrs:{accept:'image/*,.pdf',multiple:false}}
+};
+
+document.querySelectorAll('.field-item').forEach(el=>{el.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',el.dataset.type)})});
+
+function onDragOver(e){e.preventDefault();document.getElementById('formCanvas').classList.add('drag-over')}
+function onDrop(e){e.preventDefault();document.getElementById('formCanvas').classList.remove('drag-over');const type=e.dataTransfer.getData('text/plain');if(type&&FIELD_TYPES[type])addField(type)}
+
+function addField(type){
+  const template=FIELD_TYPES[type];
+  if(!template)return;
+  const id=idCounter++;
+  const field={id,type,label:`${template.label} ${id+1}`,attrs:{...template.attrs,name:`field_${id}`}};
+  fields.push(field);
+  renderCanvas();
+  selectField(id);
+  updateOutput();
+  saveToStorage();
+}
+
+function removeField(id){fields=fields.filter(f=>f.id!==id);if(selectedId===id)selectedId=null;renderCanvas();updateOutput();saveToStorage()}
+function selectField(id){selectedId=id;renderCanvas();renderProps()}
+
+function renderCanvas(){
+  const canvas=document.getElementById('formCanvas');
+  if(!fields.length){canvas.innerHTML='<div style="padding:20px;text-align:center;color:#444;font-size:0.55rem">⬇ Drag fields here to build your form</div>';return}
+  canvas.innerHTML=fields.map(f=>renderField(f)).join('');
+  // Add click + delete listeners
+  canvas.querySelectorAll('.form-field').forEach(el=>{
+    const id=parseInt(el.dataset.id);
+    el.addEventListener('click',e=>{if(!e.target.closest('.field-del')){e.stopPropagation();selectField(id)}});
+    el.querySelector('.field-del')?.addEventListener('click',e=>{e.stopPropagation();removeField(id)});
+  });
+}
+
+function renderField(f){
+  const sel=selectedId===f.id?' selected':'';
+  const label=escapeHTML(f.label);
+  let input='';
+  switch(f.type){
+    case 'text':case 'email':case 'password':case 'number':case 'date':
+      input=`<input type="${f.type}" placeholder="${escapeHTML(f.attrs.placeholder||'')}" ${f.attrs.required?'required':''}>`;break;
+    case 'textarea':input=`<textarea placeholder="${escapeHTML(f.attrs.placeholder||'')}" rows="${f.attrs.rows||3}" ${f.attrs.required?'required':''}></textarea>`;break;
+    case 'select':input=`<select>${(f.attrs.options||'').split(',').map(o=>`<option>${escapeHTML(o.trim())}</option>`).join('')}</select>`;break;
+    case 'checkbox':input=`<label style="display:flex;align-items:center;gap:4px;flex:1"><input type="checkbox" ${f.attrs.checked?'checked':''}><span>${escapeHTML(f.attrs.label||'')}</span></label>`;break;
+    case 'radio':input=`<div style="display:flex;gap:8px;flex-wrap:wrap;flex:1">${(f.attrs.options||'').split(',').map((o,i)=>`<label style="display:flex;align-items:center;gap:2px"><input type="radio" name="${escapeHTML(f.attrs.name||'')}" ${i===0?'checked':''}><span>${escapeHTML(o.trim())}</span></label>`).join('')}</div>`;break;
+    case 'file':input=`<input type="file" ${f.attrs.accept?`accept="${escapeHTML(f.attrs.accept)}"`:''} ${f.attrs.multiple?'multiple':''}>`;break;
+    default:input=`<input type="text">`;
+  }
+  return `<div class="form-field${sel}" data-id="${f.id}">
+    <label>${label}</label>${input}
+    <button class="field-del">✕</button>
+  </div>`;
+}
+
+function renderProps(){
+  const editor=document.getElementById('propEditor');
+  const field=fields.find(f=>f.id===selectedId);
+  if(!field){editor.innerHTML='<div style="color:#555;font-size:0.5rem;padding:8px;text-align:center">Select a field to edit</div>';return}
+  let html=`<div class="prop-row"><label>Label</label><input value="${escapeHTML(field.label)}" onchange="updateFieldProp(${field.id},'label',this.value)"></div>`;
+  html+=`<div class="prop-row"><label>Name</label><input value="${escapeHTML(field.attrs.name||'')}" onchange="updateFieldProp(${field.id},'name',this.value)"></div>`;
+  if(field.attrs.placeholder!==undefined)html+=`<div class="prop-row"><label>Placeholder</label><input value="${escapeHTML(field.attrs.placeholder||'')}" onchange="updateFieldProp(${field.id},'placeholder',this.value)"></div>`;
+  if(field.attrs.required!==undefined)html+=`<div class="prop-row"><label>Required</label><input type="checkbox" ${field.attrs.required?'checked':''} onchange="updateFieldProp(${field.id},'required',this.checked)"></div>`;
+  if(field.attrs.rows!==undefined)html+=`<div class="prop-row"><label>Rows</label><input type="number" value="${field.attrs.rows}" onchange="updateFieldProp(${field.id},'rows',parseInt(this.value)||3)" style="width:50px"></div>`;
+  if(field.attrs.options!==undefined)html+=`<div class="prop-row" style="flex-direction:column;align-items:stretch"><label>Options (comma-separated)</label><input value="${escapeHTML(field.attrs.options||'')}" onchange="updateFieldProp(${field.id},'options',this.value)"></div>`;
+  if(field.attrs.checked!==undefined)html+=`<div class="prop-row"><label>Checked</label><input type="checkbox" ${field.attrs.checked?'checked':''} onchange="updateFieldProp(${field.id},'checked',this.checked)"></div>`;
+  if(field.attrs.accept!==undefined)html+=`<div class="prop-row"><label>Accept</label><input value="${escapeHTML(field.attrs.accept||'')}" onchange="updateFieldProp(${field.id},'accept',this.value)"></div>`;
+  if(field.attrs.multiple!==undefined)html+=`<div class="prop-row"><label>Multiple</label><input type="checkbox" ${field.attrs.multiple?'checked':''} onchange="updateFieldProp(${field.id},'multiple',this.checked)"></div>`;
+  if(field.attrs.min!==undefined)html+=`<div class="prop-row"><label>Min</label><input type="number" value="${field.attrs.min}" onchange="updateFieldProp(${field.id},'min',parseInt(this.value)||0)" style="width:60px"></div>`;
+  if(field.attrs.max!==undefined)html+=`<div class="prop-row"><label>Max</label><input type="number" value="${field.attrs.max}" onchange="updateFieldProp(${field.id},'max',parseInt(this.value)||100)" style="width:60px"></div>`;
+  editor.innerHTML=html;
+}
+
+function updateFieldProp(id,key,val){const f=fields.find(f=>f.id===id);if(!f)return;if(key==='label')f.label=val;else f.attrs[key]=val;renderCanvas();updateOutput();saveToStorage()}
+
+function updateOutput(){
+  const html=generateHTML();
+  document.getElementById('htmlOutput').textContent=html||'Drop fields to generate HTML';
+}
+
+function generateHTML(){
+  if(!fields.length)return '';
+  let h='<form>\n';
+  for(const f of fields){
+    h+=`  <div class="field">\n    <label>${escapeHTML(f.label)}</label>\n`;
+    switch(f.type){
+      case 'text':case 'email':case 'password':case 'number':case 'date':h+=`    <input type="${f.type}" name="${escapeHTML(f.attrs.name||'')}"${f.attrs.placeholder?` placeholder="${escapeHTML(f.attrs.placeholder)}"`:''}${f.attrs.required?' required':''}>\n`;break;
+      case 'textarea':h+=`    <textarea name="${escapeHTML(f.attrs.name||'')}"${f.attrs.placeholder?` placeholder="${escapeHTML(f.attrs.placeholder)}"`:''} rows="${f.attrs.rows||3}"${f.attrs.required?' required':''}></textarea>\n`;break;
+      case 'select':h+=`    <select name="${escapeHTML(f.attrs.name||'')}"${f.attrs.required?' required':''}>\n${(f.attrs.options||'').split(',').map(o=>`      <option value="${escapeHTML(o.trim())}">${escapeHTML(o.trim())}</option>`).join('\n')}\n    </select>\n`;break;
+      case 'checkbox':h+=`    <input type="checkbox" name="${escapeHTML(f.attrs.name||'')}"${f.attrs.checked?' checked':''}> <span>${escapeHTML(f.attrs.label||'')}</span>\n`;break;
+      case 'radio':(f.attrs.options||'').split(',').forEach((o,i)=>{h+=`    <input type="radio" name="${escapeHTML(f.attrs.name||'')}" value="${escapeHTML(o.trim())}"${i===0?' checked':''}> ${escapeHTML(o.trim())}\n`;});break;
+      case 'file':h+=`    <input type="file" name="${escapeHTML(f.attrs.name||'')}"${f.attrs.accept?` accept="${escapeHTML(f.attrs.accept)}"`:''}${f.attrs.multiple?' multiple':''}>\n`;break;
+    }
+    h+='  </div>\n';
+  }
+  h+='  <button type="submit">Submit</button>\n</form>';
+  return h;
+}
+
+function exportHTML(){const html=generateHTML();if(!html)return;navigator.clipboard.writeText(html).then(()=>{showToast('HTML copied!')}).catch(()=>{showToast('Copy failed - select manually')})}
+function showToast(m){const t=document.createElement('div');t.textContent=m;Object.assign(t.style,{position:'fixed',bottom:20,left:'50%',transform:'translateX(-50%)',background:'rgba(0,217,255,0.15)',color:'#00d9ff',padding:'6px 16px',borderRadius:'4px',fontSize:'0.55rem',zIndex:999,transition:'opacity 0.3s',border:'1px solid rgba(0,217,255,0.2)'});document.body.appendChild(t);setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),300)},2000)}
+function clearAll(){fields=[];selectedId=null;idCounter=0;renderCanvas();renderProps();document.getElementById('htmlOutput').textContent='Drop fields to generate HTML';saveToStorage()}
+function loadSample(){clearAll();
+  const sample=[{type:'text',label:'Full Name',attrs:{name:'full_name',placeholder:'John Doe',required:true}},{type:'email',label:'Email',attrs:{name:'email',placeholder:'john@example.com',required:true}},{type:'password',label:'Password',attrs:{name:'password',placeholder:'Min 8 characters',required:true}},{type:'select',label:'Country',attrs:{name:'country',options:'USA,Canada,UK,Australia,Other',required:true}},{type:'textarea',label:'Message',attrs:{name:'message',placeholder:'Your message...',rows:4,required:false}},{type:'checkbox',label:'',attrs:{name:'subscribe',label:'Subscribe to newsletter',checked:true}}];
+  sample.forEach(s=>{const id=idCounter++;fields.push({id,...s})});renderCanvas();updateOutput();saveToStorage()}
+function saveToStorage(){try{localStorage.setItem('formbuilder_data',JSON.stringify({fields,idCounter}))}catch(e){}}
+function loadFromStorage(){try{const d=JSON.parse(localStorage.getItem('formbuilder_data'));if(d&&d.fields&&d.fields.length){fields=d.fields;idCounter=d.idCounter;return true}}catch(e){}return false}
+function escapeHTML(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;')}
+if(!loadFromStorage())loadSample();else{renderCanvas();renderProps();updateOutput()}
+</script></body></html>

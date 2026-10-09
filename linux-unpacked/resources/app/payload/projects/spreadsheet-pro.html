@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spreadsheet Pro</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#ccc;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+header{display:flex;align-items:center;padding:4px 12px;background:#12121e;border-bottom:1px solid rgba(255,255,255,0.06);gap:8px;flex-shrink:0}
+header h1{color:#00d9ff;font-size:0.85rem}header h1 small{color:#555;font-size:0.5rem;font-weight:400}
+.toolbar{display:flex;gap:2px}
+.toolbar button{padding:4px 8px;border:1px solid rgba(255,255,255,0.06);border-radius:3px;background:transparent;color:#888;cursor:pointer;font-size:0.5rem;font-family:inherit;transition:0.1s}
+.toolbar button:hover{border-color:#00d9ff;color:#ccc}
+.toolbar button.primary{background:rgba(0,217,255,0.1);border-color:rgba(0,217,255,0.2);color:#00d9ff}
+.formula-bar{display:flex;align-items:center;padding:3px 8px;background:#0e0e1a;border-bottom:1px solid rgba(255,255,255,0.04);gap:6px;flex-shrink:0;font-size:0.6rem}
+.formula-bar .cell-ref{color:#00d9ff;font-weight:600;min-width:50px}
+.formula-bar input{flex:1;padding:4px 8px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.06);border-radius:3px;color:#ccc;font-family:inherit;font-size:0.6rem;outline:none}
+.formula-bar input:focus{border-color:#00d9ff}
+.main{flex:1;overflow:auto;background:#0a0a14;position:relative}
+.sheet{display:grid;grid-template-columns:40px repeat(26,80px);position:relative}
+.corner{position:sticky;top:0;left:0;z-index:3;background:#12121e;border-right:1px solid rgba(255,255,255,0.06);border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:0.5rem;color:#444;height:28px;width:40px}
+.col-header{position:sticky;top:0;z-index:2;background:#12121e;border-right:1px solid rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;padding:0 6px;font-size:0.5rem;color:#666;height:28px;cursor:pointer}
+.col-header:hover{color:#00d9ff;background:rgba(0,217,255,0.03)}
+.row-header{position:sticky;left:0;z-index:1;background:#12121e;border-right:1px solid rgba(255,255,255,0.06);border-bottom:1px solid rgba(255,255,255,0.03);display:flex;align-items:center;justify-content:center;font-size:0.5rem;color:#666;height:28px;cursor:pointer}
+.row-header:hover{color:#00d9ff;background:rgba(0,217,255,0.03)}
+.cell{height:28px;border-right:1px solid rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.03);padding:0 6px;font-size:0.65rem;color:#ccc;display:flex;align-items:center;cursor:cell;outline:none;background:transparent;font-family:inherit;overflow:hidden;white-space:nowrap}
+.cell:hover{background:rgba(255,255,255,0.02)}
+.cell.selected{box-shadow:inset 0 0 0 2px #00d9ff;z-index:1;background:rgba(0,217,255,0.03)}
+.cell.header{border-right:1px solid transparent}.cell.formula{color:#00d9ff;font-style:italic}
+.cell.number{color:#4ade80;text-align:right}.cell.error{color:#f87171}
+.status{font-size:0.5rem;color:#444;padding:2px 10px;border-top:1px solid rgba(255,255,255,0.04);flex-shrink:0;display:flex;gap:16px}
+</style>
+</head>
+<body>
+<header>
+  <h1>📊 Spreadsheet Pro <small>Formulas · Charts · Export</small></h1>
+  <div class="toolbar">
+    <button onclick="addRow()">➕ Row</button>
+    <button onclick="addCol()">➕ Col</button>
+    <button onclick="exportCSV()" class="primary">💾 CSV</button>
+    <button onclick="exportJSON()">📋 JSON</button>
+    <button onclick="clearSheet()">🗑️ Clear</button>
+  </div>
+</header>
+<div class="formula-bar">
+  <span class="cell-ref" id="cellRef">A1</span>
+  <input id="formulaInput" placeholder="Value or formula (e.g., =SUM(A1:A5))" onkeydown="if(event.key==='Enter')applyFormula()" oninput="updateFormulaPreview()">
+  <button onclick="applyFormula()" style="padding:2px 8px;border:1px solid rgba(255,255,255,0.06);border-radius:3px;background:transparent;color:#888;cursor:pointer;font-size:0.5rem;font-family:inherit">✓</button>
+</div>
+<div class="main" id="sheetContainer"></div>
+<div class="status">
+  <span>Selected: <span id="selCell">A1</span></span>
+  <span id="cellValue">Empty</span>
+  <span>Rows: <span id="rowCount">20</span> · Cols: <span id="colCount">10</span></span>
+</div>
+
+<script>
+const COLS=26,ROWS=30;
+let data={},selectedCell='A1',selectedRow=-1,selectedCol=-1;
+const COL_NAMES='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+function cellId(c,r){return COL_NAMES[c]+(r+1)}
+function parseCell(id){const m=id.match(/^([A-Z]+)(\d+)$/);return m?{c:COL_NAMES.indexOf(m[1]),r:parseInt(m[1])-1}:null}
+
+function render(){
+  const container=document.getElementById('sheetContainer');
+  container.innerHTML='';
+  
+  const grid=document.createElement('div');grid.className='sheet';
+  
+  // Corner
+  const corner=document.createElement('div');corner.className='corner';corner.textContent='';
+  grid.appendChild(corner);
+  
+  // Column headers
+  for(let c=0;c<COLS;c++){
+    const h=document.createElement('div');h.className='col-header';
+    h.textContent=COL_NAMES[c];
+    h.onclick=()=>selectCol(c);
+    grid.appendChild(h);
+  }
+  
+  // Rows
+  for(let r=0;r<ROWS;r++){
+    const rh=document.createElement('div');rh.className='row-header';
+    rh.textContent=r+1;
+    rh.onclick=()=>selectRow(r);
+    grid.appendChild(rh);
+    
+    for(let c=0;c<COLS;c++){
+      const cell=document.createElement('div');cell.className='cell';
+      const id=cellId(c,r);
+      cell.dataset.id=id;
+      
+      const val=data[id];
+      if(val!==undefined){
+        if(typeof val==='number'){cell.textContent=val;cell.classList.add('number')}
+        else if(val.startsWith('=')){cell.classList.add('formula');cell.textContent=evaluateFormula(val.substring(1),cell)}
+        else{cell.textContent=val}
+      }
+      
+      if(id===selectedCell)cell.classList.add('selected');
+      
+      cell.onclick=(e)=>{selectCell(id);e.stopPropagation()};
+      cell.ondblclick=()=>{editCell(id)};
+      
+      grid.appendChild(cell);
+    }
+  }
+  
+  container.appendChild(grid);
+  document.getElementById('selCell').textContent=selectedCell;
+  
+  // Update formula bar
+  const val=data[selectedCell];
+  document.getElementById('formulaInput').value=val!==undefined?String(val):'';
+  document.getElementById('cellValue').textContent=val!==undefined?String(val):'Empty';
+  document.getElementById('cellRef').textContent=selectedCell;
+}
+
+function selectCell(id){selectedCell=id;render()}
+function selectCol(c){selectedCol=c;selectedRow=-1;document.getElementById('selCell').textContent=`Col ${COL_NAMES[c]}`}
+function selectRow(r){selectedRow=r;selectedCol=-1;document.getElementById('selCell').textContent=`Row ${r+1}`}
+
+function editCell(id){
+  const val=prompt('Edit cell:',data[id]!==undefined?String(data[id]):'');
+  if(val!==null){
+    const num=parseFloat(val);
+    if(!isNaN(num)&&val.trim()!=='')data[id]=num;
+    else data[id]=val;
+    render();
+  }
+}
+
+// Safe recursive descent arithmetic parser
+function parseArithmetic(expr){
+  let pos=0;
+  function peek(){while(pos<expr.length&&expr[pos]===' ')pos++;return pos<expr.length?expr[pos]:''}
+  function eat(ch){if(peek()===ch){pos++;return true}return false}
+  function number(){let start=pos;if(peek()==='-')pos++;while(pos<expr.length&&/\d/.test(expr[pos]))pos++;if(peek()==='.'){pos++;while(pos<expr.length&&/\d/.test(expr[pos]))pos++}return pos>start?parseFloat(expr.slice(start,pos)):null}
+  function parseAdd(){let left=parseMul();while(peek()==='+'||peek()==='-'){const op=peek();pos++;const right=parseMul();left=op==='+'?left+right:left-right}return left}
+  function parseMul(){let left=parseUnary();while(peek()==='*'||peek()==='/'){const op=peek();pos++;const right=parseUnary();if(op==='/'&&right===0)throw new Error('Division by zero');left=op==='*'?left*right:left/right}return left}
+  function parseUnary(){if(eat('-'))return -parseUnary();if(eat('(')){const val=parseAdd();if(!eat(')'))throw new Error('Missing )');return val}const n=number();if(n===null)throw new Error('Expected number');return n}
+  const result=parseAdd();if(peek())throw new Error('Unexpected char: '+peek());return result;
+}
+
+function evaluateFormula(formula,cellEl){
+  try{
+    // Replace cell references with values
+    let expr=formula;
+    const refs=expr.match(/[A-Z]+\d+/g)||[];
+    for(const ref of refs){
+      const val=data[ref];
+      const num=typeof val==='number'?val:parseFloat(val);
+      expr=expr.replace(ref,isNaN(num)?0:num);
+    }
+    
+    // Handle functions
+    if(expr.toUpperCase().startsWith('SUM(')){
+      const range=expr.match(/SUM\(([^)]+)\)/i);
+      if(range){
+        const parts=range[1].split(':');
+        if(parts.length===2){
+          const p1=parseCell(parts[0]),p2=parseCell(parts[1]);
+          if(p1&&p2){
+            let sum=0;
+            for(let r=Math.min(p1.r,p2.r);r<=Math.max(p1.r,p2.r);r++)
+              for(let c=Math.min(p1.c,p2.c);c<=Math.max(p1.c,p2.c);c++){
+                const v=data[cellId(c,r)];
+                if(typeof v==='number')sum+=v;
+              }
+            return sum;
+          }
+        }
+      }
+    }
+    
+    if(expr.toUpperCase().startsWith('AVG(')){
+      const range=expr.match(/AVG\(([^)]+)\)/i);
+      if(range){
+        const parts=range[1].split(':');
+        if(parts.length===2){const p1=parseCell(parts[0]),p2=parseCell(parts[1]);if(p1&&p2){let sum=0,count=0;for(let r=Math.min(p1.r,p2.r);r<=Math.max(p1.r,p2.r);r++)for(let c=Math.min(p1.c,p2.c);c<=Math.max(p1.c,p2.c);c++){const v=data[cellId(c,r)];if(typeof v==='number'){sum+=v;count++}}return count>0?sum/count:0}}}
+    }
+    
+    if(expr.toUpperCase().startsWith('MIN(')||expr.toUpperCase().startsWith('MAX(')){
+      const isMax=expr.toUpperCase().startsWith('MAX(');
+      const range=expr.match(/(MIN|MAX)\(([^)]+)\)/i);
+      if(range){
+        const parts=range[2].split(':');
+        if(parts.length===2){const p1=parseCell(parts[0]),p2=parseCell(parts[1]);if(p1&&p2){let result=isMax?-Infinity:Infinity;for(let r=Math.min(p1.r,p2.r);r<=Math.max(p1.r,p2.r);r++)for(let c=Math.min(p1.c,p2.c);c<=Math.max(p1.c,p2.c);c++){const v=data[cellId(c,r)];if(typeof v==='number')result=isMax?Math.max(result,v):Math.min(result,v)}return result===Infinity||result===-Infinity?0:result}}}
+    }
+    
+    if(expr.toUpperCase().startsWith('COUNT(')){
+      const range=expr.match(/COUNT\(([^)]+)\)/i);
+      if(range){
+        const parts=range[1].split(':');
+        if(parts.length===2){const p1=parseCell(parts[0]),p2=parseCell(parts[1]);if(p1&&p2){let count=0;for(let r=Math.min(p1.r,p2.r);r<=Math.max(p1.r,p2.r);r++)for(let c=Math.min(p1.c,p2.c);c<=Math.max(p1.c,p2.c);c++){const v=data[cellId(c,r)];if(v!==undefined&&v!=='')count++}return count}}}
+    }
+    
+    // Safe arithmetic — recursive descent parser (no eval/Function)
+    try{const result=parseArithmetic(expr);return isFinite(result)?Math.round(result*100)/100:result}
+    catch(e){return '#ERROR!'}
+  }catch(e){return '#ERROR!'}
+}
+
+function applyFormula(){
+  const val=document.getElementById('formulaInput').value;
+  if(val.trim()===''){delete data[selectedCell]}
+  else{
+    const num=parseFloat(val);
+    if(!isNaN(num)&&val.trim()!=='')data[selectedCell]=num;
+    else data[selectedCell]=val;
+  }
+  render();
+}
+
+function updateFormulaPreview(){
+  // Live preview - intentionally empty
+}
+
+function addRow(){render()}
+function addCol(){render()}
+
+function exportCSV(){
+  let csv='';
+  for(let r=0;r<ROWS;r++){
+    const row=[];
+    for(let c=0;c<10;c++){
+      const v=data[cellId(c,r)];
+      row.push(v!==undefined?String(v).replace(/,/g,';'):'');
+    }
+    csv+=row.join(',')+'\n';
+  }
+  const blob=new Blob([csv],{type:'text/csv'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download='spreadsheet.csv';a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportJSON(){
+  const obj={};
+  for(const [key,val] of Object.entries(data))obj[key]=val;
+  const blob=new Blob([JSON.stringify(obj,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download='spreadsheet.json';a.click();
+  URL.revokeObjectURL(url);
+}
+
+function clearSheet(){if(confirm('Clear all data?')){data={};render()}}
+
+// Demo data
+function initDemo(){
+  data={A1:'Item',B1:'Qty',C1:'Price',D1:'Total',A2:'Widget',B2:10,C2:5.99,D2:'=B2*C2',
+    A3:'Gadget',B3:5,C3:12.50,D3:'=B3*C3',A4:'Gizmo',B4:8,C4:8.99,D4:'=B4*C4',
+    A5:'',B5:'',C5:'',D5:'=SUM(D2:D4)',A6:'Total Items',B6:'=SUM(B2:B4)',
+    A7:'Average Price',C7:'=AVG(C2:C4)',A8:'Best Seller',B8:'=MAX(B2:B4)'
+  };
+  render();
+}
+
+initDemo();
+</script>
+</body>
+</html>

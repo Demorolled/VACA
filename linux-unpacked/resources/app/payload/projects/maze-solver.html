@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maze Generator &amp; Solver</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#ccc;min-height:100vh;padding:20px;display:flex;justify-content:center}
+.container{max-width:700px;width:100%;text-align:center}
+h1{color:#00d9ff;font-size:1.1rem;margin-bottom:4px}p.sub{color:#555;font-size:0.65rem;margin-bottom:12px}
+.controls{display:flex;gap:6px;justify-content:center;margin-bottom:12px;flex-wrap:wrap}
+.controls button{padding:6px 14px;border:1px solid rgba(255,255,255,0.06);border-radius:4px;background:transparent;color:#888;cursor:pointer;font-size:0.6rem;font-family:inherit;transition:0.1s}
+.controls button:hover{border-color:#00d9ff;color:#ccc}.controls button.primary{background:rgba(0,217,255,0.1);border-color:rgba(0,217,255,0.25);color:#00d9ff}
+#mazeCanvas{border:2px solid rgba(255,255,255,0.06);border-radius:6px;image-rendering:pixelated;cursor:pointer;margin:0 auto;display:block}
+.stats{display:flex;gap:16px;justify-content:center;margin-top:10px;font-size:0.6rem;color:#555;flex-wrap:wrap}
+.stats span{display:flex;align-items:center;gap:4px}.stats .val{color:#00d9ff}
+.speed-control{display:flex;align-items:center;gap:8px;justify-content:center;margin-top:8px;font-size:0.55rem;color:#555}
+.speed-control input{width:120px;accent-color:#00d9ff;height:4px}</style>
+</head>
+<body>
+<div class="container">
+  <h1>🏰 Maze Generator &amp; Solver</h1>
+  <p class="sub">DFS Generation · BFS/A* Solving · Step-by-step visualization</p>
+  <canvas id="mazeCanvas"></canvas>
+  <div class="controls">
+    <button onclick="generateMaze()" class="primary">🏗️ Generate</button>
+    <button onclick="solveBFS()">🔍 BFS</button>
+    <button onclick="solveAStar()">⭐ A*</button>
+    <button onclick="solveDFS()">🔀 DFS Solve</button>
+    <button onclick="clearPaths()">🗑️ Clear Paths</button>
+  </div>
+  <div class="speed-control">
+    <span>Speed:</span>
+    <input type="range" min="1" max="50" value="20" id="speedSlider">
+    <span class="val" id="speedVal">20</span>
+  </div>
+  <div class="stats">
+    <span>Size: <span class="val" id="sizeDisplay">21×21</span></span>
+    <span>Steps: <span class="val" id="stepDisplay">0</span></span>
+    <span>Path: <span class="val" id="pathDisplay">-</span></span>
+    <span>Status: <span class="val" id="statusDisplay">Ready</span></span>
+  </div>
+</div>
+<script>
+const canvas=document.getElementById('mazeCanvas'),ctx=canvas.getContext('2d');
+const SIZE=21,CELL=16,WALL=2;
+let maze=[],visited=[],path=[],solving=false;
+
+function init(){
+  canvas.width=SIZE*CELL;canvas.height=SIZE*CELL;
+  generateMaze();
+}
+
+// DFS maze generation
+function generateMaze(){
+  solving=false;
+  maze=Array(SIZE).fill(null).map(()=>Array(SIZE).fill(1));
+  function carve(x,y){maze[y][x]=0;const dirs=[[2,0],[-2,0],[0,2],[0,-2]].sort(()=>Math.random()-0.5);
+    for(const[dx,dy]of dirs){const nx=x+dx,ny=y+dy;if(nx>0&&nx<SIZE-1&&ny>0&&ny<SIZE-1&&maze[ny][nx]===1){maze[ny][nx]=0;maze[y+dy/2][x+dx/2]=0;carve(nx,ny)}}}
+  carve(1,1);
+  maze[0][1]=0;maze[SIZE-1][SIZE-2]=0; // Entrance/Exit
+  visited=[];path=[];
+  document.getElementById('statusDisplay').textContent='✅ Generated';
+  document.getElementById('stepDisplay').textContent='0';
+  document.getElementById('pathDisplay').textContent='-';
+  draw();saveToStorage();
+}
+
+async function solveBFS(){await solve('bfs')}
+async function solveAStar(){await solve('astar')}
+async function solveDFS(){await solve('dfs')}
+
+async function solve(type){
+  if(solving)return;solving=true;clearPaths();
+  const speed=parseInt(document.getElementById('speedSlider').value);
+  document.getElementById('speedVal').textContent=speed;
+  document.getElementById('statusDisplay').textContent=`🔄 ${type.toUpperCase()}...`;
+  
+  const start={x:1,y:1},end={x:SIZE-2,y:SIZE-2};
+  const queue=type==='dfs'?[start]:[start];
+  const parent={};
+  const key=p=>`${p.x},${p.y}`;
+  parent[key(start)]=null;
+  visited=[start];
+  let found=false,stepCount=0;
+  
+  const delay=speed>0?Math.max(1,50-speed*0.9):0;
+  
+  while(queue.length>0&&!found){
+    const current=type==='bfs'?queue.shift():type==='dfs'?queue.pop():queue.shift();
+    stepCount++;
+    
+    if(current.x===end.x&&current.y===end.y){found=true;reconstructPath(parent,current);break;}
+    
+    const dirs=[[0,-1],[1,0],[0,1],[-1,0]];
+    if(type==='astar'){dirs.sort((a,b)=>{const da=Math.abs(current.x+a[0]-end.x)+Math.abs(current.y+a[1]-end.y);const db=Math.abs(current.x+b[0]-end.x)+Math.abs(current.y+b[1]-end.y);return da-db})}
+    
+    for(const[dx,dy]of dirs){
+      const nx=current.x+dx,ny=current.y+dy;
+      if(nx>=0&&nx<SIZE&&ny>=0&&ny<SIZE&&maze[ny][nx]===0&&!visited.some(v=>v.x===nx&&v.y===ny)){
+        visited.push({x:nx,y:ny});
+        parent[key({x:nx,y:ny})]=current;
+        queue.push({x:nx,y:ny});
+      }
+    }
+    
+    if(delay>0&&stepCount%5===0){draw();await new Promise(r=>setTimeout(r,Math.min(delay,30)))}
+  }
+  
+  draw();
+  document.getElementById('stepDisplay').textContent=stepCount;
+  document.getElementById('statusDisplay').textContent=found?'✅ Path found!':'❌ No path';
+  solving=false;saveToStorage();
+}
+
+function reconstructPath(parent,end){
+  path=[];let current=end;
+  while(current){path.unshift(current);current=parent[`${current.x},${current.y}`]}
+  document.getElementById('pathDisplay').textContent=`${path.length} cells`;
+}
+
+function clearPaths(){visited=[];path=[];draw()}
+
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  for(let y=0;y<SIZE;y++)for(let x=0;x<SIZE;x++){
+    ctx.fillStyle=maze[y][x]===1?'#1a1a3e':'#0a0a14';
+    ctx.fillRect(x*CELL,y*CELL,CELL,CELL);
+  }
+  // Start/End
+  ctx.fillStyle='#4ade80';ctx.fillRect(1*CELL,1*CELL,CELL,CELL);
+  ctx.fillStyle='#f87171';ctx.fillRect((SIZE-2)*CELL,(SIZE-2)*CELL,CELL,CELL);
+  // Visited
+  ctx.fillStyle='rgba(0,217,255,0.08)';
+  for(const v of visited)ctx.fillRect(v.x*CELL+2,v.y*CELL+2,CELL-4,CELL-4);
+  // Path
+  if(path.length>1){
+    ctx.strokeStyle='#00d9ff';ctx.lineWidth=3;ctx.beginPath();
+    path.forEach((p,i)=>{i===0?ctx.moveTo(p.x*CELL+CELL/2,p.y*CELL+CELL/2):ctx.lineTo(p.x*CELL+CELL/2,p.y*CELL+CELL/2)});
+    ctx.stroke();
+    // Glow
+    ctx.strokeStyle='rgba(0,217,255,0.15)';ctx.lineWidth=8;ctx.beginPath();
+    path.forEach((p,i)=>{i===0?ctx.moveTo(p.x*CELL+CELL/2,p.y*CELL+CELL/2):ctx.lineTo(p.x*CELL+CELL/2,p.y*CELL+CELL/2)});
+    ctx.stroke();
+  }
+  // Grid lines
+  ctx.strokeStyle='rgba(255,255,255,0.02)';ctx.lineWidth=0.5;
+  for(let i=0;i<=SIZE;i++){ctx.beginPath();ctx.moveTo(i*CELL,0);ctx.lineTo(i*CELL,SIZE*CELL);ctx.stroke();ctx.beginPath();ctx.moveTo(0,i*CELL);ctx.lineTo(SIZE*CELL,i*CELL);ctx.stroke()}
+}
+
+function saveToStorage(){try{localStorage.setItem('maze_data',JSON.stringify(maze))}catch(e){}}
+function loadFromStorage(){try{const d=JSON.parse(localStorage.getItem('maze_data'));if(d&&d.length===SIZE){maze=d;return true}}catch(e){}return false}
+
+document.getElementById('speedSlider').oninput=function(){document.getElementById('speedVal').textContent=this.value};
+init();
+</script>
+</body>
+</html>

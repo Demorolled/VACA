@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>N-Queens Solver</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#ccc;min-height:100vh;padding:20px;display:flex;justify-content:center}
+.container{max-width:600px;width:100%;text-align:center}
+h1{color:#00d9ff;font-size:1.1rem;margin-bottom:4px}p.sub{color:#555;font-size:0.65rem;margin-bottom:14px}
+.controls{display:flex;gap:6px;justify-content:center;margin-bottom:12px;flex-wrap:wrap}
+.controls button{padding:6px 14px;border:1px solid rgba(255,255,255,0.06);border-radius:4px;background:transparent;color:#888;cursor:pointer;font-size:0.6rem;font-family:inherit;transition:0.1s}
+.controls button:hover{border-color:#00d9ff;color:#ccc}.controls button.primary{background:rgba(0,217,255,0.1);border-color:rgba(0,217,255,0.25);color:#00d9ff}
+#boardCanvas{border:2px solid rgba(255,255,255,0.06);border-radius:6px;margin:0 auto;display:block}
+.stats{display:flex;gap:16px;justify-content:center;margin-top:10px;font-size:0.6rem;color:#555;flex-wrap:wrap}
+.stats span{display:flex;align-items:center;gap:4px}.stats .val{color:#00d9ff}
+.size-ctrl{display:flex;align-items:center;gap:8px;justify-content:center;margin-bottom:8px;font-size:0.55rem;color:#555}
+.size-ctrl input{width:100px;accent-color:#00d9ff;height:4px}
+.solution-nav{display:flex;gap:6px;justify-content:center;margin-top:8px}
+.solution-nav button{padding:4px 10px;border:1px solid rgba(255,255,255,0.06);border-radius:3px;background:transparent;color:#888;cursor:pointer;font-size:0.5rem;font-family:inherit}
+.solution-nav button:hover{border-color:#00d9ff;color:#ccc}</style>
+</head>
+<body>
+<div class="container">
+  <h1>👑 N-Queens Solver</h1>
+  <p class="sub">Backtracking algorithm visualization for the classic N-Queens problem</p>
+  <div class="size-ctrl">
+    <span>N:</span>
+    <input type="range" min="4" max="12" value="8" id="nSlider" oninput="updateSize()">
+    <span class="val" id="nDisplay">8</span>
+  </div>
+  <canvas id="boardCanvas"></canvas>
+  <div class="controls">
+    <button onclick="solve()" class="primary">🧠 Solve</button>
+    <button onclick="stepSolve()">👣 Step</button>
+    <button onclick="resetBoard()">🔄 Reset</button>
+  </div>
+  <div class="solution-nav">
+    <button onclick="prevSolution()">◀ Prev</button>
+    <span id="solutionDisplay" style="font-size:0.6rem;color:#555;align-self:center">Solution: 0/0</span>
+    <button onclick="nextSolution()">Next ▶</button>
+  </div>
+  <div class="stats">
+    <span>Steps: <span class="val" id="stepDisplay">0</span></span>
+    <span>Backtracks: <span class="val" id="backtrackDisplay">0</span></span>
+    <span>Solutions: <span class="val" id="solutionsDisplay">0</span></span>
+  </div>
+</div>
+<script>
+const canvas=document.getElementById('boardCanvas'),ctx=canvas.getContext('2d');
+let N=8,solutions=[],currentSolution=0;
+let steps=0,backtracks=0,board=[],solving=false,stepQueue=[];
+
+function updateSize(){N=parseInt(document.getElementById('nSlider').value);document.getElementById('nDisplay').textContent=N;resetBoard()}
+
+function resetBoard(){
+  board=Array(N).fill(-1);solutions=[];currentSolution=0;steps=0;backtracks=0;
+  solving=false;stepQueue=[];draw();updateStats();
+  document.getElementById('solutionDisplay').textContent=`Solution: 0/0`;saveToStorage();
+}
+
+function isSafe(board,row,col){
+  for(let i=0;i<row;i++){if(board[i]===col||Math.abs(board[i]-col)===Math.abs(i-row))return false}
+  return true;
+}
+
+function solve(){
+  resetBoard();solving=true;
+  document.getElementById('solutionsDisplay').textContent='🔄 Searching...';
+  setTimeout(()=>{
+    const allSolutions=[];
+    function backtrack(row){steps++;if(row===N){allSolutions.push([...board]);return}
+      for(let col=0;col<N;col++){if(isSafe(board,row,col)){board[row]=col;backtrack(row+1);board[row]=-1;backtracks++}}
+    }
+    backtrack(0);
+    solutions=allSolutions;
+    if(solutions.length>0){currentSolution=0;board=[...solutions[0]];draw()}
+    document.getElementById('solutionsDisplay').textContent=solutions.length;
+    document.getElementById('solutionDisplay').textContent=`Solution: ${solutions.length>0?1:0}/${solutions.length}`;
+    updateStats();solving=false;saveToStorage();
+  },50);
+}
+
+function stepSolve(){
+  if(!solving){
+    steps=0;backtracks=0;board=Array(N).fill(-1);solving=true;
+    stepQueue=[];buildStepQueue(0);
+    if(stepQueue.length===0){solving=false;return}
+  }
+  if(stepQueue.length===0){document.getElementById('solutionsDisplay').textContent='✅ Complete';solving=false;return}
+  const action=stepQueue.shift();
+  if(action.type==='place'){board[action.row]=action.col;steps++}
+  else if(action.type==='remove'){board[action.row]=-1;backtracks++}
+  draw();updateStats();
+  if(stepQueue.length===0){document.getElementById('solutionsDisplay').textContent='✅ Complete'}
+}
+
+function buildStepQueue(row){
+  if(row===N){stepQueue.push({type:'place',row:-1,col:-1});return}
+  for(let col=0;col<N;col++){
+    if(isSafe(board,row,col)){stepQueue.push({type:'place',row,col});board[row]=col;buildStepQueue(row+1);board[row]=-1;stepQueue.push({type:'remove',row,col})}
+  }
+}
+
+function nextSolution(){
+  if(solutions.length===0)return;
+  currentSolution=(currentSolution+1)%solutions.length;
+  board=[...solutions[currentSolution]];draw();
+  document.getElementById('solutionDisplay').textContent=`Solution: ${currentSolution+1}/${solutions.length}`;
+}
+
+function prevSolution(){
+  if(solutions.length===0)return;
+  currentSolution=(currentSolution-1+solutions.length)%solutions.length;
+  board=[...solutions[currentSolution]];draw();
+  document.getElementById('solutionDisplay').textContent=`Solution: ${currentSolution+1}/${solutions.length}`;
+}
+
+function draw(){
+  const size=Math.min(500,500);canvas.width=size;canvas.height=size;
+  const cell=size/N;
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+    ctx.fillStyle=(r+c)%2===0?'#1a1a2e':'#0e0e1a';
+    ctx.fillRect(c*cell,r*cell,cell,cell);
+  }
+  for(let r=0;r<N;r++){
+    if(board[r]>=0){
+      const c=board[r],x=c*cell+cell/2,y=r*cell+cell/2;
+      ctx.font=`${cell*0.6}px Arial`;ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText('👑',x,y+2);
+      // Highlight
+      ctx.fillStyle='rgba(0,217,255,0.06)';ctx.fillRect(c*cell,r*cell,cell,cell);
+    }
+  }
+  // Grid lines
+  ctx.strokeStyle='rgba(255,255,255,0.06)';ctx.lineWidth=0.5;
+  for(let i=0;i<=N;i++){ctx.beginPath();ctx.moveTo(i*cell,0);ctx.lineTo(i*cell,size);ctx.stroke();ctx.beginPath();ctx.moveTo(0,i*cell);ctx.lineTo(size,i*cell);ctx.stroke()}
+}
+
+function updateStats(){document.getElementById('stepDisplay').textContent=steps;document.getElementById('backtrackDisplay').textContent=backtracks}
+
+function saveToStorage(){try{localStorage.setItem('nqueens_state',JSON.stringify({N,solutions:[]}))}catch(e){}}
+
+resetBoard();
+</script>
+</body>
+</html>

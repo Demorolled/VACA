@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Timeline Maker</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+  min-height: 100vh;
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+.container { max-width: 1000px; width: 100%; }
+h1 { color: #00d9ff; font-size: 1.5rem; text-align: center; margin-bottom: 4px; }
+.subtitle { color: #666; font-size: 0.8rem; text-align: center; margin-bottom: 12px; }
+.layout { display: flex; gap: 12px; }
+@media (max-width: 700px) { .layout { flex-direction: column; } }
+/* Controls */
+.controls {
+  width: 240px;
+  background: linear-gradient(145deg, #1a1a2e, #1e1e3a);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 16px;
+  flex-shrink: 0;
+  max-height: 550px;
+  overflow-y: auto;
+}
+.controls h3 { color: #888; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; margin-top: 12px; }
+.controls h3:first-child { margin-top: 0; }
+.controls label { display: block; font-size: 0.7rem; color: #666; margin-bottom: 2px; margin-top: 6px; }
+.controls input, .controls select, .controls textarea {
+  width: 100%;
+  padding: 6px 10px;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px;
+  color: #ccc;
+  font-size: 0.8rem;
+  font-family: inherit;
+  outline: none;
+}
+.controls textarea { resize: vertical; min-height: 50px; }
+.controls input:focus, .controls select:focus, .controls textarea:focus { border-color: #00d9ff; }
+.controls .btn {
+  width: 100%;
+  padding: 8px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: 0.15s;
+  margin-top: 6px;
+}
+.btn-primary { background: linear-gradient(135deg, #00d9ff, #0099ff); color: #0f0f1a; }
+.btn-primary:hover { box-shadow: 0 2px 10px rgba(0,217,255,0.3); }
+.btn-secondary { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); color: #aaa; }
+.btn-secondary:hover { background: rgba(255,255,255,0.1); }
+.btn-danger { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.2); color: #f87171; }
+.btn-danger:hover { background: rgba(248,113,113,0.2); }
+.color-presets { display: flex; gap: 4px; margin: 4px 0; }
+.color-presets .cbtn {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: 0.1s;
+}
+.color-presets .cbtn:hover { transform: scale(1.15); }
+.color-presets .cbtn.active { border-color: #fff; }
+.event-list { max-height: 200px; overflow-y: auto; }
+.event-list-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  font-size: 0.7rem;
+  color: #666;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: 0.1s;
+  margin-bottom: 2px;
+}
+.event-list-item:hover { background: rgba(255,255,255,0.04); color: #aaa; }
+.event-list-item .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.event-list-item .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.event-list-item .del {
+  background: none; border: none; color: #444;
+  cursor: pointer; font-size: 0.6rem; padding: 2px;
+  opacity: 0;
+}
+.event-list-item:hover .del { opacity: 1; }
+.event-list-item .del:hover { color: #f87171; }
+/* Timeline */
+.timeline-area {
+  flex: 1;
+  background: linear-gradient(145deg, #1a1a2e, #1e1e3a);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 16px;
+  min-height: 450px;
+  position: relative;
+  overflow: hidden;
+}
+.timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.timeline-header .range-info { font-size: 0.7rem; color: #555; }
+.timeline-header .zoom-controls { display: flex; gap: 4px; }
+.timeline-header .zoom-btn {
+  padding: 2px 8px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 4px;
+  background: rgba(255,255,255,0.04);
+  color: #666;
+  cursor: pointer;
+  font-size: 0.65rem;
+  font-family: inherit;
+}
+.timeline-header .zoom-btn:hover { color: #00d9ff; border-color: #00d9ff; }
+.timeline-scroll { overflow-y: auto; max-height: 400px; }
+.year-header {
+  display: flex;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  padding-bottom: 4px;
+  margin-bottom: 8px;
+}
+.year-header .year-label {
+  font-size: 0.65rem;
+  color: #555;
+  flex-shrink: 0;
+  padding-left: 4px;
+}
+.timeline-lane {
+  position: relative;
+  min-height: 50px;
+  margin-bottom: 6px;
+  padding: 4px 0;
+}
+.lane-label {
+  font-size: 0.65rem;
+  color: #555;
+  position: absolute;
+  left: 0;
+  top: 2px;
+  width: 60px;
+}
+.timeline-event {
+  position: absolute;
+  height: 32px;
+  border-radius: 6px;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  font-size: 0.7rem;
+  color: #fff;
+  cursor: grab;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: box-shadow 0.1s;
+  z-index: 1;
+}
+.timeline-event:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.3); z-index: 2; }
+.timeline-event .resize-handle {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 8px;
+  cursor: col-resize;
+  opacity: 0;
+}
+.timeline-event:hover .resize-handle { opacity: 1; }
+.timeline-event .resize-handle.left { left: 0; }
+.timeline-event .resize-handle.right { right: 0; }
+.empty-timeline { text-align: center; padding: 60px; color: #555; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>📅 Timeline Maker</h1>
+  <p class="subtitle">Create interactive timelines with drag-and-drop events</p>
+  <div class="layout">
+    <div class="controls">
+      <h3>➕ Add Event</h3>
+      <label>Title</label>
+      <input id="edTitle" placeholder="Event title" maxlength="80">
+      <div style="display:flex;gap:6px">
+        <div style="flex:1"><label>Start Year</label><input id="edStart" type="number" value="2020" min="1900" max="2100"></div>
+        <div style="flex:1"><label>End Year</label><input id="edEnd" type="number" value="2024" min="1900" max="2100"></div>
+      </div>
+      <label>Category</label>
+      <select id="edCategory">
+        <option value="tech">💻 Technology</option>
+        <option value="personal">👤 Personal</option>
+        <option value="work">💼 Work</option>
+        <option value="education">📚 Education</option>
+        <option value="health">💪 Health</option>
+        <option value="travel">✈️ Travel</option>
+      </select>
+      <label>Color</label>
+      <div class="color-presets" id="colorPresets">
+        <button class="cbtn active" style="background:#60a5fa" data-color="#60a5fa"></button>
+        <button class="cbtn" style="background:#4ade80" data-color="#4ade80"></button>
+        <button class="cbtn" style="background:#f87171" data-color="#f87171"></button>
+        <button class="cbtn" style="background:#fbbf24" data-color="#fbbf24"></button>
+        <button class="cbtn" style="background:#a78bfa" data-color="#a78bfa"></button>
+        <button class="cbtn" style="background:#f472b6" data-color="#f472b6"></button>
+      </div>
+      <label>Description</label>
+      <textarea id="edDesc" placeholder="Event details..."></textarea>
+      <button class="btn btn-primary" onclick="addEvent()">+ Add to Timeline</button>
+      
+      <h3>📋 Events</h3>
+      <div class="event-list" id="eventList"><div style="font-size:0.7rem;color:#444;">No events yet</div></div>
+      <button class="btn btn-secondary" onclick="exportTimeline()">📤 Export</button>
+      <button class="btn btn-danger" onclick="clearTimeline()">🗑️ Clear</button>
+    </div>
+    <div class="timeline-area">
+      <div class="timeline-header">
+        <span class="range-info" id="rangeInfo">No events</span>
+        <div class="zoom-controls">
+          <button class="zoom-btn" onclick="zoom(-1)">−</button>
+          <span style="font-size:0.65rem;color:#555;padding:2px 6px;">100%</span>
+          <button class="zoom-btn" onclick="zoom(1)">+</button>
+        </div>
+      </div>
+      <div class="timeline-scroll" id="timelineContainer">
+        <div class="empty-timeline">📅 Add events to build your timeline</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let events = [];
+let currentColor = '#60a5fa';
+let zoomLevel = 1;
+let minYear = 2020, maxYear = 2030;
+const CATEGORIES = { tech: '💻', personal: '👤', work: '💼', education: '📚', health: '💪', travel: '✈️' };
+
+function loadData() {
+  try { const d = localStorage.getItem('tl-events'); if (d) { events = JSON.parse(d); calculateRange(); } } catch {}
+}
+function saveData() { localStorage.setItem('tl-events', JSON.stringify(events)); }
+
+function escapeHTML(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function calculateRange() {
+  if (events.length === 0) { minYear = 2020; maxYear = 2030; return; }
+  minYear = Math.min(...events.map(e => e.start));
+  maxYear = Math.max(...events.map(e => e.end));
+  const padding = Math.max(2, Math.ceil((maxYear - minYear) * 0.1));
+  minYear = Math.max(1900, minYear - padding);
+  maxYear = Math.min(2100, maxYear + padding);
+}
+
+function addEvent() {
+  const title = document.getElementById('edTitle').value.trim();
+  const start = parseInt(document.getElementById('edStart').value);
+  const end = parseInt(document.getElementById('edEnd').value);
+  const category = document.getElementById('edCategory').value;
+  const desc = document.getElementById('edDesc').value.trim();
+  if (!title || isNaN(start) || isNaN(end)) { alert('Please enter title and dates'); return; }
+  if (start > end) { alert('Start year must be before end year'); return; }
+  events.push({
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+    title, start, end, category, color: currentColor, desc
+  });
+  calculateRange();
+  saveData();
+  render();
+  document.getElementById('edTitle').value = '';
+  document.getElementById('edDesc').value = '';
+  document.getElementById('edTitle').focus();
+}
+
+function deleteEvent(id) {
+  events = events.filter(e => e.id !== id);
+  calculateRange();
+  saveData();
+  render();
+}
+
+function render() {
+  // Sidebar list
+  const list = document.getElementById('eventList');
+  if (events.length === 0) list.innerHTML = '<div style="font-size:0.7rem;color:#444;">No events yet</div>';
+  else list.innerHTML = events.map(e =>
+    `<div class="event-list-item"><span class="dot" style="background:${e.color}"></span><span class="name">${escapeHTML(e.title)}</span><span style="color:#555;font-size:0.6rem">${e.start}-${e.end}</span><button class="del" onclick="deleteEvent('${e.id}')">✕</button></div>`
+  ).join('');
+  
+  // Timeline
+  const container = document.getElementById('timelineContainer');
+  document.getElementById('rangeInfo').textContent = events.length ? `${minYear} – ${maxYear} · ${events.length} events` : 'No events';
+  if (events.length === 0) {
+    container.innerHTML = '<div class="empty-timeline">📅 Add events to build your timeline</div>'; return;
+  }
+  
+  const yearRange = maxYear - minYear || 1;
+  const pxPerYear = Math.max(40, 80 * zoomLevel);
+  const totalWidth = yearRange * pxPerYear;
+  
+  // Year header
+  let html = '<div class="year-header">';
+  for (let y = minYear; y <= maxYear; y++) {
+    html += `<div class="year-label" style="width:${pxPerYear}px">${y}</div>`;
+  }
+  html += '</div>';
+  
+  // Events lanes
+  const lanes = [];
+  events.forEach(e => {
+    let lane = 0;
+    while (true) {
+      const conflict = lanes[lane] && lanes[lane].some(ex => e.start < ex.end && e.end > ex.start);
+      if (!conflict) break;
+      lane++;
+    }
+    if (!lanes[lane]) lanes[lane] = [];
+    lanes[lane].push(e);
+  });
+  
+  lanes.forEach((laneEvents, laneIdx) => {
+    html += `<div class="timeline-lane" style="height:40px">`;
+    laneEvents.forEach(e => {
+      const left = ((e.start - minYear) / yearRange) * totalWidth;
+      const width = Math.max(20, ((e.end - e.start) / yearRange) * totalWidth);
+      html += `<div class="timeline-event" style="left:${left}px;width:${width}px;background:${e.color};top:4px" draggable="true" data-id="${e.id}" title="${escapeHTML(e.desc || '')}">
+        ${CATEGORIES[e.category] || ''} ${escapeHTML(e.title)}
+        <div class="resize-handle left" onmousedown="startResize(event,'${e.id}','left')"></div>
+        <div class="resize-handle right" onmousedown="startResize(event,'${e.id}','right')"></div>
+      </div>`;
+    });
+    html += '</div>';
+  });
+  
+  container.innerHTML = html;
+  
+  // Make events draggable
+  document.querySelectorAll('.timeline-event').forEach(el => {
+    el.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData('text/plain', el.dataset.id);
+    });
+  });
+  container.addEventListener('dragover', (e) => e.preventDefault());
+  container.addEventListener('drop', (e) => {
+    const id = e.dataTransfer.getData('text/plain');
+    const ev = events.find(x => x.id === id);
+    if (!ev) return;
+    const rect = container.getBoundingClientRect();
+    const x = e.clientX - rect.left + container.scrollLeft;
+    const yearRangePx = yearRange * pxPerYear;
+    const startYear = minYear + (x / yearRangePx) * yearRange;
+    const duration = ev.end - ev.start;
+    ev.start = Math.round(startYear);
+    ev.end = ev.start + duration;
+    calculateRange();
+    saveData();
+    render();
+  });
+}
+
+function startResize(e, id, side) {
+  e.preventDefault();
+  e.stopPropagation();
+  const ev = events.find(x => x.id === id);
+  if (!ev) return;
+  const startX = e.clientX;
+  const origStart = ev.start;
+  const origEnd = ev.end;
+  
+  const onMove = (me) => {
+    const dx = me.clientX - startX;
+    const yearRange = maxYear - minYear || 1;
+    const pxPerYear = Math.max(40, 80 * zoomLevel);
+    const totalWidth = yearRange * pxPerYear;
+    const delta = Math.round((dx / totalWidth) * yearRange);
+    if (side === 'left') {
+      ev.start = Math.max(minYear, Math.min(origEnd - 1, origStart + delta));
+    } else {
+      ev.end = Math.min(maxYear, Math.max(origStart + 1, origEnd + delta));
+    }
+    saveData();
+    render();
+  };
+  const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+}
+
+function zoom(dir) {
+  zoomLevel = Math.max(0.5, Math.min(5, zoomLevel + dir * 0.5));
+  render();
+}
+
+function exportTimeline() {
+  const json = JSON.stringify(events, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'timeline-export.json';
+  a.click();
+}
+
+function clearTimeline() {
+  if (!confirm('Clear all timeline events?')) return;
+  events = [];
+  saveData();
+  render();
+}
+
+// Color presets
+document.querySelectorAll('.color-presets .cbtn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.color-presets .cbtn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentColor = btn.dataset.color;
+  });
+});
+
+loadData();
+render();
+</script>
+</body>
+</html>

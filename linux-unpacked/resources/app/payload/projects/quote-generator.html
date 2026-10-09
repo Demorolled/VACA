@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Random Quote Generator</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Georgia', 'Times New Roman', serif;
+  background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+.container {
+  max-width: 680px;
+  width: 100%;
+  text-align: center;
+}
+h1 {
+  color: #00d9ff;
+  font-size: 1.6rem;
+  margin-bottom: 6px;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  letter-spacing: -0.5px;
+}
+.subtitle {
+  color: #666;
+  font-size: 0.85rem;
+  margin-bottom: 30px;
+  font-family: 'Segoe UI', Arial, sans-serif;
+}
+.quote-card {
+  background: linear-gradient(145deg, #1a1a2e, #1e1e3a);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px;
+  padding: 40px 36px;
+  position: relative;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+  min-height: 260px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.quote-card.fade { opacity: 0; transform: translateY(10px); }
+.quote-mark {
+  font-size: 4rem;
+  color: rgba(0, 217, 255, 0.15);
+  position: absolute;
+  top: 10px;
+  left: 20px;
+  font-family: Georgia, serif;
+  line-height: 1;
+}
+.quote-text {
+  font-size: 1.35rem;
+  line-height: 1.7;
+  color: #e0e0f0;
+  margin-bottom: 20px;
+  position: relative;
+  z-index: 1;
+  font-style: italic;
+}
+.quote-author {
+  color: #00d9ff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-style: normal;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.quote-author::before {
+  content: '';
+  display: block;
+  width: 20px;
+  height: 1px;
+  background: #4a4a6a;
+}
+.quote-category {
+  display: inline-block;
+  margin-top: 12px;
+  font-size: 0.7rem;
+  color: #666;
+  background: rgba(255,255,255,0.04);
+  padding: 3px 12px;
+  border-radius: 20px;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+.btn {
+  padding: 12px 32px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-primary {
+  background: linear-gradient(135deg, #00d9ff, #0099ff);
+  color: #0f0f1a;
+}
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,217,255,0.3); }
+.btn-secondary {
+  background: rgba(255,255,255,0.06);
+  color: #aaa;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.btn-secondary:hover { background: rgba(255,255,255,0.1); color: #fff; }
+.tags {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+.tag {
+  padding: 4px 14px;
+  font-size: 0.72rem;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03);
+  color: #666;
+  cursor: pointer;
+  transition: 0.2s;
+  font-family: 'Segoe UI', Arial, sans-serif;
+}
+.tag:hover, .tag.active { border-color: #00d9ff; color: #00d9ff; background: rgba(0,217,255,0.06); }
+.tag.active { border-color: #00d9ff; color: #00d9ff; font-weight: 600; }
+.counter {
+  font-size: 0.75rem;
+  color: #444;
+  margin-top: 16px;
+  font-family: 'Segoe UI', Arial, sans-serif;
+}
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: #1a1a2e;
+  border: 1px solid #4ade80;
+  color: #4ade80;
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  font-size: 0.85rem;
+  opacity: 0;
+  transition: 0.3s;
+  pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>💭 Words of Wisdom</h1>
+  <p class="subtitle">Discover inspiring quotes from great minds</p>
+  <div class="tags" id="tags"></div>
+  <div class="quote-card" id="quoteCard">
+    <div class="quote-mark">"</div>
+    <div class="quote-text" id="quoteText">The only way to do great work is to love what you do.</div>
+    <div class="quote-author" id="quoteAuthor">Steve Jobs</div>
+    <div class="quote-category" id="quoteCategory">Inspiration</div>
+  </div>
+  <div class="actions">
+    <button class="btn btn-primary" onclick="newQuote()">🎲 New Quote</button>
+    <button class="btn btn-secondary" onclick="copyQuote()">📋 Copy</button>
+    <button class="btn btn-secondary" onclick="tweetQuote()">🐦 Tweet</button>
+  </div>
+  <div class="counter" id="counter">Quote 1 of <span id="totalQuotes">0</span></div>
+</div>
+<div class="toast" id="toast">Copied!</div>
+<script>
+const QUOTES = [
+  { text: "The only way to do great work is to love what you do.", author: "Steve Jobs", category: "Inspiration" },
+  { text: "In the middle of difficulty lies opportunity.", author: "Albert Einstein", category: "Wisdom" },
+  { text: "Be yourself; everyone else is already taken.", author: "Oscar Wilde", category: "Life" },
+  { text: "Two roads diverged in a wood, and I—I took the one less traveled by.", author: "Robert Frost", category: "Life" },
+  { text: "The unexamined life is not worth living.", author: "Socrates", category: "Philosophy" },
+  { text: "It does not matter how slowly you go as long as you do not stop.", author: "Confucius", category: "Perseverance" },
+  { text: "The future belongs to those who believe in the beauty of their dreams.", author: "Eleanor Roosevelt", category: "Inspiration" },
+  { text: "Simplicity is the ultimate sophistication.", author: "Leonardo da Vinci", category: "Wisdom" },
+  { text: "The only impossible journey is the one you never begin.", author: "Tony Robbins", category: "Motivation" },
+  { text: "What lies behind us and what lies before us are tiny matters compared to what lies within us.", author: "Ralph Waldo Emerson", category: "Inner Strength" },
+  { text: "Creativity is intelligence having fun.", author: "Albert Einstein", category: "Creativity" },
+  { text: "The best time to plant a tree was 20 years ago. The second best time is now.", author: "Chinese Proverb", category: "Wisdom" },
+  { text: "Everything you've ever wanted is on the other side of fear.", author: "George Addair", category: "Courage" },
+  { text: "Success is not final, failure is not fatal: it is the courage to continue that counts.", author: "Winston Churchill", category: "Perseverance" },
+  { text: "The purpose of life is not to be happy. It is to be useful, to be honorable, to be compassionate.", author: "Ralph Waldo Emerson", category: "Purpose" },
+  { text: "Don't count the days, make the days count.", author: "Muhammad Ali", category: "Motivation" },
+  { text: "Imagination is more important than knowledge.", author: "Albert Einstein", category: "Creativity" },
+  { text: "The mind is everything. What you think you become.", author: "Buddha", category: "Mindfulness" },
+  { text: "To live is the rarest thing in the world. Most people exist, that is all.", author: "Oscar Wilde", category: "Life" },
+  { text: "We are what we repeatedly do. Excellence, then, is not an act, but a habit.", author: "Aristotle", category: "Habits" },
+  { text: "The only true wisdom is in knowing you know nothing.", author: "Socrates", category: "Philosophy" },
+  { text: "Do not go where the path may lead, go instead where there is no path and leave a trail.", author: "Ralph Waldo Emerson", category: "Inspiration" },
+  { text: "Happiness is not something ready made. It comes from your own actions.", author: "Dalai Lama", category: "Happiness" },
+  { text: "Believe you can and you're halfway there.", author: "Theodore Roosevelt", category: "Motivation" },
+  { text: "The journey of a thousand miles begins with one step.", author: "Lao Tzu", category: "Wisdom" },
+  { text: "It is during our darkest moments that we must focus to see the light.", author: "Aristotle", category: "Perseverance" },
+  { text: "Life is what happens when you're busy making other plans.", author: "John Lennon", category: "Life" },
+  { text: "The greatest glory in living lies not in never falling, but in rising every time we fall.", author: "Nelson Mandela", category: "Perseverance" },
+  { text: "The way to get started is to quit talking and begin doing.", author: "Walt Disney", category: "Action" },
+  { text: "If life were predictable it would cease to be life, and be without flavor.", author: "Eleanor Roosevelt", category: "Life" },
+];
+
+let currentIndex = 0;
+let filteredQuotes = [...QUOTES];
+let isAnimating = false;
+
+function getCategories() {
+  return [...new Set(QUOTES.map(q => q.category))];
+}
+
+function renderTags() {
+  const container = document.getElementById('tags');
+  container.innerHTML = '<button class="tag active" data-cat="all" onclick="filterBy(\'all\')">All</button>';
+  getCategories().forEach(cat => {
+    const btn = document.createElement('button');
+    btn.className = 'tag';
+    btn.textContent = cat;
+    btn.dataset.cat = cat;
+    btn.onclick = () => filterBy(cat);
+    container.appendChild(btn);
+  });
+}
+
+function filterBy(category) {
+  document.querySelectorAll('.tag').forEach(t => t.classList.toggle('active', t.dataset.cat === category));
+  if (category === 'all') {
+    filteredQuotes = [...QUOTES];
+  } else {
+    filteredQuotes = QUOTES.filter(q => q.category === category);
+  }
+  currentIndex = 0;
+  if (filteredQuotes.length > 0) showQuote(0, true);
+  updateCounter();
+}
+
+function showQuote(index, instant = false) {
+  if (filteredQuotes.length === 0) return;
+  currentIndex = ((index % filteredQuotes.length) + filteredQuotes.length) % filteredQuotes.length;
+  const q = filteredQuotes[currentIndex];
+  const card = document.getElementById('quoteCard');
+  if (!instant) {
+    card.classList.add('fade');
+    setTimeout(() => {
+      document.getElementById('quoteText').textContent = q.text;
+      document.getElementById('quoteAuthor').textContent = '— ' + q.author;
+      document.getElementById('quoteCategory').textContent = q.category;
+      card.classList.remove('fade');
+    }, 250);
+  } else {
+    document.getElementById('quoteText').textContent = q.text;
+    document.getElementById('quoteAuthor').textContent = '— ' + q.author;
+    document.getElementById('quoteCategory').textContent = q.category;
+  }
+  updateCounter();
+}
+
+function newQuote() {
+  if (isAnimating) return;
+  isAnimating = true;
+  let next;
+  do {
+    next = Math.floor(Math.random() * filteredQuotes.length);
+  } while (next === currentIndex && filteredQuotes.length > 1);
+  showQuote(next);
+  setTimeout(() => { isAnimating = false; }, 400);
+}
+
+function copyQuote() {
+  const q = filteredQuotes[currentIndex];
+  if (!q) return;
+  navigator.clipboard.writeText(`"${q.text}" — ${q.author}`).then(() => {
+    const toast = document.getElementById('toast');
+    toast.textContent = '📋 Copied to clipboard!';
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2000);
+  });
+}
+
+function tweetQuote() {
+  const q = filteredQuotes[currentIndex];
+  if (!q) return;
+  const text = encodeURIComponent(`"${q.text}" — ${q.author}`);
+  window.open(`https://twitter.com/intent/tweet?text=${text}`, '_blank');
+}
+
+function updateCounter() {
+  // Don't use textContent on parent — that destroys child elements
+  document.getElementById('counter').innerHTML = `Quote ${currentIndex + 1} of <span id="totalQuotes">${filteredQuotes.length}</span>`;
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === ' ' || e.key === 'ArrowRight') { e.preventDefault(); newQuote(); }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); showQuote(currentIndex - 1); }
+});
+
+// Wait for DOM before initialization
+function init(){renderTags();filterBy('all')}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+</script>
+</body>
+</html>

@@ -1,0 +1,121 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Dashboard Widgets</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#ccc;min-height:100vh;padding:12px;display:flex;justify-content:center}.container{max-width:1060px;width:100%}h1{color:#00d9ff;font-size:1rem;margin-bottom:2px;text-align:center}p.sub{color:#555;font-size:0.6rem;margin-bottom:8px;text-align:center}.flex{display:flex;gap:10px}.sidebar{width:220px;flex-shrink:0}.main{flex:1}.panel{background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:8px;margin-bottom:6px}.panel-title{color:#888;font-size:0.5rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px}.prop-row{display:flex;align-items:center;gap:6px;margin:3px 0;flex-wrap:wrap}.prop-row label{font-size:0.45rem;color:#555;min-width:55px}.prop-row input[type=color]{width:28px;height:22px;border:none;border-radius:3px;cursor:pointer;padding:0;background:none}.prop-row input[type=color]::-webkit-color-swatch{border:1px solid rgba(255,255,255,0.1);border-radius:3px}.prop-row input[type=number]{width:52px;padding:3px 4px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem;text-align:center;font-family:inherit}.prop-row input[type=text]{flex:1;padding:3px 6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem;font-family:inherit}.prop-row select{flex:1;padding:3px 4px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem;font-family:inherit}.btn{padding:4px 10px;border:1px solid rgba(255,255,255,0.06);border-radius:4px;background:transparent;color:#888;cursor:pointer;font-size:0.5rem;font-family:inherit;transition:0.1s}.btn:hover{border-color:#00d9ff;color:#ccc}.btn.primary{background:rgba(0,217,255,0.08);border-color:rgba(0,217,255,0.2);color:#00d9ff}.btn.accent{background:rgba(74,222,128,0.08);border-color:rgba(74,222,128,0.2);color:#4ade80}.btn.danger{background:rgba(248,113,113,0.08);border-color:rgba(248,113,113,0.2);color:#f87171}.widget-grid{display:grid;grid-template-columns:repeat(var(--grid-cols,3),1fr);gap:10px;padding:4px;min-height:200px}.widget-card{background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:8px;padding:14px;transition:all 0.2s;position:relative;overflow:hidden}.widget-card:hover{border-color:rgba(0,217,255,0.12)}.widget-card .w-title{font-size:0.5rem;color:#555;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px}.widget-card .w-value{font-size:1.2rem;font-weight:300;margin-bottom:2px}.widget-card .w-delta{font-size:0.45rem;display:flex;align-items:center;gap:3px}.widget-card .w-bar{height:3px;border-radius:2px;margin-top:8px;transition:width 0.4s}.widget-card .w-remove{position:absolute;top:4px;right:4px;background:none;border:none;color:#444;cursor:pointer;font-size:0.55rem;opacity:0;transition:0.1s}.widget-card:hover .w-remove{opacity:1}.widget-card .w-remove:hover{color:#f87171}.preset-btn{padding:3px 8px;border:1px solid rgba(255,255,255,0.04);border-radius:3px;background:transparent;color:#666;cursor:pointer;font-size:0.45rem;font-family:inherit;margin:1px}.preset-btn:hover{border-color:#00d9ff;color:#ccc}.css-out{font-family:'Courier New',monospace;font-size:0.45rem;color:#666;padding:6px;background:rgba(255,255,255,0.02);border-radius:4px;max-height:100px;overflow:auto;white-space:pre-wrap}.val{color:#00d9ff}</style></head><body><div class="container">
+<h1>📊 Dashboard Widgets</h1><p class="sub">Build a dashboard with stat cards, trends, and progress bars</p>
+<div class="flex">
+<div class="sidebar">
+<div class="panel"><div class="panel-title">Presets</div>
+<button class="preset-btn" onclick="loadPreset('analytics')">Analytics</button>
+<button class="preset-btn" onclick="loadPreset('finance')">Finance</button>
+<button class="preset-btn" onclick="loadPreset('social')">Social</button>
+<button class="preset-btn" onclick="loadPreset('blank')">Blank</button>
+</div>
+<div class="panel"><div class="panel-title">Layout</div>
+<div class="prop-row"><label>Columns</label><select id="gridCols" onchange="renderGrid()"><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option></select></div>
+</div>
+<div class="panel"><div class="panel-title">Add Widget</div>
+<div class="prop-row"><label>Title</label><input type="text" id="wTitle" value="New Metric"></div>
+<div class="prop-row"><label>Type</label><select id="wType"><option value="metric">Metric</option><option value="trend">Trend</option><option value="progress">Progress</option><option value="donut">Donut</option></select></div>
+<div class="prop-row"><label>Value</label><input type="text" id="wValue" value="1,234"></div>
+<div class="prop-row"><label>Color</label><input type="color" id="wColor" value="#00d9ff"></div>
+<div class="prop-row"><label>Label</label><input type="text" id="wLabel" value="+12.5% vs last month"></div>
+<div class="prop-row"><label>Progress</label><input type="number" id="wProgress" value="75" min="0" max="100">%</div>
+<button class="btn primary" onclick="addWidget()" style="width:100%">➕ Add</button>
+</div>
+<div class="panel"><button class="btn" onclick="copyHTML()" style="width:100%">📋 Copy HTML</button></div>
+</div>
+<div class="main">
+<div class="panel"><div class="panel-title">Dashboard Preview <span style="color:#555;font-weight:400;font-size:0.45rem">(hover for remove)</span></div>
+<div class="widget-grid" id="widgetGrid"></div></div></div></div>
+<script>
+let widgets=[];
+const widgetIcons={metric:'📈',trend:'📊',progress:'⏳',donut:'🔄'};
+const sampleData=[
+  {title:'Total Revenue',type:'metric',value:'$48,250',color:'#4ade80',label:'+18.2% vs last month',progress:82},
+  {title:'Active Users',type:'trend',value:'2,847',color:'#00d9ff',label:'+7.4% this week',progress:65},
+  {title:'Conversion Rate',type:'progress',value:'3.24%',color:'#c084fc',label:'Target: 5%',progress:65},
+  {title:'Bounce Rate',type:'donut',value:'24.8%',color:'#f87171',label:'-2.1% improvement',progress:75},
+  {title:'Avg. Session',type:'metric',value:'4m 32s',color:'#facc15',label:'+0:45 vs last week',progress:0},
+  {title:'Total Orders',type:'trend',value:'1,573',color:'#22d3ee',label:'↑ 12.3% growth',progress:0}
+];
+
+function init(){
+  widgets=sampleData.map(d=>({...d,id:Date.now()+Math.random()}));
+  renderGrid();
+  saveToStorage();
+}
+
+function addWidget(){
+  const title=document.getElementById('wTitle').value;
+  const type=document.getElementById('wType').value;
+  const value=document.getElementById('wValue').value;
+  const color=document.getElementById('wColor').value;
+  const label=document.getElementById('wLabel').value;
+  const progress=parseInt(document.getElementById('wProgress').value)||0;
+  widgets.push({id:Date.now()+Math.random(),title,type,value,color,label,progress});
+  renderGrid();saveToStorage();
+}
+
+function removeWidget(id){widgets=widgets.filter(w=>w.id!==id);renderGrid();saveToStorage()}
+
+function renderGrid(){
+  const grid=document.getElementById('widgetGrid');
+  const cols=document.getElementById('gridCols').value;
+  grid.style.setProperty('--grid-cols',cols);
+  if(!widgets.length){grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:30px;color:#444;font-size:0.55rem">No widgets — add one from the sidebar or load a preset</div>';return}
+  grid.innerHTML=widgets.map(w=>renderWidget(w)).join('');
+  grid.querySelectorAll('.w-remove').forEach(el=>{el.addEventListener('click',()=>removeWidget(parseFloat(el.dataset.id)))});
+}
+
+function renderWidget(w){
+  const deltaCls=w.label.startsWith('+')||w.label.startsWith('↑')?'color:#4ade80':w.label.startsWith('-')||w.label.startsWith('↓')?'color:#f87171':'color:#888';
+  const icon=widgetIcons[w.type]||'📊';
+  let extra='';
+  if(w.type==='progress')extra=`<div class="w-bar" style="width:${w.progress}%;background:${w.color}"></div>`;
+  if(w.type==='donut')extra=`<div class="w-bar" style="width:${w.progress}%;background:${w.color}"></div>`;
+  return `<div class="widget-card">
+    <button class="w-remove" data-id="${w.id}">✕</button>
+    <div class="w-title">${icon} ${escapeHTML(w.title)}</div>
+    <div class="w-value" style="color:${w.color}">${escapeHTML(w.value)}</div>
+    <div class="w-delta" style="${deltaCls}">${escapeHTML(w.label)}</div>
+    ${extra}
+  </div>`;
+}
+
+function loadPreset(name){
+  const presets={
+    analytics:[
+      {title:'Page Views',type:'metric',value:'142.5K',color:'#00d9ff',label:'+23.1%↑',progress:0},
+      {title:'Unique Visitors',type:'trend',value:'38,290',color:'#4ade80',label:'+8.7%↑',progress:0},
+      {title:'Avg. Time',type:'progress',value:'3m 12s',color:'#c084fc',label:'Goal: 5m',progress:64},
+      {title:'Bounce Rate',type:'donut',value:'32.1%',color:'#f87171',label:'-4.2%↓',progress:68},
+      {title:'Pages/Session',type:'metric',value:'4.8',color:'#facc15',label:'+0.3↑',progress:0},
+      {title:'Conversion',type:'trend',value:'2.14%',color:'#22d3ee',label:'+15%↑',progress:0}
+    ],
+    finance:[
+      {title:'Revenue',type:'metric',value:'$124,500',color:'#4ade80',label:'+18.3%↑',progress:0},
+      {title:'Expenses',type:'trend',value:'$67,200',color:'#f87171',label:'-3.1%↓',progress:0},
+      {title:'Profit Margin',type:'progress',value:'46.2%',color:'#00d9ff',label:'Target: 50%',progress:92},
+      {title:'Active Invoices',type:'donut',value:'34',color:'#c084fc',label:'12 overdue',progress:65},
+      {title:'Cash Flow',type:'metric',value:'$57,300',color:'#4ade80',label:'+$12K this month',progress:0},
+      {title:'ROI',type:'trend',value:'24.7%',color:'#facc15',label:'+5.2%↑',progress:0}
+    ],
+    social:[
+      {title:'Followers',type:'metric',value:'12.4K',color:'#00d9ff',label:'+847 this week',progress:0},
+      {title:'Engagement',type:'trend',value:'4.8%',color:'#4ade80',label:'+1.2%↑',progress:0},
+      {title:'Posts',type:'progress',value:'248',color:'#c084fc',label:'Target: 300',progress:83},
+      {title:'Impressions',type:'donut',value:'89.2K',color:'#facc15',label:'+22%↑',progress:0},
+      {title:'Click Rate',type:'metric',value:'3.7%',color:'#22d3ee',label:'+0.8%↑',progress:0},
+      {title:'Shares',type:'trend',value:'2,491',color:'#f87171',label:'+34%↑',progress:0}
+    ],
+    blank:[]
+  };
+  widgets=presets[name].map(d=>({...d,id:Date.now()+Math.random()}));
+  renderGrid();saveToStorage();
+}
+
+function copyHTML(){const html=document.getElementById('widgetGrid').innerHTML;navigator.clipboard.writeText(html).then(()=>showToast('HTML copied!'))}
+function showToast(m){const t=document.createElement('div');t.textContent=m;Object.assign(t.style,{position:'fixed',bottom:20,left:'50%',transform:'translateX(-50%)',background:'rgba(0,217,255,0.15)',color:'#00d9ff',padding:'6px 16px',borderRadius:'4px',fontSize:'0.55rem',zIndex:999,transition:'opacity 0.2s',border:'1px solid rgba(0,217,255,0.2)'});document.body.appendChild(t);setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),300)},2000)}
+function escapeHTML(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function saveToStorage(){try{localStorage.setItem('dashwidgets_data',JSON.stringify({widgets,gridCols:document.getElementById('gridCols').value}))}catch(e){}}
+function loadFromStorage(){try{const d=JSON.parse(localStorage.getItem('dashwidgets_data'));if(d&&d.widgets&&d.widgets.length){widgets=d.widgets;document.getElementById('gridCols').value=d.gridCols||'3';return true}}catch(e){}return false}
+if(!loadFromStorage())init();else renderGrid()
+</script></body></html>

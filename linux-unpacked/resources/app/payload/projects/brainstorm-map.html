@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mind Map Studio</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#ccc;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+header{display:flex;align-items:center;padding:4px 12px;background:#12121e;border-bottom:1px solid rgba(255,255,255,0.06);gap:6px;flex-shrink:0}
+header h1{font-size:0.85rem;color:#00d9ff}header h1 small{color:#555;font-size:0.5rem;font-weight:400}
+.toolbar{display:flex;gap:2px}
+.toolbar button{padding:4px 8px;border:1px solid rgba(255,255,255,0.06);border-radius:3px;background:transparent;color:#888;cursor:pointer;font-size:0.5rem;font-family:inherit;transition:0.1s}
+.toolbar button:hover{border-color:#00d9ff;color:#ccc}
+.toolbar button.primary{background:rgba(0,217,255,0.1);border-color:rgba(0,217,255,0.2);color:#00d9ff}
+.canvas-wrap{flex:1;position:relative;background:#080810;overflow:hidden}
+#mapCanvas{width:100%;height:100%;cursor:grab}
+.node-el{position:absolute;z-index:2;cursor:pointer;min-width:80px;text-align:center}
+.node-el .nb{padding:8px 16px;border-radius:8px;border:2px solid;font-size:0.65rem;transition:0.15s;word-wrap:break-word;max-width:180px}
+.node-el .nb:hover{transform:scale(1.05);filter:brightness(1.2)}
+.node-el.selected .nb{border-color:#00d9ff!important;box-shadow:0 0 12px rgba(0,217,255,0.3)}
+.node-el.root .nb{font-size:0.85rem;padding:12px 24px;border-width:3px}
+.node-el .child-count{font-size:0.45rem;color:#555;margin-top:2px}
+.node-el .edit-btn{position:absolute;top:-8px;right:-8px;width:18px;height:18px;border-radius:50%;border:1px solid rgba(255,255,255,0.1);background:#1a1a2e;color:#888;cursor:pointer;font-size:0.45rem;display:none;align-items:center;justify-content:center}
+.node-el:hover .edit-btn,.node-el.selected .edit-btn{display:flex}
+.connection-svg{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1}
+.minimap{position:absolute;bottom:10px;right:10px;width:120px;height:90px;background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.06);border-radius:6px;overflow:hidden;z-index:10}
+#minimapCanvas{width:100%;height:100%}
+</style>
+</head>
+<body>
+<header>
+  <h1>🧠 Mind Map <small>Brainstorm · Organize · Connect</small></h1>
+  <div class="toolbar">
+    <button onclick="addChildNode()" class="primary">➕ Add Child</button>
+    <button onclick="addSibling()">↔️ Sibling</button>
+    <button onclick="deleteSelected()">🗑️ Delete</button>
+    <button onclick="autoLayout()">📐 Layout</button>
+    <button onclick="exportMap()">💾 Export</button>
+    <button onclick="toggleHelp()">❓ Help</button>
+  </div>
+</header>
+<div class="canvas-wrap" id="canvasWrap">
+  <div id="nodesContainer"></div>
+  <svg class="connection-svg" id="connSvg"></svg>
+  <div class="minimap"><canvas id="minimapCanvas"></canvas></div>
+</div>
+
+<script>
+const canvasWrap=document.getElementById('canvasWrap');
+const connSvg=document.getElementById('connSvg');
+const nodesContainer=document.getElementById('nodesContainer');
+let nodes=[],selectedId=null,nextId=1;
+let offsetX=0,offsetY=0,isPanning=false,panStartX,panStartY;
+
+const COLORS=['#00d9ff','#4ade80','#fbbf24','#a78bfa','#f472b6','#34d399','#fb923c','#60a5fa'];
+
+function escapeHTML(str){return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+function saveToStorage(){try{localStorage.setItem('mindmap_save',JSON.stringify({nodes:nodes.map(n=>({...n})),nextId}))}catch(e){}}
+function loadFromStorage(){try{const d=JSON.parse(localStorage.getItem('mindmap_save'));if(d&&d.nodes){nodes=d.nodes.map(n=>({...n}));nextId=d.nextId||1;return true}}catch(e){}return false}
+
+function createNode(text,parentId,x,y){
+  const id=nextId++;
+  const n={id,text:text||'New Idea',parentId:parentId||null,children:[],x:x||50+Math.random()*300,y:y||50+Math.random()*200,color:COLORS[Math.floor(Math.random()*COLORS.length)],collapsed:false};
+  nodes.push(n);
+  if(parentId){const p=nodes.find(nd=>nd.id===parentId);if(p)p.children.push(id)}
+  return n;
+}
+
+function initMap(){
+  const root=createNode('🎯 Main Topic',null,400,300);root.color='#00d9ff';
+  selectedId=root.id;
+  ['Idea 1','Idea 2','Idea 3'].forEach((t,i)=>createNode(t,root.id,200,200+i*100));
+  ['Research','Plan'].forEach((t,i)=>createNode(t,2,100,180+i*80));
+  ['Design','Build','Test'].forEach((t,i)=>createNode(t,3,600,150+i*80));
+  autoLayout();
+  render();
+}
+
+function getNode(id){return nodes.find(n=>n.id===id)}
+
+function addChildNode(){
+  const p=getNode(selectedId);
+  if(!p){const n=createNode('Idea',null,200,200);selectedId=n.id;render();return}
+  const angle=Math.random()*Math.PI*2;
+  const dist=100;
+  const n=createNode('New Idea',p.id,p.x+Math.cos(angle)*dist,p.y+Math.sin(angle)*dist);
+  selectedId=n.id;
+  render();
+}
+
+function addSibling(){
+  const p=nodes.find(n=>n.id===selectedId);
+  if(!p||!p.parentId)return addChildNode();
+  const parent=getNode(p.parentId);
+  if(!parent)return;
+  const n=createNode('Sibling',p.parentId,p.x+40+Math.random()*80,p.y+60+Math.random()*80);
+  selectedId=n.id;
+  render();
+}
+
+function deleteSelected(){
+  if(!selectedId)return;
+  const toDelete=[selectedId];
+  // Collect all descendants
+  function collectChildren(id){const n=getNode(id);if(!n)return;for(const cid of n.children){toDelete.push(cid);collectChildren(cid)}}
+  collectChildren(selectedId);
+  // Remove from parents
+  const sel=getNode(selectedId);
+  if(sel&&sel.parentId){const parent=getNode(sel.parentId);if(parent)parent.children=parent.children.filter(c=>!toDelete.includes(c))}
+  nodes=nodes.filter(n=>!toDelete.includes(n.id));
+  selectedId=nodes.length>0?nodes[0].id:null;
+  render();
+}
+
+function autoLayout(){
+  const root=nodes.find(n=>!n.parentId);
+  if(!root)return;
+  const cx=canvasWrap.clientWidth/2,cy=canvasWrap.clientHeight/2;
+  
+  function layoutNode(id,centerX,centerY,level){
+    const n=getNode(id);if(!n)return;
+    n.x=centerX;n.y=centerY;
+    if(n.collapsed)return;
+    const children=n.children.filter(cid=>getNode(cid)).map(cid=>getNode(cid));
+    if(children.length===0)return;
+    
+    const angleStep=Math.PI*2/Math.min(children.length,8);
+    const radius=120+level*30;
+    const startAngle=-Math.PI/2-angleStep*(children.length-1)/2;
+    
+    children.forEach((child,i)=>{
+      const angle=startAngle+i*angleStep;
+      const cx2=centerX+Math.cos(angle)*radius;
+      const cy2=centerY+Math.sin(angle)*radius;
+      layoutNode(child.id,cx2,cy2,level+1);
+    });
+  }
+  
+  layoutNode(root.id,cx,cy,0);
+  render();
+}
+
+function render(){
+  nodesContainer.innerHTML='';
+  
+  for(const n of nodes){
+    const isSelected=n.id===selectedId;
+    const isRoot=!n.parentId;
+    const div=document.createElement('div');
+    div.className=`node-el${isSelected?' selected':''}${isRoot?' root':''}`;
+    div.style.cssText=`left:${n.x}px;top:${n.y}px;transform:translate(-50%,-50%)`;
+    div.dataset.id=n.id;
+    
+    div.innerHTML=`
+      <div class="nb" style="background:${n.color}15;border-color:${isSelected?'#00d9ff':n.color};color:${isSelected?'#00d9ff':'#ccc'}">${escapeHTML(n.text)}</div>
+      <div class="child-count">${n.children.length} children</div>
+      <div class="edit-btn" onclick="event.stopPropagation();editNode(${n.id})">✎</div>
+    `;
+    
+    div.onclick=()=>{selectedId=n.id;render()};
+    div.ondblclick=()=>editNode(n.id);
+    
+    // Drag
+    let dragging=false,sx,sy,ox,oy;
+    div.onmousedown=(e)=>{
+      if(e.target.closest('.edit-btn'))return;
+      selectedId=n.id;render();
+      dragging=true;sx=e.clientX;sy=e.clientY;ox=n.x;oy=n.y;
+      document.onmousemove=(ev)=>{if(dragging){n.x=ox+ev.clientX-sx;n.y=oy+ev.clientY-sy;renderConnections();renderMinimap()}};
+      document.onmouseup=()=>{dragging=false;document.onmousemove=null;document.onmouseup=null};
+    };
+    
+    nodesContainer.appendChild(div);
+  }
+  
+  renderConnections();
+  renderMinimap();
+  
+  // Update minimap
+  const mc=document.getElementById('minimapCanvas');
+  mc.width=120;mc.height=90;
+}
+
+function renderConnections(){
+  connSvg.innerHTML='';
+  // Curved connections from parent to child
+  for(const n of nodes){
+    if(!n.parentId)continue;
+    const parent=getNode(n.parentId);
+    if(!parent)continue;
+    const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+    const dx=n.x-parent.x,dy=n.y-parent.y;
+    const dist=Math.sqrt(dx*dx+dy*dy);
+    const cp=dist*0.4;
+    path.setAttribute('d',`M${parent.x},${parent.y} C${parent.x+Math.sign(dx)*cp*0.3},${parent.y+Math.sign(dy)*cp*0.5} ${n.x-Math.sign(dx)*cp*0.3},${n.y-Math.sign(dy)*cp*0.5} ${n.x},${n.y}`);
+    path.setAttribute('stroke',n.id===selectedId||parent.id===selectedId?'rgba(0,217,255,0.4)':'rgba(255,255,255,0.08)');
+    path.setAttribute('stroke-width',n.id===selectedId?'2':'1.5');
+    path.setAttribute('fill','none');
+    path.setAttribute('stroke-linecap','round');
+    connSvg.appendChild(path);
+  }
+  
+  // Selected node glow
+  const sel=getNode(selectedId);
+  if(sel){
+    const glow=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    glow.setAttribute('cx',sel.x);
+    glow.setAttribute('cy',sel.y);
+    glow.setAttribute('r','30');
+    glow.setAttribute('fill','none');
+    glow.setAttribute('stroke','rgba(0,217,255,0.1)');
+    glow.setAttribute('stroke-width','2');
+    connSvg.appendChild(glow);
+  }
+}
+
+function renderMinimap(){
+  const mc=document.getElementById('minimapCanvas');
+  const mctx=mc.getContext('2d');
+  const w=mc.width,h=mc.height;
+  mctx.fillStyle='rgba(0,0,0,0.8)';mctx.fillRect(0,0,w,h);
+  
+  const padding=10;
+  const xs=nodes.map(n=>n.x),ys=nodes.map(n=>n.y);
+  const minX=Math.min(...xs),maxX=Math.max(...xs);
+  const minY=Math.min(...ys),maxY=Math.max(...ys);
+  const rangeX=Math.max(maxX-minX,100),rangeY=Math.max(maxY-minY,100);
+  const scaleX=(w-padding*2)/rangeX,scaleY=(h-padding*2)/rangeY;
+  const scale=Math.min(scaleX,scaleY);
+  
+  for(const n of nodes){
+    if(!n.parentId)continue;
+    const parent=getNode(n.parentId);
+    if(!parent)continue;
+    const x1=(n.x-minX)*scale+padding,y1=(n.y-minY)*scale+padding;
+    const x2=(parent.x-minX)*scale+padding,y2=(parent.y-minY)*scale+padding;
+    mctx.strokeStyle='rgba(255,255,255,0.1)';mctx.lineWidth=0.5;
+    mctx.beginPath();mctx.moveTo(x1,y1);mctx.lineTo(x2,y2);mctx.stroke();
+  }
+  
+  for(const n of nodes){
+    const x=(n.x-minX)*scale+padding,y=(n.y-minY)*scale+padding;
+    mctx.fillStyle=n.id===selectedId?'#00d9ff':n.color;
+    mctx.beginPath();mctx.arc(x,y,2,0,Math.PI*2);mctx.fill();
+  }
+}
+
+function editNode(id){
+  const n=getNode(id);
+  if(!n)return;
+  const text=prompt('Edit text:',n.text);
+  if(text!==null){n.text=text;render()}
+}
+
+function exportMap(){
+  const data=nodes.map(n=>({id:n.id,text:n.text,parentId:n.parentId,x:Math.round(n.x),y:Math.round(n.y),color:n.color}));
+  const blob=new Blob([JSON.stringify({map:data},null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download='mindmap.json';a.click();
+  URL.revokeObjectURL(url);
+}
+
+function toggleHelp(){alert('🧠 Mind Map Help:\n\nClick to select\nDouble-click to edit\nDrag to move\n"Add Child" to add subtopic\n"Sibling" to add peer topic\n"Layout" to auto-arrange\n"Export" to save as JSON')}
+
+// Pan canvas
+canvasWrap.addEventListener('mousedown',e=>{
+  if(e.target===canvasWrap||e.target.id==='nodesContainer'){
+    isPanning=true;panStartX=e.clientX-offsetX;panStartY=e.clientY-offsetY;
+    canvasWrap.style.cursor='grabbing';
+  }
+});
+document.addEventListener('mousemove',e=>{
+  if(isPanning){offsetX=e.clientX-panStartX;offsetY=e.clientY-panStartY;canvasWrap.style.transform=`translate(${offsetX}px,${offsetY}px)`}
+});
+document.addEventListener('mouseup',()=>{isPanning=false;canvasWrap.style.cursor='grab'});
+
+// Keyboard
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
+  if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();deleteSelected()}
+  if(e.key==='Enter')addChildNode();
+  if(e.key==='Tab'){e.preventDefault();addSibling()}
+  if(e.key==='Escape'){selectedId=null;render()}
+  if(e.key==='a'&&e.ctrlKey){e.preventDefault();autoLayout()}
+});
+
+if(!loadFromStorage())initMap();
+setInterval(saveToStorage,10000);
+window.addEventListener('beforeunload',saveToStorage);
+</script>
+</body>
+</html>

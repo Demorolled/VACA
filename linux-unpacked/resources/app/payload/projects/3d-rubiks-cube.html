@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>🧊 3D Rubik's Cube</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #0c0f16; font-family: 'Segoe UI', system-ui, sans-serif; }
+  #scene { position: fixed; inset: 0; }
+  canvas { display: block; }
+  #hud {
+    position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 10;
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(14, 18, 28, 0.82); border: 1px solid rgba(120, 200, 255, 0.28);
+    border-radius: 12px; padding: 10px 16px; backdrop-filter: blur(8px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.5); color: #e4ecff; font-size: 14px; user-select: none;
+  }
+  #hud button {
+    background: rgba(70, 130, 255, 0.18); color: #c9dcff; border: 1px solid rgba(120,170,255,0.4);
+    border-radius: 8px; padding: 5px 11px; font-size: 13px; cursor: pointer; transition: all 0.15s;
+  }
+  #hud button:hover { background: rgba(70,130,255,0.35); color: #fff; transform: translateY(-1px); }
+  #moves { color: #8fb0ff; font-size: 13px; min-width: 60px; text-align: center; }
+  #hint { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 10;
+    color: rgba(170, 190, 220, 0.5); font-size: 12.5px; }
+  #fallback { display: none; position: fixed; inset: 0; align-items: center; justify-content: center;
+    color: #ff9c9c; font-size: 16px; padding: 24px; text-align: center; z-index: 20; }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+<div id="scene"></div>
+<div id="fallback">3D unavailable — could not load Three.js (CDN blocked or offline).</div>
+<div id="hud">
+  <span>🧊 Rubik's Cube</span>
+  <button id="scramble">Scramble</button>
+  <button id="reset">Reset</button>
+  <span id="moves">Moves: 0</span>
+</div>
+<div id="hint">Drag to orbit · Scroll to zoom · Scramble animates 22 random layer turns</div>
+
+<script>
+(function () {
+  'use strict';
+  if (typeof THREE === 'undefined') { document.getElementById('fallback').style.display = 'flex'; return; }
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0c0f16);
+  scene.fog = new THREE.Fog(0x0c0f16, 20, 48);
+
+  const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 200);
+  camera.position.set(6, 5, 6);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  document.getElementById('scene').appendChild(renderer.domElement);
+
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.minDistance = 4;
+  controls.maxDistance = 16;
+  controls.target.set(0, 0, 0);
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+  const key = new THREE.DirectionalLight(0xffffff, 1.1);
+  key.position.set(6, 9, 5);
+  key.castShadow = true;
+  key.shadow.mapSize.set(1024, 1024);
+  key.shadow.bias = -0.0004;
+  scene.add(key);
+  const fill = new THREE.DirectionalLight(0x6688ff, 0.35);
+  fill.position.set(-5, 3, -6);
+  scene.add(fill);
+
+  (function stars() {
+    const n = 700, pos = new Float32Array(n * 3);
+    for (let i = 0; i < n * 3; i++) pos[i] = (Math.random() - 0.5) * 70;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    scene.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffffff, size: 0.1, transparent: true, opacity: 0.7, fog: false })));
+  })();
+
+  // ── The 27 cubies ───────────────────────────────────────────────────────
+  const FACE_COLORS = [0xff4d4d, 0xff8c1a, 0xfff45e, 0xffffff, 0x4dff4d, 0x2e7bff]; // +x -x +y -y +z -z
+  const INNER = 0x10151f;
+  const cubies = [];
+
+  function makeCubie(px, py, pz) {
+    const mats = FACE_COLORS.map(c => new THREE.MeshStandardMaterial({ color: c, metalness: 0.15, roughness: 0.35 }));
+    const gap = 0.05;
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.92, 0.92), mats);
+    // inner faces (not on the cube surface) get the dark color
+    const isCore = (px === 0 && py === 0 && pz === 0);
+    mesh.material.forEach((m, i) => {
+      const onFace = (i === 0 && px === 1) || (i === 1 && px === -1) ||
+                     (i === 2 && py === 1) || (i === 3 && py === -1) ||
+                     (i === 4 && pz === 1) || (i === 5 && pz === -1);
+      if (!onFace && !isCore) m.color.setHex(INNER);
+    });
+    mesh.position.set(px, py, pz);
+    mesh.castShadow = true;
+    const edges = new THREE.LineSegments(
+      new THREE.EdgesGeometry(new THREE.BoxGeometry(0.925, 0.925, 0.925)),
+      new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.35 })
+    );
+    mesh.add(edges);
+    scene.add(mesh);
+    cubies.push({ mesh, x: px, y: py, z: pz });
+    return mesh;
+  }
+  function buildCube() {
+    for (let x = -1; x <= 1; x++) for (let y = -1; y <= 1; y++) for (let z = -1; z <= 1; z++) makeCubie(x, y, z);
+  }
+  buildCube();
+
+  // ── Layer rotation (pivot + attach + bake) ──────────────────────────────
+  const AXIS = ['x', 'y', 'z'];
+  const queue = [];
+  let busy = false;
+  let moveCount = 0;
+  const movesEl = document.getElementById('moves');
+
+  function rotateLayer(axis, layer, dir, speedMs = 260) {
+    queue.push({ axis, layer, dir, speedMs });
+    pump();
+  }
+  function pump() {
+    if (busy || queue.length === 0) return;
+    busy = true;
+    const { axis, layer, dir, speedMs } = queue.shift();
+    const pivot = new THREE.Group();
+    scene.add(pivot);
+    const members = cubies.filter(c => Math.round(c.mesh.position[AXIS[axis]]) === layer);
+    members.forEach(c => pivot.attach(c.mesh));
+    const target = dir * Math.PI / 2;
+    const t0 = performance.now();
+    function step(now) {
+      const k = Math.min(1, (now - t0) / speedMs);
+      const ease = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+      pivot.rotation[AXIS[axis]] = target * ease;
+      if (k < 1) { requestAnimationFrame(step); return; }
+      // bake back into the scene
+      members.forEach(c => scene.attach(c.mesh));
+      scene.remove(pivot);
+      moveCount++;
+      movesEl.textContent = 'Moves: ' + moveCount;
+      busy = false;
+      pump();
+    }
+    requestAnimationFrame(step);
+  }
+
+  function scramble() {
+    const n = 22;
+    for (let i = 0; i < n; i++) {
+      const axis = Math.floor(Math.random() * 3);
+      const layer = [-1, 0, 1][Math.floor(Math.random() * 3)];
+      const dir = Math.random() < 0.5 ? 1 : -1;
+      rotateLayer(axis, layer, dir, 110);
+    }
+  }
+  function reset() {
+    queue.length = 0;
+    cubies.forEach(c => scene.remove(c.mesh));
+    cubies.length = 0;
+    buildCube();
+    moveCount = 0;
+    movesEl.textContent = 'Moves: 0';
+  }
+  document.getElementById('scramble').addEventListener('click', scramble);
+  document.getElementById('reset').addEventListener('click', reset);
+
+  window.addEventListener('resize', () => {
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+
+  function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  window.__vaca3d = {
+    moves: () => moveCount,
+    rotateLayer: rotateLayer,
+    reset: reset,
+  };
+})();
+</script>
+</body>
+</html>

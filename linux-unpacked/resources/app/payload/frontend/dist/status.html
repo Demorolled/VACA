@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Buffy — Status</title>
+<meta http-equiv="refresh" content="60">
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:16px; background:#0d1117; color:#e6edf3;
+         font:16px/1.5 -apple-system,system-ui,"Segoe UI",Roboto,sans-serif; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  .sub { color:#8b949e; font-size:13px; margin-bottom:16px; }
+  .card { background:#161b22; border:1px solid #30363d; border-radius:12px;
+          padding:14px 16px; margin-bottom:12px; }
+  .card h2 { font-size:13px; text-transform:uppercase; letter-spacing:.08em;
+             color:#8b949e; margin:0 0 10px; font-weight:600; }
+  .row { display:flex; justify-content:space-between; gap:12px; padding:5px 0;
+         border-bottom:1px solid #21262d; }
+  .row:last-child { border-bottom:0; }
+  .k { color:#8b949e; }
+  .v { text-align:right; font-variant-numeric:tabular-nums; }
+  .ok { color:#3fb950; } .warn { color:#d29922; } .bad { color:#f85149; }
+  a.big { display:block; text-align:center; background:#238636; color:#fff;
+          text-decoration:none; padding:14px; border-radius:10px; font-weight:600;
+          margin:4px 0 12px; }
+  code { background:#21262d; padding:2px 6px; border-radius:5px; font-size:14px; }
+  .note { font-size:14px; color:#c9d1d9; }
+  ul { margin:6px 0 0; padding-left:20px; }
+</style>
+</head>
+<body>
+
+<h1>Buffy — machine status</h1>
+<div class="sub">Auto-refreshes every 60s · updated <strong>2026-10-01 11:47 EDT</strong></div>
+
+<a class="big" href="/">Open the app (Veronica UI)</a>
+
+<div class="card">
+  <h2>How to reach this box</h2>
+  <div class="row"><span class="k">Web app (from phone)</span><span class="v"><code>http://100.124.235.55:5173/</code></span></div>
+  <div class="row"><span class="k">Dev box tailnet IP</span><span class="v">100.124.235.55</span></div>
+  <div class="row"><span class="k">Agent box tailnet IP</span><span class="v">100.121.154.124</span></div>
+  <div class="row"><span class="k">Reach</span><span class="v ok">tailnet only (not on WiFi)</span></div>
+</div>
+
+<div class="card">
+  <h2>Connection working?</h2>
+  <div class="row"><span class="k">Web app</span><span class="v ok">up</span></div>
+  <div class="row"><span class="k">Backend</span><span class="v ok">up (tailnet-only bind)</span></div>
+  <div class="row"><span class="k">LLM</span><span class="v ok">up — agent box Ollama, qwen2.5-coder:14b</span></div>
+  <div class="row"><span class="k">Chat test</span><span class="v ok">HTTP 200, replied "BUFFY-ONLINE"</span></div>
+</div>
+
+<div class="card">
+  <h2>Training — new data run</h2>
+  <div class="row"><span class="k">Stage</span><span class="v warn">collecting new episodes (round 1 of 3)</span></div>
+  <div class="row"><span class="k">Sweep</span><span class="v">29 tasks × N=12 × 3 rounds ≈ 1044 episodes</span></div>
+  <div class="row"><span class="k">ETA collection</span><span class="v">~70 min</span></div>
+  <div class="row"><span class="k">Then</span><span class="v">merge old+new → dedupe → plain-CE SFT → adapter → eval</span></div>
+  <div class="row"><span class="k">ETA total</span><span class="v">~2 h from 11:43</span></div>
+</div>
+
+<div class="card">
+  <h2>Why plain CE (no advantage weighting)</h2>
+  <p class="note">Measured, not guessed. The <code>--grpo --staleness</code> run scored
+  <strong>0.1376</strong> and could not write code at all; dropping it on the same data
+  and base scored <strong>0.6861</strong>, beating your deployed r41 adapter (0.6785).
+  The collector's reward signal is self-contradictory — the same output text receives
+  both +1.29 and −0.77 advantage — so advantage weighting trains the model away from
+  correct code.</p>
+</div>
+
+<div class="card">
+  <h2>Waiting on you (optional)</h2>
+  <ul>
+    <li><strong>Name for this thing.</strong> The UI still says “Veronica”. Say the word and I'll rebrand it.</li>
+    <li><strong>sshd + ttyd</strong> still aren't installed on this box — needs your sudo password.
+        Without them, the phone can't SSH in; the web app above is your route in.</li>
+    <li><strong>Email/SMS notifications</strong> — I have no send capability. Setting one up
+        means creating a service account under your email, so I need your explicit go-ahead.</li>
+  </ul>
+</div>
+
+</body>
+</html>

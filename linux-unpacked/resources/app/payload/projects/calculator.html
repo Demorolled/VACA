@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html><head><title>Calculator</title><style>
+body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#1a1a2e;color:#fff}
+.calc{text-align:center}
+h1{color:#00d9ff;margin-bottom:16px}
+.display{background:#0f0f1a;padding:16px;font-size:28px;text-align:right;margin-bottom:8px;border:1px solid #4a4a6a;font-family:monospace;min-height:32px}
+.buttons{display:grid;grid-template-columns:repeat(4,60px);gap:4px}
+.btn{padding:14px;font-size:18px;background:#252542;border:1px solid #4a4a6a;cursor:pointer;color:#fff;transition:.1s}
+.btn:hover{background:#2d2d5a;border-color:#00d9ff}
+.op{color:#00d9ff}.eq{background:#00d9ff;color:#0f0f1a}
+.clr{color:#f87171}
+</style></head><body>
+<div class="calc"><h1>⎔ Calculator</h1>
+<div class="display" id="display">0</div>
+<div class="buttons" id="buttons"></div>
+</div>
+<script>
+const btns=['C','±','%','÷','7','8','9','×','4','5','6','−','1','2','3','+','0','.','=']
+let expr='0',result=null,op=null,lastNum=false
+function render(){document.getElementById('display').textContent=expr}
+btns.forEach(b=>{const d=document.createElement('button');d.textContent=b;
+if('÷×−+'.includes(b))d.className='btn op';else if(b==='=')d.className='btn eq';else if(b==='C')d.className='btn clr';else d.className='btn'
+d.onclick=()=>{if(b==='C'){expr='0';result=null;op=null;lastNum=false}
+else if(b==='±'){expr=expr.startsWith('-')?expr.slice(1):'-'+expr}
+else if(b==='%'){expr=String(parseFloat(expr)/100)}
+else if('÷×−+'.includes(b)){result=parseFloat(expr);op=b;lastNum=true}
+else if(b==='='){if(op&&result!==null){const n=parseFloat(expr);expr=String(op==='÷'?result/n:op==='×'?result*n:op==='−'?result-n:result+n);result=null;op=null;lastNum=false}}
+else{if(lastNum){expr='0';lastNum=false}
+if(b==='.'&&expr.includes('.'))return;expr=expr==='0'&&b!=='.'?b:expr+b}
+render()}
+document.getElementById('buttons').appendChild(d)})
+</script></body></html>

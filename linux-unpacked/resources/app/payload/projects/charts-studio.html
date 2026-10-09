@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Charts Studio</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#ccc;min-height:100vh;padding:20px}
+.container{max-width:1100px;margin:0 auto}
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px}
+header h1{color:#00d9ff;font-size:1.2rem}header h1 small{color:#555;font-size:0.55rem;font-weight:400}
+.controls{display:flex;gap:4px;flex-wrap:wrap}
+.controls button,.controls select{padding:5px 12px;border:1px solid rgba(255,255,255,0.06);border-radius:4px;background:transparent;color:#888;cursor:pointer;font-size:0.6rem;font-family:inherit;transition:0.1s}
+.controls button:hover{border-color:#00d9ff;color:#ccc}
+.controls button.primary{background:rgba(0,217,255,0.1);border-color:rgba(0,217,255,0.2);color:#00d9ff}
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+@media(max-width:700px){.chart-grid{grid-template-columns:1fr}}
+.chart-card{background:#12121e;border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:16px}
+.chart-card h3{font-size:0.7rem;color:#888;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.3px}
+.chart-card canvas{width:100%;height:220px}
+.data-table{width:100%;border-collapse:collapse;font-size:0.65rem;margin-top:8px}
+.data-table th{padding:4px 8px;text-align:left;color:#555;font-weight:400;border-bottom:1px solid rgba(255,255,255,0.06);font-size:0.5rem;text-transform:uppercase}
+.data-table td{padding:4px 8px;border-bottom:1px solid rgba(255,255,255,0.03);color:#aaa}
+.data-table td.num{color:#4ade80;text-align:right;font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+  <h1>📊 Charts Studio <small>5 Chart Types · Animated · Interactive</small></h1>
+  <div class="controls">
+    <select onchange="refreshData()"><option value="sales">Sales Data</option><option value="traffic">Web Traffic</option><option value="users">User Growth</option></select>
+    <button onclick="exportCharts()" class="primary">💾 Export</button>
+    <button onclick="animateCharts()">▶ Animate</button>
+  </div>
+</header>
+<div class="chart-grid">
+  <div class="chart-card"><h3>📈 Line Chart</h3><canvas id="lineChart"></canvas></div>
+  <div class="chart-card"><h3>📊 Bar Chart</h3><canvas id="barChart"></canvas></div>
+  <div class="chart-card"><h3>🥧 Pie Chart</h3><canvas id="pieChart"></canvas></div>
+  <div class="chart-card"><h3>⭕ Doughnut</h3><canvas id="doughnutChart"></canvas></div>
+</div>
+<div class="chart-card">
+  <h3>📋 Data Table</h3>
+  <table class="data-table" id="dataTable"></table>
+</div>
+</div>
+
+<script>
+const COLORS=['#00d9ff','#4ade80','#fbbf24','#f87171','#a78bfa','#f472b6','#34d399','#fb923c','#60a5fa','#e879f9'];
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+let chartData={},animating=false,animationFrame=0;
+
+function generateData(type){
+  const data=[];
+  let base=type==='sales'?50000:type==='traffic'?100000:2000;
+  for(let i=0;i<12;i++){
+    const change=(Math.random()-0.48)*0.15;
+    base*=(1+change);
+    data.push({month:MONTHS[i],value:Math.round(base)});
+  }
+  return data;
+}
+
+function refreshData(){
+  const type=document.querySelector('select').value;
+  chartData={type,data:generateData(type),categories:['Direct','Organic','Social','Referral','Email'],
+    pieValues:[20+Math.random()*20,25+Math.random()*20,15+Math.random()*15,10+Math.random()*10,5+Math.random()*10]};
+  drawAllCharts();
+  renderTable();
+}
+
+function drawAllCharts(){
+  if(animating)return;
+  drawLineChart(document.getElementById('lineChart'),chartData);
+  drawBarChart(document.getElementById('barChart'),chartData);
+  drawPieChart(document.getElementById('pieChart'),chartData,false);
+  drawPieChart(document.getElementById('doughnutChart'),chartData,true);
+}
+
+function drawLineChart(canvas,data){
+  const ctx=canvas.getContext('2d');
+  const rect=canvas.parentElement.getBoundingClientRect();
+  canvas.width=rect.width||500;canvas.height=220;
+  const w=canvas.width,h=canvas.height,pad={top:15,right:15,bottom:25,left:45};
+  const cw=w-pad.left-pad.right,ch=h-pad.top-pad.bottom;
+  
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle='#0a0a14';ctx.fillRect(0,0,w,h);
+  
+  const vals=data.data.map(d=>d.value);
+  const min=Math.min(...vals)*0.95,max=Math.max(...vals)*1.05;
+  
+  // Grid
+  ctx.strokeStyle='rgba(255,255,255,0.03)';ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){
+    const y=pad.top+(ch/4)*i;
+    ctx.beginPath();ctx.moveTo(pad.left,y);ctx.lineTo(w-pad.right,y);ctx.stroke();
+    ctx.fillStyle='#444';ctx.font='9px Arial';ctx.textAlign='right';
+    ctx.fillText(Math.round(max-(max-min)/4*i).toLocaleString(),pad.left-4,y+3);
+  }
+  
+  // Area
+  const points=vals.map((v,i)=>({x:pad.left+(i/(vals.length-1))*cw,y:pad.top+ch-(v-min)/ (max-min)*ch}));
+  ctx.beginPath();ctx.moveTo(points[0].x,pad.top+ch);
+  points.forEach(p=>ctx.lineTo(p.x,p.y));
+  ctx.lineTo(points[points.length-1].x,pad.top+ch);
+  ctx.closePath();
+  const grad=ctx.createLinearGradient(0,pad.top,0,pad.top+ch);
+  grad.addColorStop(0,'rgba(0,217,255,0.15)');grad.addColorStop(1,'rgba(0,217,255,0)');
+  ctx.fillStyle=grad;ctx.fill();
+  
+  // Line
+  ctx.beginPath();points.forEach((p,i)=>i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));
+  ctx.strokeStyle='#00d9ff';ctx.lineWidth=2.5;ctx.stroke();
+  
+  // Dots
+  points.forEach((p,i)=>{
+    ctx.beginPath();ctx.arc(p.x,p.y,4,0,Math.PI*2);
+    ctx.fillStyle='#00d9ff';ctx.fill();
+    ctx.beginPath();ctx.arc(p.x,p.y,6,0,Math.PI*2);
+    ctx.strokeStyle='rgba(0,217,255,0.2)';ctx.lineWidth=2;ctx.stroke();
+    
+    // X labels
+    if(i%2===0||i===vals.length-1){
+      ctx.fillStyle='#555';ctx.font='8px Arial';ctx.textAlign='center';
+      ctx.fillText(data.data[i].month,p.x,pad.top+ch+14);
+    }
+  });
+}
+
+function drawBarChart(canvas,data){
+  const ctx=canvas.getContext('2d');
+  const rect=canvas.parentElement.getBoundingClientRect();
+  canvas.width=rect.width||500;canvas.height=220;
+  const w=canvas.width,h=canvas.height,pad={top:15,right:15,bottom:25,left:45};
+  const cw=w-pad.left-pad.right,ch=h-pad.top-pad.bottom;
+  
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle='#0a0a14';ctx.fillRect(0,0,w,h);
+  
+  const vals=data.data.slice(0,8);
+  const maxVal=Math.max(...vals.map(d=>d.value));
+  const barW=cw/vals.length*0.7;
+  const gap=cw/vals.length*0.3;
+  
+  ctx.strokeStyle='rgba(255,255,255,0.03)';ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){const y=pad.top+(ch/4)*i;ctx.beginPath();ctx.moveTo(pad.left,y);ctx.lineTo(w-pad.right,y);ctx.stroke()}
+  
+  vals.forEach((d,i)=>{
+    const barH=(d.value/maxVal)*ch*0.9;
+    const x=pad.left+i*(barW+gap)+gap/2;
+    const y=pad.top+ch-barH;
+    const color=COLORS[i%COLORS.length];
+    
+    const grad=ctx.createLinearGradient(x,y,x,pad.top+ch);
+    grad.addColorStop(0,color);grad.addColorStop(1,color+'44');
+    ctx.fillStyle=grad;
+    ctx.beginPath();ctx.roundRect(x,y,barW,barH,3);ctx.fill();
+    
+    ctx.fillStyle='#555';ctx.font='8px Arial';ctx.textAlign='center';
+    ctx.fillText(d.month,x+barW/2,pad.top+ch+14);
+    
+    if(barH>20){
+      ctx.fillStyle='#fff';ctx.font='8px Arial';ctx.textAlign='center';
+      ctx.fillText(Math.round(d.value/1000)+'k',x+barW/2,y-5);
+    }
+  });
+}
+
+function drawPieChart(canvas,data,isDoughnut){
+  const ctx=canvas.getContext('2d');
+  const rect=canvas.parentElement.getBoundingClientRect();
+  canvas.width=rect.width||500;canvas.height=220;
+  const w=canvas.width,h=canvas.height;
+  
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle='#0a0a14';ctx.fillRect(0,0,w,h);
+  
+  const cx=w*0.35,cy=h/2,r=Math.min(cx,cy)*0.7;
+  const values=data.pieValues||[30,25,20,15,10];
+  const total=values.reduce((s,v)=>s+v,0);
+  
+  let cumulative=0;
+  values.forEach((val,i)=>{
+    const startAngle=(cumulative/total)*2*Math.PI-Math.PI/2;
+    cumulative+=val;
+    const endAngle=(cumulative/total)*2*Math.PI-Math.PI/2;
+    
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,startAngle,endAngle);ctx.closePath();
+    ctx.fillStyle=COLORS[i%COLORS.length];ctx.fill();
+    ctx.strokeStyle='#0a0a14';ctx.lineWidth=2;ctx.stroke();
+    
+    // Label
+    const midAngle=(startAngle+endAngle)/2;
+    const lx=cx+Math.cos(midAngle)*(r*0.6);
+    const ly=cy+Math.sin(midAngle)*(r*0.6);
+    if(val/total>0.05){
+      ctx.fillStyle='#fff';ctx.font='11px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(Math.round(val/total*100)+'%',lx,ly);
+    }
+  });
+  
+  if(isDoughnut){
+    ctx.beginPath();ctx.arc(cx,cy,r*0.45,0,Math.PI*2);
+    ctx.fillStyle='#0a0a14';ctx.fill();
+    ctx.fillStyle='#fff';ctx.font='14px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(total,cx,cy);
+  }
+  
+  // Legend
+  const legendX=w*0.65;
+  (data.categories||['A','B','C','D','E']).slice(0,values.length).forEach((label,i)=>{
+    const ly=cy-(values.length/2-0.5-i)*20;
+    ctx.fillStyle=COLORS[i%COLORS.length];
+    ctx.fillRect(legendX,ly-4,10,8);
+    ctx.fillStyle='#888';ctx.font='11px Arial';ctx.textAlign='left';
+    ctx.fillText(label,legendX+16,ly+3);
+    ctx.fillStyle='#aaa';ctx.textAlign='right';
+    ctx.fillText(Math.round(values[i]/total*100)+'%',w-15,ly+3);
+  });
+}
+
+function renderTable(){
+  const table=document.getElementById('dataTable');
+  table.innerHTML=`<tr><th>Month</th><th>Value</th><th>Change</th><th>% of Total</th></tr>`;
+  const items=chartData.data||[];const total=items.reduce((s,d)=>s+d.value,0);
+  items.forEach((d,i)=>{
+    const prev=items[i-1];
+    const change=prev?((d.value-prev.value)/prev.value*100).toFixed(1):'-';
+    table.innerHTML+=`<tr><td>${d.month}</td><td class="num">${d.value.toLocaleString()}</td><td class="num" style="color:${parseFloat(change)>=0?'#4ade80':'#f87171'}">${change}%</td><td class="num">${(d.value/total*100).toFixed(1)}%</td></tr>`;
+  });
+}
+
+function animateCharts(){
+  animating=!animating;
+  if(animating){
+    let frame=0;
+    const interval=setInterval(()=>{
+      frame++;
+      const newData=generateData(document.querySelector('select').value);
+      chartData.data=newData;
+      chartData.pieValues=[20+Math.random()*20,25+Math.random()*20,15+Math.random()*15,10+Math.random()*10,5+Math.random()*10];
+      drawAllCharts();
+      renderTable();
+      if(!animating)clearInterval(interval);
+    },2000);
+  }
+}
+
+function exportCharts(){
+  const link=document.createElement('a');
+  link.download='charts.png';
+  // Composite all charts into one image
+  const tempCanvas=document.createElement('canvas');
+  tempCanvas.width=800;tempCanvas.height=600;
+  const tctx=tempCanvas.getContext('2d');
+  tctx.fillStyle='#0a0a14';tctx.fillRect(0,0,800,600);
+  tctx.drawImage(document.getElementById('lineChart'),0,0,400,300);
+  tctx.drawImage(document.getElementById('barChart'),400,0,400,300);
+  tctx.drawImage(document.getElementById('pieChart'),0,300,400,300);
+  tctx.drawImage(document.getElementById('doughnutChart'),400,300,400,300);
+  link.href=tempCanvas.toDataURL();link.click();
+}
+
+refreshData();
+window.addEventListener('resize',drawAllCharts);
+</script>
+</body>
+</html>

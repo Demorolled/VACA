@@ -1,0 +1,26 @@
+[Unit]
+Description=VACA Terminal Speak — auto-speak this terminal's replies (voice en-US-JennyNeural)
+Documentation=file:///home/homellmlab/Desktop/visual-ai-architect/scripts/terminal-autospeak.py
+# Start after the graphical session so the audio server (PipeWire/Pulse) is up
+# and ffplay can actually reach the speakers.
+After=graphical-session.target
+PartOf=graphical-session.target
+StartLimitBurst=5
+StartLimitIntervalSec=60
+
+[Service]
+Type=simple
+WorkingDirectory=/home/homellmlab/Desktop/visual-ai-architect
+# Run in the FOREGROUND so systemd owns the process and can restart it.
+# (The setsid/nohup launcher is for manual use only — it detaches, which
+#  would hide the process from systemd.)
+ExecStart=/usr/bin/python3 /home/homellmlab/Desktop/visual-ai-architect/scripts/terminal-autospeak.py
+Environment=PYTHONUNBUFFERED=1
+# Restart only when it exits non-zero or is killed by a signal.
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:/home/homellmlab/Desktop/visual-ai-architect/scripts/terminal-speak.log
+StandardError=append:/home/homellmlab/Desktop/visual-ai-architect/scripts/terminal-speak.log
+
+[Install]
+WantedBy=default.target

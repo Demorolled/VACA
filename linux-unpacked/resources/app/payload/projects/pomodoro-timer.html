@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pomodoro Timer</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+.container {
+  max-width: 520px;
+  width: 100%;
+  text-align: center;
+}
+h1 { color: #00d9ff; font-size: 1.5rem; margin-bottom: 4px; letter-spacing: -0.5px; }
+.subtitle { color: #666; font-size: 0.8rem; margin-bottom: 24px; }
+.modes {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  margin-bottom: 28px;
+  background: rgba(255,255,255,0.04);
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.mode-btn {
+  padding: 8px 20px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: #666;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: 0.2s;
+}
+.mode-btn:hover { color: #aaa; }
+.mode-btn.active {
+  background: #00d9ff;
+  color: #0f0f1a;
+  font-weight: 600;
+  box-shadow: 0 2px 10px rgba(0,217,255,0.3);
+}
+.timer-circle {
+  position: relative;
+  width: 260px;
+  height: 260px;
+  margin: 0 auto 24px;
+}
+.timer-circle svg { transform: rotate(-90deg); }
+.timer-bg { fill: none; stroke: rgba(255,255,255,0.06); stroke-width: 6; }
+.timer-progress {
+  fill: none;
+  stroke: #00d9ff;
+  stroke-width: 6;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.3s ease;
+}
+.timer-progress.break-mode { stroke: #4ade80; }
+.timer-display {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.timer-text {
+  font-size: 3.5rem;
+  font-weight: 700;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 2px;
+}
+.timer-label {
+  font-size: 0.8rem;
+  color: #666;
+  margin-top: 4px;
+}
+.controls {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+.btn {
+  padding: 12px 36px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+.btn-start { background: linear-gradient(135deg, #00d9ff, #0099ff); color: #0f0f1a; }
+.btn-start:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,217,255,0.3); }
+.btn-pause { background: rgba(255,255,255,0.08); color: #aaa; }
+.btn-pause:hover { background: rgba(255,255,255,0.12); }
+.btn-reset { background: transparent; color: #555; border: 1px solid rgba(255,255,255,0.08); padding: 12px 20px; }
+.btn-reset:hover { color: #aaa; border-color: #f87171; }
+.sessions {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  font-size: 0.8rem;
+  color: #666;
+}
+.sessions span { background: rgba(255,255,255,0.04); padding: 6px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); }
+.sessions strong { color: #00d9ff; }
+@media (max-width: 500px) {
+  .timer-circle { width: 200px; height: 200px; }
+  .timer-text { font-size: 2.8rem; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🍅 Pomodoro Timer</h1>
+  <p class="subtitle">Focus on what matters, one tomato at a time</p>
+  <div class="modes">
+    <button class="mode-btn active" data-mode="pomodoro" onclick="setMode('pomodoro')">🍅 Focus</button>
+    <button class="mode-btn" data-mode="short" onclick="setMode('short')">☕ Short Break</button>
+    <button class="mode-btn" data-mode="long" onclick="setMode('long')">🌴 Long Break</button>
+  </div>
+  <div class="timer-circle">
+    <svg width="260" height="260" viewBox="0 0 260 260">
+      <circle class="timer-bg" cx="130" cy="130" r="115"/>
+      <circle class="timer-progress" id="progress" cx="130" cy="130" r="115" stroke-dasharray="722.57" stroke-dashoffset="0"/>
+    </svg>
+    <div class="timer-display">
+      <div class="timer-text" id="timerDisplay">25:00</div>
+      <div class="timer-label" id="timerLabel">Focus Time</div>
+    </div>
+  </div>
+  <div class="controls">
+    <button class="btn btn-start" id="startBtn" onclick="toggleTimer()">▶ Start</button>
+    <button class="btn btn-reset" onclick="resetTimer()">↻ Reset</button>
+  </div>
+  <div class="sessions">
+    <span>🎯 Sessions: <strong id="sessions">0</strong></span>
+    <span>⏱️ Today: <strong id="todayMinutes">0</strong>m</span>
+  </div>
+</div>
+<script>
+const DURATIONS = { pomodoro: 25 * 60, short: 5 * 60, long: 15 * 60 };
+const CIRCUMFERENCE = 2 * Math.PI * 115;
+
+let mode = 'pomodoro';
+let timeLeft = DURATIONS.pomodoro;
+let isRunning = false;
+let timerInterval = null;
+let completedSessions = 0;
+let todayMinutes = 0;
+
+function setMode(newMode) {
+  if (isRunning) return;
+  mode = newMode;
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+  timeLeft = DURATIONS[mode];
+  updateDisplay();
+  updateProgress(1);
+  updateLabel();
+}
+
+var startTime = 0;
+var targetDuration = DURATIONS.pomodoro;
+
+function toggleTimer() {
+  if (isRunning) {
+    pauseTimer();
+  } else {
+    startTimer();
+  }
+}
+
+function startTimer() {
+  if (timeLeft <= 0) {
+    timeLeft = DURATIONS[mode];
+  }
+  isRunning = true;
+  startTime = Date.now();
+  targetDuration = timeLeft;
+  document.getElementById('startBtn').textContent = '⏸ Pause';
+  document.getElementById('startBtn').className = 'btn btn-pause';
+  timerInterval = setInterval(function() {
+    var elapsed = Math.floor((Date.now() - startTime) / 1000);
+    timeLeft = targetDuration - elapsed;
+    if (timeLeft <= 0) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+      isRunning = false;
+      timeLeft = 0;
+      updateDisplay();
+      updateProgress(0);
+      onComplete();
+      return;
+    }
+    updateDisplay();
+    updateProgress(timeLeft / targetDuration);
+    document.title = formatTime(timeLeft) + ' - Pomodoro';
+  }, 200);
+}
+
+function pauseTimer() {
+  clearInterval(timerInterval);
+  timerInterval = null;
+  isRunning = false;
+  document.getElementById('startBtn').textContent = '▶ Resume';
+  document.getElementById('startBtn').className = 'btn btn-start';
+}
+
+function resetTimer() {
+  clearInterval(timerInterval);
+  timerInterval = null;
+  isRunning = false;
+  timeLeft = DURATIONS[mode];
+  document.getElementById('startBtn').textContent = '▶ Start';
+  document.getElementById('startBtn').className = 'btn btn-start';
+  updateDisplay();
+  updateProgress(1);
+  updateLabel();
+}
+
+function onComplete() {
+  completedSessions++;
+  todayMinutes += DURATIONS[mode] / 60;
+  document.getElementById('sessions').textContent = completedSessions;
+  document.getElementById('todayMinutes').textContent = Math.round(todayMinutes);
+  
+  if (mode === 'pomodoro') {
+    if (completedSessions % 4 === 0) {
+      setMode('long');
+      document.body.style.borderTop = '3px solid #4ade80';
+    } else {
+      setMode('short');
+    }
+  } else {
+    setMode('pomodoro');
+  }
+  
+  document.getElementById('startBtn').textContent = '▶ Start';
+  document.getElementById('startBtn').className = 'btn btn-start';
+  showNotification();
+}
+
+function showNotification() {
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification('Pomodoro Complete! 🎉', {
+      body: mode === 'pomodoro' ? 'Great focus! Time for a break.' : 'Break over! Ready to focus again.',
+    });
+  }
+}
+
+function updateDisplay() {
+  const m = Math.floor(timeLeft / 60);
+  const s = timeLeft % 60;
+  document.getElementById('timerDisplay').textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  document.title = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')} - Pomodoro`;
+}
+
+function updateProgress(ratio) {
+  const offset = CIRCUMFERENCE * (1 - ratio);
+  const progress = document.getElementById('progress');
+  progress.style.strokeDashoffset = offset;
+  progress.classList.toggle('break-mode', mode !== 'pomodoro');
+}
+
+function updateLabel() {
+  const labels = { pomodoro: '🎯 Focus Time', short: '☕ Short Break', long: '🌴 Long Break' };
+  document.getElementById('timerLabel').textContent = labels[mode] || 'Focus Time';
+}
+
+if ('Notification' in window && Notification.permission === 'default') {
+  Notification.requestPermission();
+}
+
+updateDisplay();
+updateProgress(1);
+updateLabel();
+</script>
+</body>
+</html>

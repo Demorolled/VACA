@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html><head><title>Color Picker</title><style>
+body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#1a1a2e;color:#fff}
+.picker{text-align:center;width:340px}
+h1{color:#00d9ff;margin-bottom:16px}
+.preview{width:200px;height:120px;margin:0 auto 16px;border:2px solid #4a4a6a;border-radius:8px;transition:.15s}
+.sliders{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.row{display:flex;align-items:center;gap:10px}
+.row label{width:14px;font-size:13px;font-weight:600}
+.row input[type=range]{flex:1;height:4px;appearance:none;background:#4a4a6a;border-radius:2px;outline:none}
+.row input[type=range]::-webkit-slider-thumb{appearance:none;width:14px;height:14px;border-radius:50%;cursor:pointer}
+.row .val{font-family:monospace;font-size:12px;width:36px;text-align:right;color:#888}
+.hex-box{display:flex;gap:4px;justify-content:center;margin-bottom:12px}
+.hex-box input{padding:8px;width:180px;background:#252542;border:1px solid #4a4a6a;color:#fff;font-size:14px;text-align:center;font-family:monospace}
+.hex-box button{padding:8px 16px;background:#00d9ff;border:none;color:#0f0f1a;cursor:pointer;font-weight:600}
+.saved{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;margin-top:8px}
+.saved div{width:28px;height:28px;border-radius:4px;border:1px solid #4a4a6a;cursor:pointer;transition:.1s}
+.saved div:hover{transform:scale(1.15)}
+</style></head><body>
+<div class="picker"><h1>⎔ Color Picker</h1>
+<div class="preview" id="preview"></div>
+<div class="sliders" id="sliders"></div>
+<div class="hex-box"><input id="hexInput" readonly/><button onclick="copyHex()">Copy</button></div>
+<div class="saved" id="saved"></div>
+</div>
+<script>
+let r=100,g=150,b=200,saved=JSON.parse(localStorage.getItem('colors')||'[]')
+function update(){const hex='#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('')
+document.getElementById('preview').style.background=hex;document.getElementById('hexInput').value=hex
+document.querySelectorAll('.row .val').forEach((el,i)=>el.textContent=[r,g,b][i])
+renderSaved()}
+['R','G','B'].forEach((ch,i)=>{const row=document.createElement('div');row.className='row'
+const label=document.createElement('label');label.textContent=ch;label.style.color=['#f87171','#4ade80','#60a5fa'][i]
+const slider=document.createElement('input');slider.type='range';slider.min=0;slider.max=255
+slider.value=[r,g,b][i];slider.style.accentColor=['#f87171','#4ade80','#60a5fa'][i]
+slider.oninput=function(){const vals=[r,g,b];vals[i]=parseInt(this.value);[r,g,b]=vals;update()}
+const val=document.createElement('span');val.className='val';val.textContent=[r,g,b][i]
+row.appendChild(label);row.appendChild(slider);row.appendChild(val)
+document.getElementById('sliders').appendChild(row)})
+function copyHex(){navigator.clipboard.writeText(document.getElementById('hexInput').value).then(()=>{
+const hex=document.getElementById('hexInput').value;if(!saved.includes(hex)){saved.push(hex);localStorage.setItem('colors',JSON.stringify(saved));renderSaved()}})}
+function renderSaved(){const c=document.getElementById('saved');c.innerHTML='';saved.forEach(h=>{const d=document.createElement('div');d.style.background=h;d.title=h;d.onclick=()=>{const m=h.match(/^#?([\\da-f]{2})([\\da-f]{2})([\\da-f]{2})$/i);if(m){[r,g,b]=[parseInt(m[1],16),parseInt(m[2],16),parseInt(m[3],16)];document.querySelectorAll('input[type=range]').forEach((el,i)=>el.value=[r,g,b][i]);update()}};c.appendChild(d)})}
+update()
+</script></body></html>

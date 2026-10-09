@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Email Client</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+  min-height: 100vh;
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+.container { max-width: 1050px; width: 100%; }
+h1 { color: #00d9ff; font-size: 1.5rem; text-align: center; margin-bottom: 4px; }
+.subtitle { color: #666; font-size: 0.8rem; text-align: center; margin-bottom: 12px; }
+.layout { display: flex; gap: 12px; height: 600px; }
+@media (max-width: 750px) { .layout { flex-direction: column; height: auto; } }
+/* Sidebar */
+.sidebar {
+  width: 200px;
+  background: linear-gradient(145deg, #1a1a2e, #1e1e3a);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 12px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+.sidebar .compose-btn {
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #00d9ff, #0099ff);
+  color: #0f0f1a;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  margin-bottom: 12px;
+  transition: 0.2s;
+}
+.sidebar .compose-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(0,217,255,0.3); }
+.sidebar .nav-list { flex: 1; }
+.sidebar .nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: #888;
+  transition: 0.1s;
+  margin-bottom: 2px;
+}
+.sidebar .nav-item:hover { background: rgba(255,255,255,0.04); color: #ccc; }
+.sidebar .nav-item.active { background: rgba(0,217,255,0.08); color: #00d9ff; }
+.sidebar .nav-item .badge {
+  margin-left: auto;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 0.6rem;
+  background: rgba(248,113,113,0.15);
+  color: #f87171;
+}
+/* Email list */
+.list-panel {
+  width: 320px;
+  background: linear-gradient(145deg, #1a1a2e, #1e1e3a);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.list-header {
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: rgba(0,0,0,0.1);
+}
+.list-header .list-title { font-size: 0.85rem; color: #ccc; font-weight: 500; }
+.list-header .list-count { font-size: 0.65rem; color: #555; }
+.list-search {
+  padding: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.list-search input {
+  width: 100%;
+  padding: 6px 10px;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 6px;
+  color: #aaa;
+  font-size: 0.75rem;
+  outline: none;
+  font-family: inherit;
+}
+.list-search input:focus { border-color: #00d9ff; }
+.email-list { flex: 1; overflow-y: auto; }
+.email-item {
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  cursor: pointer;
+  transition: 0.1s;
+  border-left: 3px solid transparent;
+}
+.email-item:hover { background: rgba(255,255,255,0.02); }
+.email-item.unread { border-left-color: #00d9ff; background: rgba(0,217,255,0.02); }
+.email-item.unread .from { color: #e0e0f0; font-weight: 600; }
+.email-item.active { background: rgba(0,217,255,0.05); }
+.email-item .from { font-size: 0.8rem; color: #aaa; }
+.email-item .subject { font-size: 0.82rem; color: #ccc; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.email-item .preview { font-size: 0.7rem; color: #555; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.email-item .time { font-size: 0.6rem; color: #444; text-align: right; float: right; }
+/* Email detail */
+.detail-panel {
+  flex: 1;
+  background: linear-gradient(145deg, #1a1a2e, #1e1e3a);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.detail-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.detail-header .subject { font-size: 1.1rem; color: #e0e0f0; font-weight: 600; margin-bottom: 8px; }
+.detail-header .meta { font-size: 0.75rem; color: #666; display: flex; gap: 16px; flex-wrap: wrap; }
+.detail-header .meta span { display: flex; align-items: center; gap: 4px; }
+.detail-body {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  font-size: 0.85rem;
+  color: #ccc;
+  line-height: 1.7;
+}
+.detail-body .empty-state { text-align: center; padding: 60px 20px; color: #555; }
+.detail-actions {
+  padding: 10px 20px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  gap: 6px;
+}
+.detail-actions .btn {
+  padding: 6px 14px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px;
+  background: rgba(255,255,255,0.04);
+  color: #aaa;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-family: inherit;
+  transition: 0.1s;
+}
+.detail-actions .btn:hover { border-color: #00d9ff; color: #00d9ff; }
+.detail-actions .btn-danger:hover { border-color: #f87171; color: #f87171; }
+/* Compose modal */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: none;
+  align-items: flex-end;
+  justify-content: flex-end;
+  z-index: 100;
+}
+.modal-overlay.open { display: flex; }
+.compose-modal {
+  width: 500px;
+  max-width: 100%;
+  height: 550px;
+  background: #1a1a2e;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px 0 0 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  margin-right: 20px;
+  margin-bottom: 20px;
+  box-shadow: -4px 0 20px rgba(0,0,0,0.3);
+}
+.compose-modal h2 { color: #00d9ff; font-size: 1rem; margin-bottom: 12px; }
+.compose-modal label { font-size: 0.7rem; color: #666; margin-bottom: 2px; margin-top: 6px; display: block; }
+.compose-modal input, .compose-modal textarea {
+  width: 100%;
+  padding: 8px 12px;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  color: #ccc;
+  font-size: 0.85rem;
+  font-family: inherit;
+  outline: none;
+}
+.compose-modal textarea { flex: 1; resize: none; }
+.compose-modal input:focus, .compose-modal textarea:focus { border-color: #00d9ff; }
+.compose-modal .modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+.btn-primary { padding: 8px 20px; border: none; border-radius: 8px; background: linear-gradient(135deg,#00d9ff,#0099ff); color: #0f0f1a; font-weight: 600; cursor: pointer; font-family: inherit; }
+.btn-primary:hover { box-shadow: 0 2px 10px rgba(0,217,255,0.3); }
+.btn-secondary { padding: 8px 20px; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; background: transparent; color: #aaa; cursor: pointer; font-family: inherit; }
+.btn-secondary:hover { background: rgba(255,255,255,0.04); }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>📧 Email Client</h1>
+  <p class="subtitle">A fully functional email client</p>
+  <div class="layout">
+    <div class="sidebar">
+      <button class="compose-btn" onclick="openCompose()">✏️ Compose</button>
+      <div class="nav-list">
+        <div class="nav-item active" data-folder="inbox" onclick="switchFolder('inbox')">📥 Inbox <span class="badge" id="inboxCount">0</span></div>
+        <div class="nav-item" data-folder="sent" onclick="switchFolder('sent')">📤 Sent</div>
+        <div class="nav-item" data-folder="starred" onclick="switchFolder('starred')">⭐ Starred</div>
+        <div class="nav-item" data-folder="drafts" onclick="switchFolder('drafts')">📝 Drafts</div>
+        <div class="nav-item" data-folder="trash" onclick="switchFolder('trash')">🗑️ Trash</div>
+      </div>
+      <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:8px;margin-top:auto">
+        <div class="nav-item" style="font-size:0.7rem;color:#555;cursor:default">user@example.com</div>
+      </div>
+    </div>
+    <div class="list-panel">
+      <div class="list-header">
+        <div class="list-title" id="folderTitle">Inbox</div>
+        <div class="list-count" id="folderCount">0 emails</div>
+      </div>
+      <div class="list-search">
+        <input id="searchInput" placeholder="🔍 Search emails..." oninput="renderList()">
+      </div>
+      <div class="email-list" id="emailList"></div>
+    </div>
+    <div class="detail-panel">
+      <div id="emailDetail" style="display:flex;flex-direction:column;height:100%">
+        <div class="detail-header" id="detHeader" style="display:none">
+          <div class="subject" id="detSubject"></div>
+          <div class="meta"><span>👤 <span id="detFrom"></span></span><span>📅 <span id="detDate"></span></span><span>📁 <span id="detFolder"></span></span></div>
+        </div>
+        <div class="detail-body" id="detBody">
+          <div class="empty-state">📧 Select an email to read</div>
+        </div>
+        <div class="detail-actions" id="detActions" style="display:none">
+          <button class="btn" onclick="starEmail()">⭐ Star</button>
+          <button class="btn" onclick="replyEmail()">↩ Reply</button>
+          <button class="btn btn-danger" onclick="deleteEmail()">🗑️ Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="composeOverlay">
+  <div class="compose-modal">
+    <h2>✏️ New Message</h2>
+    <label>To</label>
+    <input id="composeTo" placeholder="recipient@example.com">
+    <label>Subject</label>
+    <input id="composeSubject" placeholder="Subject">
+    <label>Message</label>
+    <textarea id="composeBody" placeholder="Write your message..."></textarea>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeCompose()">Discard</button>
+      <button class="btn-primary" onclick="sendEmail()">Send ✈️</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let emails = [];
+let currentFolder = 'inbox';
+let currentEmailId = null;
+
+const SAMPLE_CONTACTS = ['alice@example.com', 'bob@company.com', 'carol@domain.org', 'dan@startup.io', 'eve@design.studio'];
+
+const SAMPLE_TEXTS = [
+  'Hey there,\n\nJust following up on our meeting last week. I think we should move forward with the proposal.\n\nLet me know your thoughts.\n\nBest,\nAlex',
+  'Hi,\n\nPlease find attached the quarterly report. Revenue is up 23% compared to last year.\n\nLet me know if you have any questions.\n\nCheers,\nSam',
+  'Hello team,\n\nReminder: The sprint review is scheduled for Friday at 3 PM. Please have your demos ready.\n\nThanks,\nManager',
+  'Hey,\n\nThanks for your application! We\'d like to invite you for an interview next Tuesday.\n\nPlease confirm your availability.\n\nBest,\nHR Team',
+  'Hi there,\n\nYour account statement for March is now available. You can view it in your dashboard.\n\nThank you for being a customer!\n\nSupport Team',
+  'Dear user,\n\nWe detected unusual activity on your account. Please verify your credentials immediately.\n\nSecurity Team\n\n(This is a simulated phishing email example)',
+  'Hey!\n\nAre you free for lunch this Saturday? There\'s a new restaurant downtown I\'ve been wanting to try.\n\nLet me know!\n\nFriend',
+  'Welcome to our platform! We\'re excited to have you on board.\n\nGet started by completing your profile.\n\nThe Team'
+];
+
+function generateId() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+function loadData() {
+  try {
+    const d = localStorage.getItem('ec-data');
+    if (d) { emails = JSON.parse(d); return; }
+  } catch {}
+  
+  // Generate sample data
+  const now = Date.now();
+  emails = [];
+  const subjects = ['Q3 Proposal Review', 'Weekly Standup Notes', 'Invoice Attached', 'Sprint Planning Tomorrow', 'Updated Roadmap', 'Coffee Next Week?', 'Design Feedback', 'System Maintenance Tonight', 'New Hire Onboarding', 'Budget Approval Needed'];
+  const senders = ['alice@example.com', 'bob@company.com', 'carol@domain.org', 'dan@startup.io', 'eve@design.studio', 'frank@corp.net', 'grace@agency.com', 'hr@company.com', 'support@service.com', 'noreply@updates.com'];
+  
+  for (let i = 0; i < 15; i++) {
+    const isUnread = i < 5;
+    const date = new Date(now - i * 3600000 * (Math.random() * 24 + 1));
+    emails.push({
+      id: generateId(),
+      from: senders[i % senders.length],
+      to: 'user@example.com',
+      subject: subjects[i % subjects.length],
+      body: SAMPLE_TEXTS[i % SAMPLE_TEXTS.length],
+      date: date.toISOString(),
+      read: !isUnread,
+      starred: i === 3 || i === 7,
+      folder: 'inbox'
+    });
+  }
+  // Some sent
+  for (let i = 0; i < 4; i++) {
+    emails.push({
+      id: generateId(),
+      from: 'user@example.com',
+      to: SAMPLE_CONTACTS[i],
+      subject: 'Re: ' + subjects[i],
+      body: 'Thanks for the update! I\'ll review and get back to you.\n\nBest,\nUser',
+      date: new Date(now - (i+1) * 72000000).toISOString(),
+      read: true,
+      starred: false,
+      folder: 'sent'
+    });
+  }
+  saveData();
+}
+
+function saveData() { localStorage.setItem('ec-data', JSON.stringify(emails)); }
+
+function getFolderEmails() {
+  let filtered = emails.filter(e => e.folder === currentFolder);
+  if (currentFolder === 'starred') filtered = emails.filter(e => e.starred);
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  if (search) filtered = filtered.filter(e => 
+    e.subject.toLowerCase().includes(search) || e.from.toLowerCase().includes(search) || e.body.toLowerCase().includes(search)
+  );
+  return filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+}
+
+function renderList() {
+  const folderEmails = getFolderEmails();
+  const list = document.getElementById('emailList');
+  const titles = { inbox: '📥 Inbox', sent: '📤 Sent', starred: '⭐ Starred', drafts: '📝 Drafts', trash: '🗑️ Trash' };
+  document.getElementById('folderTitle').textContent = titles[currentFolder] || 'Inbox';
+  document.getElementById('folderCount').textContent = folderEmails.length + ' emails';
+  document.getElementById('inboxCount').textContent = emails.filter(e => e.folder === 'inbox' && !e.read).length;
+  
+  if (folderEmails.length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:30px;color:#555;font-size:0.8rem">No emails in this folder</div>'; return;
+  }
+  
+  list.innerHTML = folderEmails.map(e => {
+    const d = new Date(e.date);
+    const isUnread = !e.read && e.folder === 'inbox';
+    const isActive = e.id === currentEmailId;
+    const time = d.toLocaleDateString('en', { month: 'short', day: 'numeric' });
+    return `<div class="email-item ${isUnread ? 'unread' : ''} ${isActive ? 'active' : ''}" onclick="selectEmail('${e.id}')">
+      <span class="time">${time}</span>
+      <div class="from">${e.starred ? '⭐ ' : ''}${escapeHTML(e.from)}</div>
+      <div class="subject">${escapeHTML(e.subject)}</div>
+      <div class="preview">${escapeHTML(e.body.slice(0, 80))}${e.body.length > 80 ? '...' : ''}</div>
+    </div>`;
+  }).join('');
+}
+
+function selectEmail(id) {
+  currentEmailId = id;
+  const email = emails.find(e => e.id === id);
+  if (!email) return;
+  email.read = true;
+  saveData();
+  renderList();
+  renderDetail(email);
+}
+
+function renderDetail(email) {
+  const header = document.getElementById('detHeader');
+  const body = document.getElementById('detBody');
+  const actions = document.getElementById('detActions');
+  header.style.display = 'block';
+  actions.style.display = 'flex';
+  document.getElementById('detSubject').textContent = email.subject;
+  document.getElementById('detFrom').textContent = email.from;
+  document.getElementById('detDate').textContent = new Date(email.date).toLocaleString();
+  document.getElementById('detFolder').textContent = email.folder;
+  body.innerHTML = email.body.replace(/\n/g, '<br>');
+}
+
+function switchFolder(folder) {
+  currentFolder = folder;
+  currentEmailId = null;
+  document.getElementById('detHeader').style.display = 'none';
+  document.getElementById('detActions').style.display = 'none';
+  document.getElementById('detBody').innerHTML = '<div class="empty-state">📧 Select an email to read</div>';
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.folder === folder));
+  renderList();
+}
+
+function openCompose() {
+  document.getElementById('composeTo').value = '';
+  document.getElementById('composeSubject').value = '';
+  document.getElementById('composeBody').value = '';
+  document.getElementById('composeOverlay').classList.add('open');
+}
+
+function closeCompose() { document.getElementById('composeOverlay').classList.remove('open'); }
+
+function sendEmail() {
+  const to = document.getElementById('composeTo').value.trim();
+  const subject = document.getElementById('composeSubject').value.trim();
+  const body = document.getElementById('composeBody').value.trim();
+  if (!to || !subject) { alert('Please fill in recipient and subject'); return; }
+  emails.unshift({
+    id: generateId(),
+    from: 'user@example.com',
+    to, subject, body,
+    date: new Date().toISOString(),
+    read: true, starred: false,
+    folder: 'sent'
+  });
+  saveData();
+  closeCompose();
+  if (currentFolder === 'sent') renderList();
+}
+
+function starEmail() {
+  const email = emails.find(e => e.id === currentEmailId);
+  if (!email) return;
+  email.starred = !email.starred;
+  saveData();
+  renderDetail(email);
+  renderList();
+}
+
+function replyEmail() {
+  const email = emails.find(e => e.id === currentEmailId);
+  if (!email) return;
+  document.getElementById('composeTo').value = email.from;
+  document.getElementById('composeSubject').value = 'Re: ' + email.subject;
+  document.getElementById('composeBody').value = '\n\n---\n' + email.body;
+  document.getElementById('composeOverlay').classList.add('open');
+}
+
+function deleteEmail() {
+  const email = emails.find(e => e.id === currentEmailId);
+  if (!email) return;
+  if (email.folder === 'trash') {
+    if (!confirm('Permanently delete this email?')) return;
+    emails = emails.filter(e => e.id !== currentEmailId);
+  } else {
+    email.folder = 'trash';
+  }
+  saveData();
+  currentEmailId = null;
+  document.getElementById('detHeader').style.display = 'none';
+  document.getElementById('detActions').style.display = 'none';
+  document.getElementById('detBody').innerHTML = '<div class="empty-state">📧 Email deleted</div>';
+  renderList();
+}
+
+function escapeHTML(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
+
+loadData();
+renderList();
+</script>
+</body>
+</html>

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grocery List Price Optimizer</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; color: #e6edf3; background: #0d1117; }
+  h1 { font-size: 1.4rem; }
+  table { width: 100%; border-collapse: collapse; margin: .5rem 0; }
+  th, td { border: 1px solid #30363d; padding: .35rem .5rem; text-align: left; font-size: .9rem; }
+  input, select { padding: .4rem; margin: .2rem .3rem .2rem 0; background: #161b22; color: #e6edf3; border: 1px solid #30363d; border-radius: 6px; }
+  button { padding: .4rem .9rem; background: #2ea043; color: #fff; border: 0; border-radius: 6px; cursor: pointer; }
+  .best { background: #1a3a22; }
+  .muted { color: #8b949e; font-size: .85rem; }
+</style>
+</head>
+<body>
+<h1>🛒 Grocery List Price Optimizer</h1>
+<p class="muted">Scaffold (batch 2). Enter your basket and per-store prices — get the cheapest store.</p>
+
+<div>
+  <input id="itemName" placeholder="Item (e.g. milk)">
+  <button id="addItem">Add item</button>
+</div>
+
+<h2>Prices by store</h2>
+<table>
+  <thead><tr><th>Item</th><th id="storeTh"></th></tr></thead>
+  <tbody id="priceRows"></tbody>
+</table>
+<button id="optimize">Find cheapest store</button>
+<p id="result" class="muted"></p>
+
+<script>
+const STORES = ['Walmart', 'Kroger', 'Safeway', 'Target'];
+const state = JSON.parse(localStorage.getItem('gpo') || '{"items":[],"prices":{}}');
+function save() { localStorage.setItem('gpo', JSON.stringify(state)); }
+
+document.getElementById('storeTh').textContent = STORES.join(' · ');
+
+function renderPrices() {
+  const tb = document.getElementById('priceRows');
+  tb.innerHTML = state.items.map(item => {
+    const cells = STORES.map(store => {
+      const v = (state.prices[item] || {})[store] ?? '';
+      return `<td><input class="p" data-item="${item}" data-store="${store}" value="${v}" type="number" step="0.01" min="0" placeholder="—"></td>`;
+    }).join('');
+    return `<tr data-item="${item}"><td>${item}</td>${cells}</tr>`;
+  }).join('');
+  tb.querySelectorAll('.p').forEach(inp => inp.onchange = () => {
+    const val = parseFloat(inp.value);
+    if (!isNaN(val)) { (state.prices[inp.dataset.item] = state.prices[inp.dataset.item] || {})[inp.dataset.store] = val; save(); }
+  });
+}
+
+document.getElementById('addItem').onclick = () => {
+  const name = document.getElementById('itemName').value.trim();
+  if (name && !state.items.includes(name)) { state.items.push(name); save(); document.getElementById('itemName').value = ''; renderPrices(); }
+};
+
+document.getElementById('optimize').onclick = () => {
+  const totals = STORES.map(store => {
+    let sum = 0, count = 0;
+    for (const item of state.items) { const p = (state.prices[item] || {})[store]; if (p) { sum += p; count++; } }
+    return { store, sum, count };
+  });
+  const filled = totals.filter(t => t.count > 0).sort((a, b) => a.sum - b.sum);
+  const result = document.getElementById('result');
+  if (!filled.length) { result.textContent = 'Enter at least one price first.'; return; }
+  const best = filled[0];
+  result.textContent = `Cheapest single store: ${best.store} ($${best.sum.toFixed(2)} for ${best.count} items).` +
+    (filled.length > 1 ? ` Next: ${filled[1].store} ($${filled[1].sum.toFixed(2)}).` : '');
+  // TODO: per-item split-trip optimizer + route ordering
+  renderPrices();
+};
+
+renderPrices();
+</script>
+</body>
+</html>

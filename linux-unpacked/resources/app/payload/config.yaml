@@ -1,0 +1,115 @@
+jarvis:
+  name: Jarvis
+  wake_words:
+  - hey jarvis
+  - jarvis
+  - ok jarvis
+  listen_timeout: 5
+  phrase_time_limit: 10
+llm:
+  model: gemma4:12b
+  use_gpu: true
+  n_gpu_layers: -1
+  n_ctx: 8192
+  options:
+    temperature: 0.7
+    num_predict: 2048
+voice:
+  stt_engine: google
+  tts_backend: pyttsx3
+  tts_rate: 180
+  tts_volume: 1.0
+  tts_voice_index: 32
+  tts_voice_id: en-US-GuyNeural
+  tts_pitch: 1.0
+  per_backend:
+    pyttsx3:
+      rate: 180
+      volume: 1.0
+      voice_index: 32
+    edge-tts:
+      rate: 180
+      volume: 1.0
+      voice_id: en-US-GuyNeural
+      pitch: 1.0
+    piper:
+      rate: 180
+      volume: 1.0
+      voice_id: ''
+      pitch: 1.0
+  vad_mode: 1
+  silence_ms: 700
+  ambient_duration: 1.0
+emotion:
+  enabled: true
+  analyzer: plutchik
+  sliders:
+    empathy_level: 0.6
+    expressiveness: 0.5
+    formality: 0.7
+    proactiveness: 0.4
+    warmth: 0.6
+  history_days: 30
+  adapt_tts: true
+  adapt_verbosity: true
+  show_top_emotions: 5
+  temperature: 0.8
+learning:
+  enabled: true
+  auto_suggest: true
+  max_datasheets: 500
+  pattern_min_occurrences: 3
+  embeddings:
+    enabled: true
+    model: nomic-embed-text
+rules:
+  enabled: true
+  max_active_rules: 100
+permissions:
+  enabled: true
+  sensitive_always_ask: true
+  session_trust: true
+ipc:
+  enabled: false
+  socket_path: /tmp/jarvis.sock
+skills:
+  enabled: true
+  auto_discover: true
+vision:
+  screenshot_format: PNG
+  max_size: 1920
+  temp_dir: /tmp/jarvis
+skill_writer:
+  enabled: true
+  min_tool_calls: 5
+  check_interval: 3
+scheduler:
+  enabled: true
+  check_interval_seconds: 30
+memory_consolidation:
+  enabled: true
+  working_memory_cap: 2000
+  consolidation_interval: 10
+vram:
+  enabled: true
+  auto_unload_secondary: true
+  reload_primary_after_secondary: true
+  unload_vision_after_use: true
+  min_vram_for_primary_gb: 4
+  idle_timeout_seconds: 60
+  gpu_device_vision: 1
+  gpu_device_stt: 1
+  gpu_device_secondary: 1
+  enable_dual_gpu: true
+sub_agents:
+  enabled: true
+  max_parallel: 5
+  default_timeout: 60
+recording:
+  enabled: true
+  frame_interval: 0.5
+  max_frames: 3600
+  ocr_enabled: true
+  vision_analysis: true
+  recipes_dir: training_recipes
+data_dir: data

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html><head><title>Unit Converter</title><style>
+body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#1a1a2e;color:#fff}
+.conv{width:360px;text-align:center}
+h1{color:#00d9ff;margin-bottom:16px}
+.cat{display:flex;gap:4px;margin-bottom:12px;justify-content:center}
+.cat button{padding:6px 12px;background:#252542;border:1px solid #4a4a6a;color:#aaa;cursor:pointer;font-size:11px;font-weight:600}
+.cat button:hover,.cat button.active{border-color:#00d9ff;color:#00d9ff}
+.converter{background:#252542;border:1px solid #4a4a6a;padding:16px}
+.row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.row input{flex:1;padding:8px;background:#0f0f1a;border:1px solid #4a4a6a;color:#fff;font-size:16px;text-align:right;font-family:monospace}
+.row select{padding:8px;background:#1a1a2e;border:1px solid #4a4a6a;color:#fff;font-size:12px}
+.swap-btn{padding:6px 10px;background:none;border:1px solid #4a4a6a;color:#aaa;cursor:pointer;font-size:14px;margin:0 auto;display:block}
+.swap-btn:hover{border-color:#00d9ff;color:#00d9ff}
+.formula{font-size:12px;color:#555;margin-top:8px}
+</style></head><body>
+<div class="conv"><h1>⎔ Unit Converter</h1>
+<div class="cat" id="cats"></div>
+<div class="converter">
+<div class="row"><input id="val1" type="number" value="1" oninput="convert()"/><select id="unit1" onchange="convert()"></select></div>
+<button class="swap-btn" onclick="swap()">⇅</button>
+<div class="row"><input id="val2" type="number" value="" oninput="convertRev()"/><select id="unit2" onchange="convert()"></select></div>
+<div class="formula" id="formula"></div>
+</div></div>
+<script>
+const cats={Length:{m:1,cm:0.01,mm:0.001,km:1000,in:0.0254,ft:0.3048,yd:0.9144,mi:1609.34},
+Mass:{kg:1,g:0.001,mg:1e-6,lb:0.453592,oz:0.0283495,t:1000},
+Temp:{C:['C',1,0],F:['F',5/9,-32*5/9],K:['K',1,-273.15]},
+Speed:{'m/s':1,'km/h':0.277778,'mph':0.44704,kn:0.514444},
+Volume:{L:1,mL:0.001,gal:3.78541,qt:0.946353,cup:0.236588,floz:0.0295735}}
+let curCat='Length'
+function render(){const c=document.getElementById('cats');c.innerHTML=''
+Object.keys(cats).forEach(k=>{const b=document.createElement('button');b.textContent=k
+b.className=k===curCat?'active':'';b.onclick=()=>{curCat=k;render();convert()};c.appendChild(b)})
+const units=Object.keys(cats[curCat]);const s1=document.getElementById('unit1');const s2=document.getElementById('unit2')
+s1.innerHTML='';s2.innerHTML='';units.forEach(u=>{s1.innerHTML+=`<option value="${u}">${u}</option>`;s2.innerHTML+=`<option value="${u}">${u}</option>`})
+s2.selectedIndex=Math.min(1,units.length-1);convert()}
+function getVal(v,u){const cat=cats[curCat];if(curCat==='Temp'){const[t,m,b]=cat[u];return v*m+b}
+return v*cat[u]}
+function fromVal(v,u){const cat=cats[curCat];if(curCat==='Temp'){const[t,m,b]=cat[u];return(v-b)/m}
+return v/cat[u]}
+function convert(){const u1=document.getElementById('unit1').value;const u2=document.getElementById('unit2').value
+const v=parseFloat(document.getElementById('val1').value)||0
+const base=getVal(v,u1);document.getElementById('val2').value=fromVal(base,u2).toFixed(6).replace(/\.?0+$/,'')
+document.getElementById('formula').textContent=`${v} ${u1} = ${document.getElementById('val2').value} ${u2}`}
+function convertRev(){const u1=document.getElementById('unit1').value;const u2=document.getElementById('unit2').value
+const v=parseFloat(document.getElementById('val2').value)||0;const base=getVal(v,u2)
+document.getElementById('val1').value=fromVal(base,u1).toFixed(6).replace(/\.?0+$/,'')}
+function swap(){const s1=document.getElementById('unit1');const s2=document.getElementById('unit2')
+const t=s1.value;s1.value=s2.value;s2.value=t;convert()}
+render()
+</script></body></html>

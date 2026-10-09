@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Photo Studio Pro</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#ccc;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+header{display:flex;align-items:center;padding:4px 10px;background:#12121e;border-bottom:1px solid rgba(255,255,255,0.06);gap:6px;flex-shrink:0;font-size:0.65rem}
+header h1{color:#00d9ff;font-size:0.85rem}header h1 small{color:#555;font-size:0.5rem;font-weight:400}
+.toolbar{display:flex;gap:2px}
+.toolbar button{padding:4px 8px;border:1px solid rgba(255,255,255,0.06);border-radius:3px;background:transparent;color:#888;cursor:pointer;font-size:0.5rem;font-family:inherit;transition:0.1s}
+.toolbar button:hover{border-color:#00d9ff;color:#ccc}
+.toolbar button.primary{background:rgba(0,217,255,0.1);border-color:rgba(0,217,255,0.2);color:#00d9ff}
+.main{flex:1;display:flex;overflow:hidden}
+.canvas-wrap{flex:1;display:flex;align-items:center;justify-content:center;background:#080810;position:relative}
+#photoCanvas{max-width:100%;max-height:100%;cursor:crosshair;image-rendering:auto}
+.sidebar{width:230px;background:#12121e;border-left:1px solid rgba(255,255,255,0.06);overflow-y:auto;flex-shrink:0;padding:10px;font-size:0.6rem}
+.sidebar h3{font-size:0.65rem;color:#888;margin-bottom:4px;margin-top:10px;text-transform:uppercase;letter-spacing:0.3px}
+.sidebar h3:first-child{margin-top:0}
+.slider-row{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.slider-row label{min-width:50px;color:#666;font-size:0.5rem}
+.slider-row input[type=range]{flex:1;accent-color:#00d9ff;height:4px}
+.slider-row .val{min-width:24px;text-align:right;color:#00d9ff;font-size:0.5rem}
+.btn-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;margin-bottom:6px}
+.btn-grid button{padding:4px;border:1px solid rgba(255,255,255,0.06);border-radius:3px;background:rgba(255,255,255,0.03);color:#888;cursor:pointer;font-size:0.45rem;font-family:inherit;transition:0.1s}
+.btn-grid button:hover{border-color:#00d9ff;color:#ccc}
+#histogramCanvas{width:100%;height:80px;border-radius:4px;background:rgba(0,0,0,0.3);margin-top:6px}
+</style>
+</head>
+<body>
+<header>
+  <h1>📸 Photo Studio Pro <small>Adjustments · Filters · Histogram</small></h1>
+  <div class="toolbar">
+    <button onclick="loadImage()">📂 Open</button>
+    <button class="primary" onclick="exportImage()">💾 Export</button>
+    <button onclick="resetImage()">↩ Reset</button>
+    <button onclick="toggleHistogram()">📊 Histogram</button>
+  </div>
+</header>
+<div class="main">
+  <div class="canvas-wrap">
+    <canvas id="photoCanvas" width="800" height="600"></canvas>
+  </div>
+  <div class="sidebar">
+    <h3>🎨 Adjust</h3>
+    <div class="slider-row"><label>Brightness</label><input type="range" min="-100" max="100" value="0" id="adjBrightness" oninput="applyAdjustments()"><span class="val" id="adjBrightnessVal">0</span></div>
+    <div class="slider-row"><label>Contrast</label><input type="range" min="-100" max="100" value="0" id="adjContrast" oninput="applyAdjustments()"><span class="val" id="adjContrastVal">0</span></div>
+    <div class="slider-row"><label>Saturation</label><input type="range" min="-100" max="100" value="0" id="adjSaturation" oninput="applyAdjustments()"><span class="val" id="adjSaturationVal">0</span></div>
+    <div class="slider-row"><label>Exposure</label><input type="range" min="-100" max="100" value="0" id="adjExposure" oninput="applyAdjustments()"><span class="val" id="adjExposureVal">0</span></div>
+    <div class="slider-row"><label>Vibrance</label><input type="range" min="-100" max="100" value="0" id="adjVibrance" oninput="applyAdjustments()"><span class="val" id="adjVibranceVal">0</span></div>
+    <div class="slider-row"><label>Blur</label><input type="range" min="0" max="10" value="0" id="adjBlur" oninput="applyAdjustments()"><span class="val" id="adjBlurVal">0</span></div>
+    <h3>🎛️ Filters</h3>
+    <div class="btn-grid">
+      <button onclick="applyFilter('grayscale')">Grayscale</button>
+      <button onclick="applyFilter('sepia')">Sepia</button>
+      <button onclick="applyFilter('invert')">Invert</button>
+      <button onclick="applyFilter('vintage')">Vintage</button>
+      <button onclick="applyFilter('cool')">Cool</button>
+      <button onclick="applyFilter('warm')">Warm</button>
+      <button onclick="applyFilter('sharpen')">Sharpen</button>
+      <button onclick="applyFilter('emboss')">Emboss</button>
+      <button onclick="applyFilter('pixelate')">Pixelate</button>
+      <button onclick="applyFilter('edge')">Edges</button>
+      <button onclick="applyFilter('noise')">Noise</button>
+      <button onclick="applyFilter('oil')">Oil</button>
+    </div>
+    <h3>📊 Histogram</h3>
+    <canvas id="histogramCanvas" width="210" height="80"></canvas>
+  </div>
+</div>
+
+<script>
+const canvas=document.getElementById('photoCanvas'),ctx=canvas.getContext('2d');
+const hCanvas=document.getElementById('histogramCanvas'),hCtx=hCanvas.getContext('2d');
+let originalData=null,currentData=null;
+let adjustments={brightness:0,contrast:0,saturation:0,exposure:0,vibrance:0,blur:0};
+let showHistogram=true;
+
+// Generate demo image with gradients and shapes
+function generateDemo(){
+  canvas.width=800;canvas.height=600;
+  const w=canvas.width,h=canvas.height;
+  
+  // Colorful gradient background
+  const grad=ctx.createLinearGradient(0,0,w,h);
+  grad.addColorStop(0,'#ff6b6b');grad.addColorStop(0.25,'#ffd93d');
+  grad.addColorStop(0.5,'#6bcb77');grad.addColorStop(0.75,'#4d96ff');
+  grad.addColorStop(1,'#9b59b6');
+  ctx.fillStyle=grad;ctx.fillRect(0,0,w,h);
+  
+  // Circles
+  for(let i=0;i<20;i++){
+    ctx.beginPath();
+    ctx.arc(Math.random()*w,Math.random()*h,20+Math.random()*60,0,Math.PI*2);
+    ctx.fillStyle=`hsla(${Math.random()*360},70%,60%,0.4)`;
+    ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,0.1)';ctx.lineWidth=2;ctx.stroke();
+  }
+  
+  // Grid pattern
+  ctx.strokeStyle='rgba(255,255,255,0.05)';ctx.lineWidth=1;
+  for(let x=0;x<w;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke()}
+  for(let y=0;y<h;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke()}
+  
+  // Text
+  ctx.fillStyle='rgba(255,255,255,0.7)';
+  ctx.font='bold 48px Arial';ctx.textAlign='center';
+  ctx.fillText('📸 Photo Studio',w/2,h/2-20);
+  ctx.font='20px Arial';ctx.fillStyle='rgba(255,255,255,0.4)';
+  ctx.fillText('Adjust, Filter, Export',w/2,h/2+30);
+  
+  originalData=ctx.getImageData(0,0,w,h);
+  currentData=new Uint8ClampedArray(originalData.data);
+  renderImage();
+  drawHistogram();
+}
+
+function renderImage(){
+  if(!originalData)return;const w=canvas.width,h=canvas.height;
+  const imgData=new ImageData(new Uint8ClampedArray(currentData||originalData.data),w,h);
+  ctx.putImageData(imgData,0,0);
+  drawHistogram();
+}
+
+function applyAdjustments(){
+  if(!originalData)return;
+  const w=canvas.width,h=canvas.height;
+  const data=new Uint8ClampedArray(originalData.data);
+  const a=adjustments;
+  a.brightness=parseInt(document.getElementById('adjBrightness').value);
+  a.contrast=parseInt(document.getElementById('adjContrast').value);
+  a.saturation=parseInt(document.getElementById('adjSaturation').value);
+  a.exposure=parseInt(document.getElementById('adjExposure').value);
+  a.vibrance=parseInt(document.getElementById('adjVibrance').value);
+  a.blur=parseInt(document.getElementById('adjBlur').value);
+  
+  document.getElementById('adjBrightnessVal').textContent=a.brightness;
+  document.getElementById('adjContrastVal').textContent=a.contrast;
+  document.getElementById('adjSaturationVal').textContent=a.saturation;
+  document.getElementById('adjExposureVal').textContent=a.exposure;
+  document.getElementById('adjVibranceVal').textContent=a.vibrance;
+  document.getElementById('adjBlurVal').textContent=a.blur;
+  
+  for(let i=0;i<data.length;i+=4){
+    let r=data[i],g=data[i+1],b=data[i+2];
+    
+    // Brightness
+    r+=a.brightness*2.55;g+=a.brightness*2.55;b+=a.brightness*2.55;
+    
+    // Contrast
+    const cf=(100+a.contrast)/100;
+    r=(r-128)*cf+128;g=(g-128)*cf+128;b=(b-128)*cf+128;
+    
+    // Exposure
+    const ef=Math.pow(2,a.exposure/50);
+    r*=ef;g*=ef;b*=ef;
+    
+    // Saturation
+    const gray=0.299*r+0.587*g+0.114*b;
+    const sf=(100+a.saturation)/100;
+    r=gray+(r-gray)*sf;g=gray+(g-gray)*sf;b=gray+(b-gray)*sf;
+    
+    // Vibrance
+    if(a.vibrance!==0){
+      const max=Math.max(r,g,b);const min=Math.min(r,g,b);
+      const sat=max-min;const vf=1+a.vibrance/200;
+      if(sat<50){
+        r=gray+(r-gray)*vf;g=gray+(g-gray)*vf;b=gray+(b-gray)*vf;
+      }
+    }
+    
+    data[i]=Math.min(255,Math.max(0,r));
+    data[i+1]=Math.min(255,Math.max(0,g));
+    data[i+2]=Math.min(255,Math.max(0,b));
+  }
+  
+  // Blur
+  if(a.blur>0){/* simplified - skip complex blur for adjustment live preview */}
+  
+  currentData=data;
+  const imgData=new ImageData(new Uint8ClampedArray(data),w,h);
+  ctx.putImageData(imgData,0,0);
+  drawHistogram();
+}
+
+function applyFilter(type){
+  if(!originalData)return;
+  resetSliders();
+  const w=canvas.width,h=canvas.height;
+  const data=new Uint8ClampedArray(originalData.data);
+  
+  switch(type){
+    case 'grayscale':
+      for(let i=0;i<data.length;i+=4){
+        const g=0.299*data[i]+0.587*data[i+1]+0.114*data[i+2];
+        data[i]=data[i+1]=data[i+2]=g;
+      }
+      break;
+    case 'sepia':
+      for(let i=0;i<data.length;i+=4){
+        const r=data[i],g=data[i+1],b=data[i+2];
+        data[i]=Math.min(255,r*0.393+g*0.769+b*0.189);
+        data[i+1]=Math.min(255,r*0.349+g*0.686+b*0.168);
+        data[i+2]=Math.min(255,r*0.272+g*0.534+b*0.131);
+      }
+      break;
+    case 'invert':
+      for(let i=0;i<data.length;i+=4){data[i]=255-data[i];data[i+1]=255-data[i+1];data[i+2]=255-data[i+2]}
+      break;
+    case 'vintage':
+      for(let i=0;i<data.length;i+=4){
+        const r=data[i],g=data[i+1],b=data[i+2];
+        data[i]=Math.min(255,r*0.8+g*0.2+b*0.1);
+        data[i+1]=Math.min(255,r*0.1+g*0.7+b*0.1);
+        data[i+2]=Math.min(255,r*0.1+g*0.1+b*0.6);
+        data[i]=Math.min(255,data[i]*0.8+40);
+        data[i+1]=Math.min(255,data[i+1]*0.8+20);
+        data[i+2]=Math.min(255,data[i+2]*0.8+10);
+      }
+      break;
+    case 'cool':
+      for(let i=0;i<data.length;i+=4){data[i]*=0.9;data[i+1]*=0.95;data[i+2]=Math.min(255,data[i+2]*1.1+20)}
+      break;
+    case 'warm':
+      for(let i=0;i<data.length;i+=4){data[i]=Math.min(255,data[i]*1.1+20);data[i+1]*=0.95;data[i+2]*=0.9}
+      break;
+    case 'sharpen':{
+      const copy=new Uint8ClampedArray(data);
+      const kernel=[0,-1,0,-1,5,-1,0,-1,0];
+      for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
+        let r=0,g=0,b=0,ki=0;
+        for(let ky=-1;ky<=1;ky++)for(let kx=-1;kx<=1;kx++){
+          const idx=((y+ky)*w+(x+kx))*4;
+          r+=copy[idx]*kernel[ki];g+=copy[idx+1]*kernel[ki];b+=copy[idx+2]*kernel[ki];ki++;
+        }
+        const i=(y*w+x)*4;
+        data[i]=Math.min(255,Math.max(0,r));data[i+1]=Math.min(255,Math.max(0,g));data[i+2]=Math.min(255,Math.max(0,b));
+      }
+      break;
+    }
+    case 'emboss':{
+      const copy=new Uint8ClampedArray(data);
+      for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
+        const i=(y*w+x)*4;
+        data[i]=Math.min(255,Math.max(0,copy[((y+1)*w+x+1)*4]-copy[((y-1)*w+x-1)*4]+128));
+        data[i+1]=Math.min(255,Math.max(0,copy[((y+1)*w+x+1)*4+1]-copy[((y-1)*w+x-1)*4+1]+128));
+        data[i+2]=Math.min(255,Math.max(0,copy[((y+1)*w+x+1)*4+2]-copy[((y-1)*w+x-1)*4+2]+128));
+      }
+      break;
+    }
+    case 'pixelate':{
+      const sz=8;
+      for(let y=0;y<h;y+=sz)for(let x=0;x<w;x+=sz){
+        let r=0,g=0,b=0,c=0;
+        for(let py=0;py<sz&&y+py<h;py++)for(let px=0;px<sz&&x+px<w;px++){const i=((y+py)*w+x+px)*4;r+=data[i];g+=data[i+1];b+=data[i+2];c++}
+        r/=c;g/=c;b/=c;
+        for(let py=0;py<sz&&y+py<h;py++)for(let px=0;px<sz&&x+px<w;px++){const i=((y+py)*w+x+px)*4;data[i]=r;data[i+1]=g;data[i+2]=b}
+      }
+      break;
+    }
+    case 'edge':{
+      const copy=new Uint8ClampedArray(data);
+      for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
+        const sobelX=-copy[((y-1)*w+x-1)*4]-2*copy[(y*w+x-1)*4]-copy[((y+1)*w+x-1)*4]+copy[((y-1)*w+x+1)*4]+2*copy[(y*w+x+1)*4]+copy[((y+1)*w+x+1)*4];
+        const sobelY=-copy[((y-1)*w+x-1)*4]-2*copy[((y-1)*w+x)*4]-copy[((y-1)*w+x+1)*4]+copy[((y+1)*w+x-1)*4]+2*copy[((y+1)*w+x)*4]+copy[((y+1)*w+x+1)*4];
+        const val=Math.min(255,Math.sqrt(sobelX*sobelX+sobelY*sobelY));
+        const i=(y*w+x)*4;data[i]=data[i+1]=data[i+2]=255-val;
+      }
+      break;
+    }
+    case 'noise':
+      for(let i=0;i<data.length;i+=4){
+        const n=Math.random()*40-20;
+        data[i]=Math.min(255,Math.max(0,data[i]+n));
+        data[i+1]=Math.min(255,Math.max(0,data[i+1]+n));
+        data[i+2]=Math.min(255,Math.max(0,data[i+2]+n));
+      }
+      break;
+    case 'oil':{
+      const copy=new Uint8ClampedArray(data);
+      const rad=3;
+      for(let y=rad;y<h-rad;y++)for(let x=rad;x<w-rad;x++){
+        const bins=Array(256).fill(null).map(()=>({r:0,g:0,b:0,c:0}));
+        for(let ky=-rad;ky<=rad;ky++)for(let kx=-rad;kx<=rad;kx++){
+          const idx=((y+ky)*w+(x+kx))*4;
+          const g=Math.round(0.299*copy[idx]+0.587*copy[idx+1]+0.114*copy[idx+2]);
+          bins[g].r+=copy[idx];bins[g].g+=copy[idx+1];bins[g].b+=copy[idx+2];bins[g].c++;
+        }
+        let maxC=0,maxI=0;
+        for(let i=0;i<bins.length;i++){if(bins[i].c>maxC){maxC=bins[i].c;maxI=i}}
+        const i2=(y*w+x)*4;
+        data[i2]=bins[maxI].r/maxC;data[i2+1]=bins[maxI].g/maxC;data[i2+2]=bins[maxI].b/maxC;
+      }
+      break;
+    }
+  }
+  
+  currentData=data;
+  ctx.putImageData(new ImageData(data,w,h),0,0);
+  drawHistogram();
+}
+
+function resetImage(){
+  if(!originalData)return;
+  currentData=new Uint8ClampedArray(originalData.data);
+  resetSliders();
+  ctx.putImageData(new ImageData(originalData.data,canvas.width,canvas.height),0,0);
+  drawHistogram();
+}
+
+function resetSliders(){
+  ['adjBrightness','adjContrast','adjSaturation','adjExposure','adjVibrance','adjBlur'].forEach(id=>{
+    document.getElementById(id).value=0;
+    document.getElementById(id+'Val').textContent='0';
+  });
+  adjustments={brightness:0,contrast:0,saturation:0,exposure:0,vibrance:0,blur:0};
+}
+
+function loadImage(){
+  const input=document.createElement('input');input.type='file';input.accept='image/*';
+  input.onchange=e=>{
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      const img=new Image();
+      img.onload=()=>{
+        canvas.width=Math.min(img.width,800);canvas.height=Math.min(img.height,600);
+        ctx.drawImage(img,0,0,canvas.width,canvas.height);
+        originalData=ctx.getImageData(0,0,canvas.width,canvas.height);
+        currentData=new Uint8ClampedArray(originalData.data);
+        resetSliders();
+        drawHistogram();
+      };
+      img.src=ev.target.result;
+    };
+    reader.readAsDataURL(e.target.files[0]);
+  };
+  input.click();
+}
+
+function exportImage(){
+  const link=document.createElement('a');
+  link.download='photo-edited.png';
+  link.href=canvas.toDataURL('image/png');
+  link.click();
+}
+
+function drawHistogram(){
+  if(!showHistogram||!originalData)return;
+  const w=hCanvas.width,h=hCanvas.height;
+  hCtx.fillStyle='rgba(0,0,0,0.5)';hCtx.fillRect(0,0,w,h);
+  
+  const bins=new Array(256).fill(0);
+  const data=currentData||originalData.data;
+  for(let i=0;i<data.length;i+=4){
+    const b=Math.round(0.299*data[i]+0.587*data[i+1]+0.114*data[i+2]);
+    bins[Math.min(b,255)]++;
+  }
+  
+  const maxBin=Math.max(...bins,1);
+  const barW=w/256;
+  
+  for(let i=0;i<256;i++){
+    const barH=(bins[i]/maxBin)*h;
+    hCtx.fillStyle=`rgb(${i},${i},${i})`;
+    hCtx.fillRect(i*barW,h-barH,Math.max(1,barW),barH);
+  }
+  
+  // R,G,B overlays
+  const rBins=new Array(256).fill(0),gBins=new Array(256).fill(0),bBins=new Array(256).fill(0);
+  for(let i=0;i<data.length;i+=4){
+    rBins[Math.min(data[i],255)]++;gBins[Math.min(data[i+1],255)]++;bBins[Math.min(data[i+2],255)]++;
+  }
+  const mr=Math.max(...rBins,1),mg=Math.max(...gBins,1),mb=Math.max(...bBins,1);
+}
+
+function toggleHistogram(){showHistogram=!showHistogram;document.getElementById('histogramCanvas').style.display=showHistogram?'block':'none'}
+
+generateDemo();
+</script>
+</body>
+</html>

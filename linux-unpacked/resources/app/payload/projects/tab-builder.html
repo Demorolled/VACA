@@ -1,0 +1,105 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Tab Builder</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#ccc;min-height:100vh;padding:12px;display:flex;justify-content:center}.container{max-width:960px;width:100%}h1{color:#00d9ff;font-size:1rem;margin-bottom:2px;text-align:center}p.sub{color:#555;font-size:0.6rem;margin-bottom:8px;text-align:center}.flex{display:flex;gap:10px}.sidebar{width:240px;flex-shrink:0}.main{flex:1}.panel{background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:8px;margin-bottom:6px}.panel-title{color:#888;font-size:0.5rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px}.prop-row{display:flex;align-items:center;gap:6px;margin:3px 0;flex-wrap:wrap}.prop-row label{font-size:0.45rem;color:#555;min-width:60px}.prop-row input[type=color]{width:28px;height:22px;border:none;border-radius:3px;cursor:pointer;padding:0;background:none}.prop-row input[type=color]::-webkit-color-swatch{border:1px solid rgba(255,255,255,0.1);border-radius:3px}.prop-row input[type=number]{width:46px;padding:3px 4px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem;text-align:center;font-family:inherit}.prop-row input[type=text]{flex:1;padding:3px 6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem;font-family:inherit}.prop-row select{flex:1;padding:3px 4px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem;font-family:inherit}.btn{padding:4px 10px;border:1px solid rgba(255,255,255,0.06);border-radius:4px;background:transparent;color:#888;cursor:pointer;font-size:0.5rem;font-family:inherit;transition:0.1s}.btn:hover{border-color:#00d9ff;color:#ccc}.btn.primary{background:rgba(0,217,255,0.08);border-color:rgba(0,217,255,0.2);color:#00d9ff}.preset-btn{padding:3px 8px;border:1px solid rgba(255,255,255,0.04);border-radius:3px;background:transparent;color:#666;cursor:pointer;font-size:0.45rem;font-family:inherit;margin:1px}.preset-btn:hover{border-color:#00d9ff;color:#ccc}.tab-demo{border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:0}.tab-list{display:flex;gap:2px}.tab-list .tab{font-size:0.5rem;padding:6px 16px;cursor:pointer;transition:0.15s;color:var(--tab-color,#888);border-bottom:2px solid transparent;font-family:inherit;background:none;border-top:none;border-left:none;border-right:none}.tab-list .tab:hover{color:#ccc}.tab-list .tab.active{color:var(--tab-active,#00d9ff);border-bottom:2px solid var(--tab-active,#00d9ff)}.tab-panel{font-size:0.5rem;color:#888;padding:16px 4px;line-height:1.6;min-height:80px}.css-out{font-family:'Courier New',monospace;font-size:0.45rem;color:#666;padding:6px;background:rgba(255,255,255,0.02);border-radius:4px;max-height:100px;overflow:auto;white-space:pre-wrap}.val{color:#00d9ff;min-width:18px}</style></head><body><div class="container">
+<h1>📑 Tab Builder</h1><p class="sub">Design tabbed interfaces with customizable styles and CSS export</p>
+<div class="flex">
+<div class="sidebar">
+<div class="panel"><div class="panel-title">Presets</div>
+<button class="preset-btn" onclick="loadPreset('underline')">Underline</button>
+<button class="preset-btn" onclick="loadPreset('pill')">Pill</button>
+<button class="preset-btn" onclick="loadPreset('box')">Box</button>
+<button class="preset-btn" onclick="loadPreset('minimal')">Minimal</button>
+<button class="preset-btn" onclick="loadPreset('bordered')">Bordered</button>
+</div>
+<div class="panel"><div class="panel-title">Tab Labels</div>
+<div id="tabInputs"></div>
+<div class="prop-row"><label>Count</label><select id="tabCount" onchange="rebuildTabInputs()"><option value="3">3</option><option value="4">4</option><option value="5" selected>5</option><option value="6">6</option></select></div>
+</div>
+<div class="panel"><div class="panel-title">Style</div>
+<div class="prop-row"><label>Active Color</label><input type="color" id="tabActive" value="#00d9ff" onchange="renderTabs()"></div>
+<div class="prop-row"><label>Tab Color</label><input type="color" id="tabColor" value="#888" onchange="renderTabs()"></div>
+<div class="prop-row"><label>Active Bg</label><input type="color" id="tabActiveBg" value="rgba(0,217,255,0.08)" onchange="renderTabs()"></div>
+<div class="prop-row"><label>Tab Bg</label><input type="color" id="tabBg" value="transparent" onchange="renderTabs()"></div>
+<div class="prop-row"><label>Border</label><input type="color" id="tabBorder" value="rgba(255,255,255,0.06)" onchange="renderTabs()"></div>
+</div>
+<div class="panel"><button class="btn primary" onclick="copyCSS()" style="width:100%">📋 Copy CSS</button></div>
+</div>
+<div class="main">
+<div class="panel"><div class="panel-title">Preview</div>
+<div class="tab-demo" id="tabDemo"></div>
+<div class="tab-panel" id="tabPanel">Select a tab to see content</div></div>
+<div class="panel"><div class="panel-title">Generated CSS</div><pre class="css-out" id="cssOutput">/* Tabs CSS */</pre></div></div></div>
+<script>
+let activeTab=0;
+
+function rebuildTabInputs(){
+  const count=parseInt(document.getElementById('tabCount').value);
+  const defaultTabs=['Overview','Features','Pricing','FAQ','Contact','Support'];
+  const inputs=document.getElementById('tabInputs');
+  inputs.innerHTML=Array.from({length:count},(_,i)=>`<div class="prop-row"><label>Tab ${i+1}</label><input type="text" value="${defaultTabs[i]||'Tab '+(i+1)}" onchange="renderTabs()" style="flex:1;padding:3px 6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem;font-family:inherit"></div>`).join('');
+  if(activeTab>=count)activeTab=0;
+  renderTabs();
+  saveToStorage();
+}
+
+function renderTabs(){
+  const active=document.getElementById('tabActive').value;
+  const color=document.getElementById('tabColor').value;
+  const activeBg=document.getElementById('tabActiveBg').value;
+  const tabBg=document.getElementById('tabBg').value;
+  const border=document.getElementById('tabBorder').value;
+  const demo=document.getElementById('tabDemo');
+  const labels=document.querySelectorAll('#tabInputs .prop-row input');
+  const content=['Overview section with key features and highlights.','Detailed features listing with descriptions and specifications.','Pricing plans and subscription options.','Frequently asked questions and answers.','Contact information and support channels.','Additional help and resources.'];
+  let html=`<div class="tab-list" style="background:${tabBg};border-bottom:1px solid ${border}">`;
+  labels.forEach((inp,i)=>{
+    const isActive=i===activeTab;const label=inp.value||`Tab ${i+1}`;
+    html+=`<button class="tab${isActive?' active':''}" style="${isActive?`color:${active};border-bottom-color:${active};background:${activeBg}`:`color:${color};background:${tabBg}`}" onclick="activeTab=${i};renderTabs()">${escapeHTML(label)}</button>`;
+  });
+  html+=`</div>`;
+  demo.innerHTML=html;
+  document.getElementById('tabPanel').textContent=content[activeTab]||'Select a tab';
+  updateCSS();
+  saveToStorage();
+}
+
+function updateCSS(){
+  const active=document.getElementById('tabActive').value;
+  const color=document.getElementById('tabColor').value;
+  const activeBg=document.getElementById('tabActiveBg').value;
+  const tabBg=document.getElementById('tabBg').value;
+  const border=document.getElementById('tabBorder').value;
+  document.getElementById('cssOutput').textContent=
+`.tabs {\n  display: flex;\n  gap: 2px;\n  border-bottom: 1px solid ${border};\n  background: ${tabBg};\n}\n\n.tab {\n  padding: 8px 16px;\n  cursor: pointer;\n  font-size: 0.875rem;\n  color: ${color};\n  border: none;\n  background: none;\n  font-family: inherit;\n  border-bottom: 2px solid transparent;\n  transition: all 0.15s ease;\n}\n\n.tab:hover {\n  color: #ccc;\n}\n\n.tab.active {\n  color: ${active};\n  border-bottom-color: ${active};\n  background: ${activeBg};\n}\n\n.tab-content {\n  padding: 16px 4px;\n  color: #888;\n  line-height: 1.6;\n}`;
+}
+
+function copyCSS(){navigator.clipboard.writeText(document.getElementById('cssOutput').textContent).then(()=>showToast('CSS copied!'))}
+function showToast(m){const t=document.createElement('div');t.textContent=m;Object.assign(t.style,{position:'fixed',bottom:20,left:'50%',transform:'translateX(-50%)',background:'rgba(0,217,255,0.15)',color:'#00d9ff',padding:'6px 16px',borderRadius:'4px',fontSize:'0.55rem',zIndex:999,transition:'opacity 0.2s',border:'1px solid rgba(0,217,255,0.2)'});document.body.appendChild(t);setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),300)},2000)}
+function escapeHTML(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+function loadPreset(name){
+  const presets={
+    underline:{tabActive:'#00d9ff',tabColor:'#888',tabActiveBg:'transparent',tabBg:'transparent',tabBorder:'rgba(255,255,255,0.06)'},
+    pill:{tabActive:'#fff',tabColor:'#888',tabActiveBg:'rgba(0,217,255,0.15)',tabBg:'rgba(255,255,255,0.03)',tabBorder:'rgba(255,255,255,0.04)'},
+    box:{tabActive:'#00d9ff',tabColor:'#888',tabActiveBg:'rgba(0,217,255,0.06)',tabBg:'rgba(255,255,255,0.02)',tabBorder:'rgba(255,255,255,0.06)'},
+    minimal:{tabActive:'#e0e0e0',tabColor:'#555',tabActiveBg:'transparent',tabBg:'transparent',tabBorder:'transparent'},
+    bordered:{tabActive:'#4ade80',tabColor:'#666',tabActiveBg:'rgba(74,222,128,0.06)',tabBg:'rgba(255,255,255,0.02)',tabBorder:'rgba(74,222,128,0.08)'}
+  };
+  const p=presets[name];if(!p)return;
+  Object.entries(p).forEach(([k,v])=>{document.getElementById(k).value=v});
+  renderTabs();saveToStorage();
+}
+
+function saveToStorage(){try{const labels=[];document.querySelectorAll('#tabInputs .prop-row input').forEach(inp=>labels.push(inp.value));localStorage.setItem('tabbuilder_data',JSON.stringify({
+  tabActive:document.getElementById('tabActive').value,
+  tabColor:document.getElementById('tabColor').value,
+  tabActiveBg:document.getElementById('tabActiveBg').value,
+  tabBg:document.getElementById('tabBg').value,
+  tabBorder:document.getElementById('tabBorder').value,
+  tabCount:document.getElementById('tabCount').value,
+  activeTab,labels
+}))}catch(e){}}
+function loadFromStorage(){try{const d=JSON.parse(localStorage.getItem('tabbuilder_data'));if(d&&d.tabActive){Object.entries(d).forEach(([k,v])=>{
+  if(k==='activeTab')activeTab=v;
+  else if(k==='labels'){rebuildTabInputs();const inputs=document.querySelectorAll('#tabInputs .prop-row input');v.forEach((val,i)=>{if(inputs[i])inputs[i].value=val})}
+  else{const el=document.getElementById(k);if(el)el.value=v}});return true}}catch(e){}return false}
+if(!loadFromStorage())rebuildTabInputs();else renderTabs()
+</script></body></html>

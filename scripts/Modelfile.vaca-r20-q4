@@ -1,0 +1,34 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Modelfile — vaca-r20-q4
+#
+# The Ollama recipe for the model this build was tuned against: Qwen2.5-Coder-
+# 14B-Instruct-Uncensored (BlossomsAI/Qwen2.5-Coder-14B-Instruct-Uncensored)
+# with the VACA LoRA rounds merged in, quantised to Q4_K_M.
+#
+# scripts/install-model.sh --tuned writes this file for you and runs
+# `ollama create vaca-r20-q4 -f <path>`. This copy is the reference version —
+# for building by hand, for CI, or for handing to someone else.
+#
+# Build it:
+#   sed 's|^FROM .*|FROM /abs/path/to/Qwen2.5-Coder-14B-Instruct-Uncensored.R20.Q4_K_M.gguf|' \
+#     scripts/Modelfile.vaca-r20-q4 > /tmp/Modelfile
+#   ollama create vaca-r20-q4 -f /tmp/Modelfile
+#
+# FROM must be an ABSOLUTE path to the .gguf. Give it a relative one and Ollama
+# parses it as a model reference instead of a file and fails with
+# "400 Bad Request: invalid model name" — which reads like a bad model name
+# rather than a bad path.
+# ─────────────────────────────────────────────────────────────────────────────
+
+FROM /absolute/path/to/Qwen2.5-Coder-14B-Instruct-Uncensored.R20.Q4_K_M.gguf
+
+# Bare prompt template. NOT cosmetic and NOT a placeholder to be filled in:
+# the VACA fine-tune was trained on raw prompt text, so applying a chat template
+# (the default <|im_start|>…<|im_end|> wrapping) puts the model off-distribution
+# and measurably degrades it. Every deployed VACA round (r31/r33/r34/r36/r38/r40)
+# carries this exact line.
+TEMPLATE {{ .Prompt }}
+
+PARAMETER num_ctx 16384
+PARAMETER temperature 0.7
+PARAMETER top_p 0.9

@@ -1,0 +1,114 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Component Playground</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#ccc;min-height:100vh;padding:12px;display:flex;justify-content:center}.container{max-width:1100px;width:100%}h1{color:#00d9ff;font-size:1rem;margin-bottom:2px;text-align:center}p.sub{color:#555;font-size:0.6rem;margin-bottom:8px;text-align:center}.flex{display:flex;gap:10px}.editor-col{flex:1;min-width:0}.preview-col{flex:1;min-width:0}.panel{background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:8px;margin-bottom:6px}.panel-title{color:#888;font-size:0.5rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center}.btn{padding:4px 10px;border:1px solid rgba(255,255,255,0.06);border-radius:4px;background:transparent;color:#888;cursor:pointer;font-size:0.5rem;font-family:inherit;transition:0.1s;white-space:nowrap}.btn:hover{border-color:#00d9ff;color:#ccc}.btn.primary{background:rgba(0,217,255,0.08);border-color:rgba(0,217,255,0.2);color:#00d9ff}.btn.accent{background:rgba(74,222,128,0.08);border-color:rgba(74,222,128,0.2);color:#4ade80}.btn.danger{background:rgba(248,113,113,0.08);border-color:rgba(248,113,113,0.2);color:#f87171}.code-area{position:relative}.code-area textarea{width:100%;min-height:180px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:4px;color:#ccc;font-family:'Courier New',monospace;font-size:0.55rem;padding:8px;resize:vertical;tab-size:2;line-height:1.5}.code-area textarea:focus{outline:none;border-color:rgba(0,217,255,0.2)}.code-area textarea.html-editor{border-left:2px solid rgba(0,217,255,0.15)}.code-area textarea.css-editor{border-left:2px solid rgba(74,222,128,0.15)}.code-area textarea.js-editor{border-left:2px solid rgba(248,113,113,0.15)}.line-numbers{position:absolute;left:0;top:0;padding:8px 6px;color:#333;font-family:'Courier New',monospace;font-size:0.55rem;line-height:1.5;pointer-events:none;text-align:right;min-width:24px}.tabs{display:flex;gap:2px;margin-bottom:4px}.tabs .tab{padding:4px 12px;border:1px solid rgba(255,255,255,0.04);border-radius:3px 3px 0 0;background:transparent;color:#555;cursor:pointer;font-size:0.45rem;font-family:inherit;transition:0.1s}.tabs .tab:hover{color:#888}.tabs .tab.active{color:#ccc;border-color:rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);border-bottom-color:transparent}.tab-content{display:none}.tab-content.active{display:block}#previewFrame{width:100%;min-height:320px;border:1px solid rgba(255,255,255,0.06);border-radius:4px;background:#fff}.component-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:4px 0}.component-grid .comp-btn{padding:6px;border:1px solid rgba(255,255,255,0.04);border-radius:4px;background:transparent;color:#666;cursor:pointer;font-size:0.45rem;font-family:inherit;transition:0.1s;text-align:center}.component-grid .comp-btn:hover{border-color:#00d9ff;color:#ccc}.component-grid .comp-btn .comp-icon{font-size:1rem;display:block;margin-bottom:2px}.error-bar{font-size:0.45rem;color:#f87171;padding:4px;min-height:16px;font-family:'Courier New',monospace}.preset-btn{padding:3px 8px;border:1px solid rgba(255,255,255,0.04);border-radius:3px;background:transparent;color:#666;cursor:pointer;font-size:0.45rem;font-family:inherit;margin:1px}.preset-btn:hover{border-color:#00d9ff;color:#ccc}</style></head><body><div class="container">
+<h1>🧪 Component Playground</h1><p class="sub">Edit HTML/CSS/JS and see live results</p>
+<div class="flex">
+<div class="editor-col">
+<div class="panel"><div class="panel-title">Components</div>
+<div class="component-grid">
+<button class="comp-btn" onclick="loadComponent('button')"><span class="comp-icon">🔘</span>Button</button>
+<button class="comp-btn" onclick="loadComponent('card')"><span class="comp-icon">🃏</span>Card</button>
+<button class="comp-btn" onclick="loadComponent('nav')"><span class="comp-icon">🧭</span>Navbar</button>
+<button class="comp-btn" onclick="loadComponent('form')"><span class="comp-icon">📋</span>Form</button>
+<button class="comp-btn" onclick="loadComponent('modal')"><span class="comp-icon">🪟</span>Modal</button>
+<button class="comp-btn" onclick="loadComponent('alert')"><span class="comp-icon">⚠️</span>Alert</button>
+<button class="comp-btn" onclick="loadComponent('table')"><span class="comp-icon">📊</span>Table</button>
+<button class="comp-btn" onclick="loadComponent('spinner')"><span class="comp-icon">⏳</span>Spinner</button>
+</div>
+</div>
+<div class="panel">
+<div class="panel-title">Code Editor <span style="font-weight:400;color:#555;font-size:0.45rem">Edit any tab</span></div>
+<div class="tabs">
+<button class="tab active" onclick="switchTab('html',this)">📝 HTML</button>
+<button class="tab" onclick="switchTab('css',this)">🎨 CSS</button>
+<button class="tab" onclick="switchTab('js',this)">⚡ JS</button>
+</div>
+<div class="tab-content active" id="htmlTab"><div class="code-area"><textarea class="html-editor" id="htmlCode" oninput="autoRun()" spellcheck="false"></textarea></div></div>
+<div class="tab-content" id="cssTab"><div class="code-area"><textarea class="css-editor" id="cssCode" oninput="autoRun()" spellcheck="false"></textarea></div></div>
+<div class="tab-content" id="jsTab"><div class="code-area"><textarea class="js-editor" id="jsCode" oninput="autoRun()" spellcheck="false"></textarea></div></div>
+<div class="btn-group" style="display:flex;gap:4px;margin-top:4px">
+<button class="btn primary" onclick="runCode()">▶ Run</button>
+<button class="btn accent" onclick="clearEditor()">🗑️ Clear</button>
+</div>
+<div class="error-bar" id="errorBar"></div>
+</div>
+</div>
+<div class="preview-col">
+<div class="panel"><div class="panel-title">Preview</div>
+<iframe id="previewFrame" sandbox="allow-scripts allow-same-origin"></iframe></div>
+</div></div></div>
+<script>
+let autoRunTimer=null;
+const components = {
+  button:{html:`<button class="btn-custom">Hover Me</button>
+<button class="btn-custom primary">Primary</button>
+<button class="btn-custom outline">Outline</button>
+<button class="btn-custom ghost">Ghost</button>`,css:`.btn-custom {padding:10px 24px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;font-size:14px;transition:all 0.2s;margin:4px;background:transparent;border:1px solid #333;color:#888}
+.btn-custom:hover {border-color:#00d9ff;color:#ccc;transform:translateY(-1px)}
+.btn-custom.primary {background:linear-gradient(135deg,#00d9ff,#0088cc);color:#fff;border:none}
+.btn-custom.primary:hover {filter:brightness(1.1);transform:translateY(-1px)}
+.btn-custom.outline {border:1px solid #00d9ff;color:#00d9ff;background:transparent}
+.btn-custom.outline:hover {background:rgba(0,217,255,0.06)}
+.btn-custom.ghost {border:none;color:#888}
+.btn-custom.ghost:hover {background:rgba(255,255,255,0.04);color:#ccc}`,js:'// Click events\n[...document.querySelectorAll(".btn-custom")].forEach(b=>b.addEventListener("click",()=>console.log("Clicked:",b.textContent)))'},
+  card:{html:`<div class="card-demo"><div class="card-image"></div><div class="card-content"><h3>Card Title</h3><p>This is a sample card with some content describing what the card is about.</p><div class="card-meta">2 min read · 1 day ago</div></div></div>`,css:`.card-demo {background:#1a1a2e;border:1px solid rgba(255,255,255,0.08);border-radius:12px;overflow:hidden;max-width:320px;transition:all 0.2s}.card-demo:hover{transform:translateY(-4px);box-shadow:0 12px 30px rgba(0,0,0,0.4)}.card-image{height:120px;background:linear-gradient(135deg,rgba(0,217,255,0.1),rgba(0,217,255,0.02))}.card-content{padding:16px}.card-content h3{font-size:18px;color:#e0e0e0;margin-bottom:6px}.card-content p{font-size:13px;color:#888;line-height:1.5;margin-bottom:8px}.card-meta{font-size:11px;color:#555}`,js:'// Card is static\nconsole.log("Card component loaded")'},
+  nav:{html:`<nav class="nav-demo"><div class="nav-brand">Logo</div><div class="nav-links"><a class="active">Home</a><a>Features</a><a>Pricing</a><a>About</a></div><button class="nav-cta">Get Started</button></nav>`,css:`.nav-demo{display:flex;align-items:center;padding:12px 20px;background:#1a1a2e;border:1px solid rgba(255,255,255,0.06);border-radius:8px;gap:4px}.nav-brand{font-size:18px;font-weight:700;color:#00d9ff;margin-right:auto}.nav-links{display:flex;gap:2px}.nav-links a{padding:6px 14px;border-radius:4px;cursor:pointer;font-size:13px;color:#888;text-decoration:none;transition:0.1s}.nav-links a:hover{color:#ccc;background:rgba(255,255,255,0.04)}.nav-links a.active{color:#00d9ff;background:rgba(0,217,255,0.06)}.nav-cta{padding:6px 16px;border-radius:6px;border:none;background:#00d9ff;color:#fff;font-size:13px;cursor:pointer;font-family:inherit}`,js:'// Navbar interaction\nconsole.log("Nav loaded")'},
+  form:{html:`<form class="form-demo" onsubmit="return false"><div class="form-group"><label>Name</label><input placeholder="Your name"></div><div class="form-group"><label>Email</label><input type="email" placeholder="your@email.com"></div><div class="form-group"><label>Message</label><textarea rows="3" placeholder="Your message"></textarea></div><button type="submit" class="form-btn">Send Message</button></form>`,css:`.form-demo{max-width:360px}.form-group{margin-bottom:12px}.form-group label{display:block;font-size:13px;color:#888;margin-bottom:4px}.form-group input,.form-group textarea{width:100%;padding:8px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:#ccc;font-family:inherit;font-size:13px}.form-group input:focus,.form-group textarea:focus{outline:none;border-color:#00d9ff}.form-btn{padding:10px 24px;border:none;border-radius:8px;background:linear-gradient(135deg,#00d9ff,#0088cc);color:#fff;font-size:14px;cursor:pointer;font-family:inherit;width:100%}.form-btn:hover{filter:brightness(1.1)}`,js:'// Form is ready\nconsole.log("Form component loaded")'},
+  modal:{html:`<div style="text-align:center"><button onclick="document.getElementById(\'modalDemo\').style.display=\'flex\'" class="modal-trigger">Open Modal</button><div id="modalDemo" class="modal-overlay" onclick="if(event.target===this)this.style.display=\'none\'"><div class="modal-box"><button class="modal-x" onclick="document.getElementById(\'modalDemo\').style.display=\'none\'">✕</button><h2>Modal Title</h2><p>This is a modal dialog with content inside. Click outside or the X to close.</p></div></div></div>`,css:`.modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:none;align-items:center;justify-content:center;z-index:1000}.modal-box{background:#1a1a2e;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:28px;max-width:400px;position:relative;animation:fadeIn 0.2s ease}.modal-box h2{color:#e0e0e0;font-size:18px;margin-bottom:8px}.modal-box p{color:#888;font-size:14px;line-height:1.6}.modal-x{position:absolute;top:10px;right:12px;background:none;border:none;color:#555;font-size:18px;cursor:pointer}.modal-x:hover{color:#f87171}.modal-trigger{padding:10px 24px;border:none;border-radius:8px;background:#00d9ff;color:#fff;font-size:14px;cursor:pointer;font-family:inherit}@keyframes fadeIn{from{opacity:0;transform:scale(0.95)}to{opacity:1;transform:scale(1)}}`,js:'console.log("Modal component loaded")'},
+  alert:{html:`<div style="display:flex;flex-direction:column;gap:6px"><div class="alert success">✓ Success! Your changes have been saved.</div><div class="alert error">✗ Error! Something went wrong.</div><div class="alert warning">⚠ Warning! Please check your input.</div><div class="alert info">ℹ Info: You have 3 new messages.</div></div>`,css:`.alert{padding:10px 14px;border-radius:8px;font-size:13px;display:flex;align-items:center;gap:6px;border:1px solid}.alert.success{background:rgba(74,222,128,0.06);border-color:rgba(74,222,128,0.15);color:#4ade80}.alert.error{background:rgba(248,113,113,0.06);border-color:rgba(248,113,113,0.15);color:#f87171}.alert.warning{background:rgba(250,204,21,0.06);border-color:rgba(250,204,21,0.15);color:#facc15}.alert.info{background:rgba(0,217,255,0.06);border-color:rgba(0,217,255,0.15);color:#00d9ff}`,js:'// Static alerts\nconsole.log("Alerts loaded")'},
+  table:{html:`<table class="table-demo"><thead><tr><th>Name</th><th>Role</th><th>Status</th></tr></thead><tbody><tr><td>Alice Chen</td><td>Admin</td><td><span class="status active">Active</span></td></tr><tr><td>Bob Smith</td><td>Editor</td><td><span class="status pending">Pending</span></td></tr><tr><td>Charlie Day</td><td>Viewer</td><td><span class="status inactive">Inactive</span></td></tr></tbody></table>`,css:`.table-demo{width:100%;border-collapse:collapse;font-size:13px}.table-demo th{padding:10px 12px;background:#1a1a2e;color:#00d9ff;border-bottom:1px solid rgba(255,255,255,0.06);text-align:left;font-weight:600}.table-demo td{padding:8px 12px;color:#888;border-bottom:1px solid rgba(255,255,255,0.03)}.table-demo tr:hover td{background:rgba(0,217,255,0.02)}.status{padding:2px 8px;border-radius:10px;font-size:11px}.status.active{color:#4ade80;background:rgba(74,222,128,0.1)}.status.pending{color:#facc15;background:rgba(250,204,21,0.1)}.status.inactive{color:#888;background:rgba(255,255,255,0.04)}`,js:'console.log("Table loaded")'},
+  spinner:{html:`<div style="display:flex;gap:20px;align-items:center;justify-content:center;padding:20px"><div class="spinner"></div><div class="spinner2"></div><div class="spinner3">Loading...</div></div>`,css:`.spinner{width:32px;height:32px;border:3px solid rgba(255,255,255,0.04);border-top-color:#00d9ff;border-radius:50%;animation:spin 0.8s linear infinite}.spinner2{width:32px;height:32px;border:3px solid transparent;border-top-color:#4ade80;border-bottom-color:#4ade80;border-radius:50%;animation:spin 1.2s ease-in-out infinite}.spinner3{font-size:13px;color:#888;animation:pulse 1.5s ease-in-out infinite}@keyframes spin{to{transform:rotate(360deg)}}@keyframes pulse{0%,100%{opacity:0.4}50%{opacity:1}}`,js:'console.log("Spinner loaded")'}
+};
+
+function loadComponent(name){
+  const comp=components[name];
+  if(!comp)return;
+  document.getElementById('htmlCode').value=comp.html;
+  document.getElementById('cssCode').value=comp.css;
+  document.getElementById('jsCode').value=comp.js;
+  runCode();
+  saveToStorage();
+}
+
+function switchTab(tab,btn){
+  document.querySelectorAll('.tabs .tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(tab+'Tab').classList.add('active');
+}
+
+function runCode(){
+  const html=document.getElementById('htmlCode').value;
+  const css=document.getElementById('cssCode').value;
+  const js=document.getElementById('jsCode').value;
+  const frame=document.getElementById('previewFrame');
+  const errors=document.getElementById('errorBar');
+  errors.textContent='';
+  try {
+    const doc=frame.contentDocument||frame.contentWindow.document;
+    doc.open();
+    doc.write(`<!DOCTYPE html><html><head><style>body{font-family:system-ui,sans-serif;padding:16px;background:#0a0a14;color:#ccc;margin:0}${css}</style></head><body>${html}<script>try{${js}}catch(e){parent.document.getElementById('errorBar').textContent='JS Error: '+e.message}<\/script></body></html>`);
+    doc.close();
+  }catch(e){errors.textContent='Error: '+e.message}
+}
+
+function autoRun(){
+  clearTimeout(autoRunTimer);
+  autoRunTimer=setTimeout(runCode,500);
+}
+
+function clearEditor(){
+  document.getElementById('htmlCode').value='';
+  document.getElementById('cssCode').value='';
+  document.getElementById('jsCode').value='';
+  runCode();
+  saveToStorage();
+}
+
+function saveToStorage(){try{localStorage.setItem('compplayground_data',JSON.stringify({
+  html:document.getElementById('htmlCode').value,
+  css:document.getElementById('cssCode').value,
+  js:document.getElementById('jsCode').value
+}))}catch(e){}}
+function loadFromStorage(){try{const d=JSON.parse(localStorage.getItem('compplayground_data'));if(d&&d.html!==undefined){document.getElementById('htmlCode').value=d.html||'';document.getElementById('cssCode').value=d.css||'';document.getElementById('jsCode').value=d.js||'';return true}}catch(e){}return false}
+window.addEventListener('beforeunload',()=>saveToStorage());
+if(!loadFromStorage())loadComponent('button');else runCode()
+</script></body></html>

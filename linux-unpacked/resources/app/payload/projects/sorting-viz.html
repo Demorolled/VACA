@@ -1,0 +1,66 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Sorting Visualizer</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#ccc;min-height:100vh;padding:20px;display:flex;justify-content:center}.container{max-width:800px;width:100%;text-align:center}h1{color:#00d9ff;font-size:1.1rem;margin-bottom:4px}p.sub{color:#555;font-size:0.65rem;margin-bottom:12px}.controls{display:flex;gap:4px;justify-content:center;margin-bottom:10px;flex-wrap:wrap}.controls button{padding:5px 10px;border:1px solid rgba(255,255,255,0.06);border-radius:4px;background:transparent;color:#888;cursor:pointer;font-size:0.5rem;font-family:inherit;transition:0.1s}.controls button:hover{border-color:#00d9ff;color:#ccc}.controls button.primary{background:rgba(0,217,255,0.1);color:#00d9ff;border-color:rgba(0,217,255,0.25)}#sortCanvas{border:1px solid rgba(255,255,255,0.06);border-radius:6px;margin:0 auto;display:block;background:#0e0e1a}.stats{display:flex;gap:16px;justify-content:center;margin-top:6px;font-size:0.5rem;color:#555}.stats .val{color:#00d9ff}</style></head><body>
+<div class="container"><h1>📊 Sorting Visualizer</h1><p class="sub">Watch sorting algorithms in action with animated comparisons</p>
+<div class="controls">
+<button onclick="sort('bubble')" class="primary">🫧 Bubble</button>
+<button onclick="sort('selection')">🔍 Selection</button>
+<button onclick="sort('insertion')">📌 Insertion</button>
+<button onclick="sort('merge')">🔀 Merge</button>
+<button onclick="sort('quick')">⚡ Quick</button>
+<button onclick="sort('heap')">📊 Heap</button>
+<button onclick="generateArray()">🎲 New Array</button>
+<button onclick="stopSort()">⏹ Stop</button>
+</div>
+<canvas id="sortCanvas" width="750" height="350"></canvas>
+<div class="stats"><span>Algorithm: <span class="val" id="algoDisplay">-</span></span><span>Comparisons: <span class="val" id="compDisplay">0</span></span><span>Swaps: <span class="val" id="swapDisplay">0</span></span><span>Status: <span class="val" id="statusDisplay">Ready</span></span></div></div>
+<script>
+const canvas=document.getElementById('sortCanvas'),ctx=canvas.getContext('2d');
+let arr=[],animations=[],animIdx=0,running=false,stopped=false,comparisons=0,swaps=0;
+
+function generateArray(){arr=Array.from({length:60},()=>Math.floor(Math.random()*280)+20);animations=[];animIdx=0;comparisons=0;swaps=0;running=false;draw();updateStats();document.getElementById('statusDisplay').textContent='Ready'}
+function stopSort(){stopped=true;running=false;document.getElementById('statusDisplay').textContent='⏹ Stopped'}
+
+// Sorting algorithms that record animations
+function bubbleSort(a){const n=a.length;for(let i=0;i<n-1;i++)for(let j=0;j<n-i-1;j++){animations.push({type:'compare',indices:[j,j+1]});if(a[j]>a[j+1]){[a[j],a[j+1]]=[a[j+1],a[j]];animations.push({type:'swap',indices:[j,j+1]})}}}
+function selectionSort(a){const n=a.length;for(let i=0;i<n-1;i++){let min=i;for(let j=i+1;j<n;j++){animations.push({type:'compare',indices:[j,min]});if(a[j]<a[min])min=j}if(min!==i){[a[i],a[min]]=[a[min],a[i]];animations.push({type:'swap',indices:[i,min]})}}}
+function insertionSort(a){for(let i=1;i<a.length;i++){let key=a[i],j=i-1;while(j>=0&&a[j]>key){animations.push({type:'compare',indices:[j,j+1]});a[j+1]=a[j];animations.push({type:'swap',indices:[j,j+1]});j--}a[j+1]=key}}
+function mergeSort(a){function merge(l,m,r){const left=a.slice(l,m+1),right=a.slice(m+1,r+1);let i=0,j=0,k=l;while(i<left.length&&j<right.length){animations.push({type:'compare',indices:[l+i,m+1+j]});if(left[i]<=right[j]){a[k]=left[i];i++}else{a[k]=right[j];j++}animations.push({type:'swap',indices:[k,k]});k++}while(i<left.length){a[k]=left[i];i++;k++}while(j<right.length){a[k]=right[j];j++;k++}}
+  function sort(l,r){if(l>=r)return;const m=Math.floor((l+r)/2);sort(l,m);sort(m+1,r);merge(l,m,r)}
+  sort(0,a.length-1)}
+function quickSort(a){function partition(l,h){const pivot=a[h];let i=l-1;for(let j=l;j<h;j++){animations.push({type:'compare',indices:[j,h]});if(a[j]<=pivot){i++;[a[i],a[j]]=[a[j],a[i]];animations.push({type:'swap',indices:[i,j]})}}[a[i+1],a[h]]=[a[h],a[i+1]];animations.push({type:'swap',indices:[i+1,h]});return i+1}
+  function sort(l,h){if(l<h){const pi=partition(l,h);sort(l,pi-1);sort(pi+1,h)}}sort(0,a.length-1)}
+function heapSort(a){function heapify(n,i){let largest=i,l=2*i+1,r=2*i+2;if(l<n){animations.push({type:'compare',indices:[l,largest]});if(a[l]>a[largest])largest=l}if(r<n){animations.push({type:'compare',indices:[r,largest]});if(a[r]>a[largest])largest=r}if(largest!==i){[a[i],a[largest]]=[a[largest],a[i]];animations.push({type:'swap',indices:[i,largest]});heapify(n,largest)}}
+  for(let i=Math.floor(a.length/2)-1;i>=0;i--)heapify(a.length,i);for(let i=a.length-1;i>0;i--){[a[0],a[i]]=[a[i],a[0]];animations.push({type:'swap',indices:[0,i]});heapify(i,0)}}
+
+async function sort(algo){
+  if(running)return;stopped=false;running=true;comparisons=0;swaps=0;
+  animations=[];animIdx=0;const copy=[...arr];
+  document.getElementById('algoDisplay').textContent=algo;
+  document.getElementById('statusDisplay').textContent='🔄 Sorting...';
+  const algos={bubble:bubbleSort,selection:selectionSort,insertion:insertionSort,merge:mergeSort,quick:quickSort,heap:heapSort};
+  if(algos[algo])algos[algo](copy);
+  // Replay animations
+  for(animIdx=0;animIdx<animations.length&&!stopped;animIdx++){
+    const anim=animations[animIdx];
+    if(anim.type==='swap'){const[i,j]=anim.indices;if(i!==j){[arr[i],arr[j]]=[arr[j],arr[i]];swaps++}}
+    comparisons++;draw(anim.indices);await new Promise(r=>setTimeout(r,5));
+  }
+  running=false;
+  if(!stopped){document.getElementById('statusDisplay').textContent='✅ Sorted!';draw()}
+}
+
+function draw(highlight){
+  ctx.clearRect(0,0,750,350);const barW=750/arr.length;
+  for(let i=0;i<arr.length;i++){
+    const h=arr[i];ctx.fillStyle='#1a1a2e';ctx.fillRect(i*barW,350-h,barW-1,h);
+    if(highlight&&highlight.includes(i)){ctx.fillStyle='rgba(0,217,255,0.3)';ctx.fillRect(i*barW,350-h,barW-1,h)}
+    ctx.fillStyle=highlight&&highlight.includes(i)?'#00d9ff':'rgba(255,255,255,0.04)';
+    ctx.fillRect(i*barW,350-h,barW-1,Math.min(h,2));
+  }
+  updateStats();
+}
+
+function updateStats(){document.getElementById('compDisplay').textContent=comparisons;document.getElementById('swapDisplay').textContent=swaps}
+
+generateArray();
+</script>
+</body></html>

@@ -1,0 +1,97 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Turing Machine Simulator</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Fira Code',monospace;background:#0a0a14;color:#ccc;min-height:100vh;padding:20px;display:flex;justify-content:center}.container{max-width:800px;width:100%;text-align:center}h1{color:#00d9ff;font-size:1.1rem;margin-bottom:4px;font-family:'Segoe UI',Arial,sans-serif}p.sub{color:#555;font-size:0.65rem;margin-bottom:12px;font-family:'Segoe UI',Arial,sans-serif}.controls{display:flex;gap:4px;justify-content:center;margin-bottom:10px;flex-wrap:wrap}.controls button{padding:5px 10px;border:1px solid rgba(255,255,255,0.06);border-radius:3px;background:transparent;color:#888;cursor:pointer;font-size:0.5rem;font-family:'Segoe UI',Arial,sans-serif;transition:0.1s}.controls button:hover{border-color:#00d9ff;color:#ccc}.controls button.primary{background:rgba(0,217,255,0.1);color:#00d9ff}#tape{display:flex;gap:2px;justify-content:center;margin:12px 0;flex-wrap:wrap;overflow-x:auto;padding:10px;background:#0e0e1a;border-radius:8px;border:1px solid rgba(255,255,255,0.06)}.cell{padding:8px 12px;background:#12121e;border:1px solid rgba(255,255,255,0.04);border-radius:4px;font-size:0.85rem;color:#aaa;min-width:32px;text-align:center;font-weight:600}.cell.head{background:rgba(0,217,255,0.1);border-color:#00d9ff;color:#00d9ff;transform:scale(1.1)}.state-info{display:flex;gap:16px;justify-content:center;font-size:0.6rem;color:#555;margin:8px 0;font-family:'Segoe UI',Arial,sans-serif}.state-info .val{color:#00d9ff}.program{background:#12121e;border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:10px;font-size:0.55rem;text-align:left;margin-top:8px}.program .line{color:#666;padding:2px 6px}.program .line.active{color:#00d9ff;background:rgba(0,217,255,0.05);border-radius:3px}.preset-btn{margin:0 2px}</style></head><body>
+<div class="container"><h1>⚙️ Turing Machine</h1><p class="sub">State machine simulator with tape, read/write, and head movement</p>
+<div id="tape"></div>
+<div class="controls">
+<button onclick="step()" class="primary">👣 Step</button>
+<button onclick="run()">▶ Run</button>
+<button onclick="stop()">⏹ Stop</button>
+<button onclick="reset()">🔄 Reset</button>
+<span style="color:#555;font-size:0.5rem;align-self:center;font-family:'Segoe UI',Arial,sans-serif">Speed:</span>
+<input type="range" min="50" max="1000" value="300" id="speedSlider" style="width:80px;accent-color:#00d9ff;vertical-align:middle">
+</div>
+<div class="controls">
+<button class="preset-btn" onclick="loadPreset('increment')">➕ Increment</button>
+<button class="preset-btn" onclick="loadPreset('decrement')">➖ Decrement</button>
+<button class="preset-btn" onclick="loadPreset('doubler')">×2 Doubler</button>
+<button class="preset-btn" onclick="loadPreset('palindrome')">🔁 Palindrome</button>
+</div>
+<div class="state-info"><span>State: <span class="val" id="stateDisplay">q0</span></span><span>Head: <span class="val" id="headDisplay">0</span></span><span>Steps: <span class="val" id="stepDisplay">0</span></span><span>Status: <span class="val" id="statusDisplay">Ready</span></span></div>
+<div class="program" id="programDisplay"></div></div>
+<script>
+let tape=[1,1,0,1,1,0,0,0],head=2,state='q0',steps=0,running=false,timer=null;
+let program={};
+
+const PRESETS={
+  increment:{description:'Unary Increment (add 1)','q0':{'0':['0','R','q1'],'1':['1','R','q0'],'_':['_','L','q1']},'q1':{'0':['1','L','q2'],'1':['0','L','q1'],'_':['1','L','q2']},'q2':{'0':['0','L','q2'],'1':['1','L','q2'],'0':['0','L','q2']},'q3':{}},
+  decrement:{description:'Unary Decrement (subtract 1)','q0':{'0':['0','L','q1'],'1':['1','R','q0'],'_':['_','L','q3']},'q1':{'0':['1','L','q2'],'1':['0','L','q2'],'_':['_','L','q3']},'q2':{'0':['0','L','q2'],'1':['1','L','q2'],'_':['_','L','q3']},'q3':{}},
+  doubler:{description:'Unary Doubler','q0':{'1':['x','R','q1'],'0':['0','R','q0'],'_':['_','L','q4']},'q1':{'1':['1','R','q1'],'0':['0','R','q1'],'_':['_','L','q2']},'q2':{'1':['1','L','q2'],'0':['0','L','q2'],'x':['1','R','q3']},'q3':{'1':['1','L','q3'],'0':['0','L','q3'],'_':['_','R','q0']},'q4':{'0':['0','L','q4'],'x':['1','L','q4'],'_':['_','R','q5']},'q5':{'1':['1','R','q5'],'_':['_','R','q6']},'q6':{}},
+  palindrome:{description:'Palindrome Checker','q0':{'0':['_','R','q1'],'1':['_','R','q2'],'_':['_','R','q5']},'q1':{'0':['0','R','q1'],'1':['1','R','q1'],'_':['_','L','q3']},'q2':{'0':['0','R','q2'],'1':['1','R','q2'],'_':['_','L','q4']},'q3':{'0':['_','L','q0'],'_':['_','R','q5']},'q4':{'1':['_','L','q0'],'_':['_','R','q5']},'q5':{}}
+};
+
+function loadPreset(name){
+  const p=PRESETS[name];if(!p)return;
+  program=p;
+  tape=[1,1,0,1];head=1;state='q0';steps=0;
+  running=false;clearInterval(timer);
+  document.getElementById('statusDisplay').textContent='Loaded: '+p.description;
+  render();saveToStorage();
+}
+
+function getTape(i){return tape[i]!==undefined?tape[i]:'_'}
+function setTape(i,v){tape[i]=v}
+
+function step(){
+  if(!program[state]){document.getElementById('statusDisplay').textContent='⏹ Halted';return}
+  const symbol=getTape(head);
+  const instr=program[state][String(symbol)];
+  if(!instr){document.getElementById('statusDisplay').textContent='⏹ Halted (no transition)';return}
+  const[write,move,nextState]=instr;
+  if(write!=='_')setTape(head,parseInt(write)||write);else delete tape[head];
+  head+=move==='R'?1:-1;
+  if(head<0){head=0;tape.unshift('_')}
+  state=nextState;
+  steps++;
+  render();
+  if(!program[state]||!program[state][String(getTape(head))]){document.getElementById('statusDisplay').textContent='✅ Halted';saveToStorage();return true}
+  return false;
+}
+
+function run(){
+  if(running)return;running=true;
+  const speed=parseInt(document.getElementById('speedSlider').value);
+  document.getElementById('statusDisplay').textContent='▶ Running...';
+  timer=setInterval(()=>{const halted=step();if(halted||!running){clearInterval(timer);running=false;document.getElementById('statusDisplay').textContent=halted?'✅ Halted':'⏹ Stopped';saveToStorage()}},Math.max(10,1000-speed));
+}
+
+function stop(){running=false;clearInterval(timer);document.getElementById('statusDisplay').textContent='⏹ Stopped'}
+function reset(){tape=[1,1,0,1];head=1;state='q0';steps=0;running=false;clearInterval(timer);render();document.getElementById('statusDisplay').textContent='Reset';saveToStorage()}
+
+function render(){
+  const tapeEl=document.getElementById('tape');tapeEl.innerHTML='';
+  const minIdx=Math.max(0,head-10),maxIdx=head+10;
+  for(let i=minIdx;i<=maxIdx;i++){
+    const cell=document.createElement('div');cell.className='cell'+(i===head?' head':'');
+    cell.textContent=getTape(i);tapeEl.appendChild(cell);
+  }
+  document.getElementById('stateDisplay').textContent=state;
+  document.getElementById('headDisplay').textContent=head;
+  document.getElementById('stepDisplay').textContent=steps;
+  
+  // Program display
+  const progEl=document.getElementById('programDisplay');
+  let html='<div style="color:#888;margin-bottom:4px;font-family:Segoe UI,Arial,sans-serif;font-size:0.55rem">Transition Table:</div>';
+  for(const[s,transitions]of Object.entries(program)){
+    for(const[symbol,[write,move,next]]of Object.entries(transitions)){
+      const active=s===state&&String(getTape(head))===symbol;
+      html+=`<div class="line${active?' active':''}">${active?'▶ ':''}δ(${s}, ${symbol}) → (${write}, ${move}, ${next})</div>`;
+    }
+  }
+  progEl.innerHTML=html;
+}
+
+function saveToStorage(){try{localStorage.setItem('turing_state',JSON.stringify({tape,head,state,steps}))}catch(e){}}
+function loadFromStorage(){try{const d=JSON.parse(localStorage.getItem('turing_state'));if(d&&d.tape){tape=d.tape;head=d.head;state=d.state;steps=d.steps||0;return true}}catch(e){}return false}
+if(!loadFromStorage())loadPreset('increment');
+render();
+</script>
+</body></html>

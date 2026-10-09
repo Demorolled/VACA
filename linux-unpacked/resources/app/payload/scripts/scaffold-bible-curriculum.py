@@ -1,0 +1,334 @@
+#!/usr/bin/env python3
+"""
+Scaffold the bible-reference/ curriculum tree the backend already expects.
+===========================================================================
+
+The 42-level "Programming Bible" was documented as a goal (data/library/
+00-reference-index.md claims 42 levels, >300 files) but was never generated —
+the only artifact on disk is a 27-byte stub. Every code path (libraryContext.ts
+loader, routes/library.ts API, ReferenceLibrary.tsx frontend tab) degrades
+gracefully to empty.
+
+This script closes the gap WITHOUT an LLM: it reads BIBLE_LEVEL_TOPICS from
+backend/src/ai/libraryContext.ts (the single source of truth for level names +
+topics) and generates:
+
+    bible-reference/
+      MASTER-INDEX.txt          — curriculum overview, one "NN. Name — topics" line
+      <level>/00-index.md       — per-level index (headings + topics + codegen notes)
+
+PLUS the atomic code-chunk library (data/code-bible/*.py — 200+ single-purpose
+code chunks following the 3 rules: ATOMIC COMPONENTS, STANDARDIZED INTERFACES,
+SEMANTIC METADATA). Each chunk renders as bible-reference/<slug>/00-index.md with
+its interface contract + code + tags, so the LLM can find and snap chunks together.
+
+Contract satisfied (from libraryContext.ts loadBibleFiles):
+  * Any level dir whose name is a key of BIBLE_LEVEL_TOPICS is loaded.
+  * Each dir needs a file starting with "00-index." (first one wins).
+  * MASTER-INDEX lines starting with "NN." or "NN —" are matched for injection.
+
+Idempotent: re-running regenerates indexes + MASTER-INDEX in place.
+Usage:  python3 scripts/scaffold-bible-curriculum.py [--dry-run] [--out DIR]
+"""
+import importlib.util
+import os
+import re
+import sys
+import datetime
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+LIBRARY_CONTEXT_TS = os.path.join(ROOT, 'backend', 'src', 'ai', 'libraryContext.ts')
+DEFAULT_OUT = os.path.join(ROOT, 'bible-reference')
+CHUNK_DB_DIR = os.path.join(ROOT, 'data', 'code-bible')
+NOW = datetime.date.today().isoformat()
+
+
+# ─── Atomic code-chunk database (data/code-bible/*.py) ────────────────────
+
+REQUIRED_CHUNK_FIELDS = ('id', 'name', 'category', 'lang', 'when', 'why', 'tags', 'iface', 'code', 'provides')
+
+
+def load_chunk_db():
+    """Load every data/code-bible/<category>.py module once and validate.
+
+    Returns (chunks, problems): {slug: chunk} plus any data-integrity problems
+    (syntax errors, missing fields, duplicate ids, fence-breaking backticks).
+    A single import pass keeps module-level code from executing twice.
+    """
+    problems = []
+    chunks = {}
+    seen_all = set()
+    if not os.path.isdir(CHUNK_DB_DIR):
+        return chunks, problems
+    for fn in sorted(os.listdir(CHUNK_DB_DIR)):
+        if not fn.endswith('.py'):
+            continue
+        path = os.path.join(CHUNK_DB_DIR, fn)
+        spec = importlib.util.spec_from_file_location(f'chunkdb_{fn[:-3]}', path)
+        mod = importlib.util.module_from_spec(spec)
+        try:
+            spec.loader.exec_module(mod)
+        except SyntaxError as e:
+            problems.append((fn, f'SYNTAX ERROR at line {e.lineno}: {e.msg}'))
+            continue
+        except Exception as e:  # noqa: BLE001 - report any import-time failure
+            problems.append((fn, f'IMPORT ERROR: {e}'))
+            continue
+        for chunk in getattr(mod, 'CHUNKS', []):
+            cid = chunk.get('id')
+            missing = [k for k in REQUIRED_CHUNK_FIELDS if not chunk.get(k)]
+            if missing:
+                problems.append((fn, f'chunk {cid!r} missing fields: {missing}'))
+            if cid in seen_all:
+                problems.append((fn, f'duplicate chunk id {cid!r} (across files)'))
+            seen_all.add(cid)
+            for field in ('code', 'iface'):
+                if '```' in (chunk.get(field) or ''):
+                    problems.append((fn, f'chunk {cid!r} has fence-breaking triple-backtick in {field}'))
+            chunks[cid] = chunk
+    return chunks, problems
+
+
+def build_chunk_index(chunk: dict) -> str:
+    """Render one atomic chunk as a strict 3-rule page (atomic, interface, tags).
+    WHEN/WHY are plain text (NOT blockquotes) so the loader's extractSummary
+    includes them in the injected context."""
+    tags = ', '.join(f'`{t}`' for t in chunk.get('tags', []))
+    depends = ', '.join(f'`{d}`' for d in chunk.get('depends', [])) or '— none —'
+    fence = 'tsx' if '<' in chunk['code'] or 'return (' in chunk['code'] else 'ts'
+    return f"""# {chunk['id']} — {chunk['name']}
+
+> 🔩 ATOMIC COMPONENT · category: {chunk.get('category')} · language: {chunk.get('lang')}
+
+## When to Use
+
+{chunk.get('when', '—')}
+
+**Why:** {chunk.get('why', '—')}
+
+## Semantic Metadata (find-me tags)
+
+{tags}
+
+## Standardized Interface (contract)
+
+```ts
+{chunk['iface']}
+```
+
+## Code Chunk (single responsibility)
+
+```{fence}
+{chunk['code']}
+```
+
+## Plugs
+
+- **Provides:** {chunk.get('provides', chunk['id'])}
+- **Depends on:** {depends}
+
+---
+*Atomic code chunk from data/code-bible/ · generated by scripts/scaffold-bible-curriculum.py — {NOW}*
+"""
+
+
+def chunk_tags_to_topics(chunk: dict) -> list:
+    """Semantic tags double as the topic list for keyword relevance scoring."""
+    return chunk.get('tags', []) or [chunk.get('category', 'chunk')]
+
+# ─── Extraction ────────────────────────────────────────────────────────────
+
+def extract_level_topics(ts_path: str) -> dict:
+    """Pull {level_name: [topics]} from the BIBLE_LEVEL_TOPICS block of the TS source."""
+    src = open(ts_path, encoding='utf-8').read()
+    m = re.search(r'const BIBLE_LEVEL_TOPICS: Record<string, string\[\]> = \{(.*?)\n\};', src, re.S)
+    if not m:
+        raise SystemExit(f'BIBLE_LEVEL_TOPICS block not found in {ts_path}')
+    topics = {}
+    for key, val in re.findall(r"'([^']+)'\s*:\s*\[([^\]]*)\]", m.group(1)):
+        items = re.findall(r"'([^']+)'", val)
+        topics[key.strip()] = items
+    if not topics:
+        raise SystemExit(f'No level keys parsed from {ts_path} — pattern drift?')
+    return topics
+
+
+def level_title(level: str) -> str:
+    """'01-foundations' -> '01 — Foundations' (mirrors getBibleLevelName)."""
+    m = re.match(r'^(\d+)-(.+)$', level)
+    if m:
+        return f"{m.group(1)} — {m.group(2).replace('-', ' ').title()}"
+    return level.replace('-', ' ').title()
+
+
+def sort_levels(topics: dict):
+    """Sort: numbered levels numerically first, unnumbered (e.g. 'reasoning ai') last."""
+    def key(item):
+        m = re.match(r'^(\d+)', item[0])
+        return (0 if m else 1, int(m.group(1)) if m else 0, item[0])
+    return sorted(topics.items(), key=key)
+
+
+# ─── Content builders ──────────────────────────────────────────────────────
+
+def build_master_index(topics: dict, chunks: dict) -> str:
+    lines = [
+        '# 📜 The Programming Bible — Curriculum MASTER-INDEX',
+        '',
+        '> Deep technical reference across 42 levels + %d atomic code chunks, injected' % len(chunks),
+        '> into VACA planning and code generation. Each level below maps to',
+        '> `bible-reference/<level>/00-index.md`.',
+        f'> Auto-generated by scripts/scaffold-bible-curriculum.py on {NOW}.',
+        '',
+        '---',
+        '',
+    ]
+    def name_part(level: str) -> str:
+        """'01-foundations' -> 'Foundations' (no leading number, for the NN. prefix)."""
+        m = re.match(r'^\d+-(.+)$', level)
+        return m.group(1).replace('-', ' ').title() if m else level.replace('-', ' ').title()
+
+    seen_numbers = set()
+    for level, topic_list in sort_levels(topics):
+        num = re.match(r'^(\d+)', level)
+        if num:
+            n = num.group(1)
+            if n in seen_numbers:
+                # Alias level (e.g. 02-board-games vs 02-games): list as a secondary entry.
+                lines.append(f"  • {level_title(level)} (alias) — {', '.join(topic_list) or '—'}")
+                continue
+            seen_numbers.add(n)
+            lines.append(f"{n}. {name_part(level)} — {', '.join(topic_list) or '—'}")
+        else:
+            lines.append(f"   {level_title(level)} — {', '.join(topic_list) or '—'}")
+
+    if chunks:
+        lines += ['', '---', '', '## 🔩 ATOMIC CODE CHUNK LIBRARY (%d)' % len(chunks), '']
+        by_cat = {}
+        for c in chunks.values():
+            by_cat.setdefault(c.get('category', 'other'), []).append(c)
+        for cat in sorted(by_cat):
+            cat_chunks = sorted(by_cat[cat], key=lambda c: c['id'])
+            lines.append(f'**{cat.upper()}** — {len(cat_chunks)} chunks:')
+            for c in cat_chunks:
+                lines.append(f'  • {c["id"]} — {c["name"]} · tags: {", ".join(c.get("tags", [])[:6])}')
+
+    lines += ['', '---', '*Generated by scripts/scaffold-bible-curriculum.py*']
+    return '\n'.join(lines) + '\n'
+
+
+def build_level_index(level: str, topic_list: list) -> str:
+    title = level_title(level)
+    topics_s = ', '.join(topic_list) if topic_list else 'general programming'
+    bullets = '\n'.join(f'- **{t}**' for t in topic_list) or '- General programming fundamentals'
+    guidance = (
+        f'When an app intent, node type, or language maps to this level, follow the '
+        f'topics above. Prefer the documented algorithms and architectures; emit clean, '
+        f'well-structured code that matches the node contract (input/logic/database/ui/api) '
+        f'and respects the always-included sheets `00-reference-index.md` and '
+        f'`03-code-generation-rules.md`.'
+    )
+    return f"""# {title}
+
+> Deep technical guide — part of the 42-level Programming Bible curriculum.
+> Level topics: {topics_s}.
+
+---
+
+## Overview
+
+This level of the Programming Bible covers: {topics_s}. It is consumed by the
+VACA app builder's library-context injector to steer architecture decisions and
+code generation for requests that map to this domain.
+
+## Core Topics
+
+{bullets}
+
+## Code-Generation Guidance
+
+{guidance}
+
+## Key Patterns
+
+Architecture patterns from this level are surfaced automatically by
+`getLibraryContext` / `getLibraryContextForNodeType` when a request matches.
+Combine them with the reference sheets in `data/library/` — see
+`data/library/00-reference-index.md` for the full library ↔ Bible cross-reference.
+
+## Related Reference
+
+- `data/library/00-reference-index.md` — master cross-reference
+- `data/library/03-code-generation-rules.md` — code quality rules
+- MASTER-INDEX.txt at the curriculum root
+
+---
+*Generated by scripts/scaffold-bible-curriculum.py — {NOW}*
+"""
+
+
+# ─── Main ─────────────────────────────────────────────────────────────────
+
+def main():
+    args = sys.argv[1:]
+    dry_run = '--dry-run' in args
+    out_dir = DEFAULT_OUT
+    if '--out' in args:
+        out_dir = args[args.index('--out') + 1]
+
+    topics = extract_level_topics(LIBRARY_CONTEXT_TS)
+    # Single pass: load + hard-fail data-integrity check BEFORE generating anything.
+    chunks, problems = load_chunk_db()
+    if problems:
+        for fn, prob in problems:
+            print(f'✗ {fn}: {prob}')
+        raise SystemExit(f'ABORTED: {len(problems)} chunk-database problem(s) — fix data/code-bible/ first')
+    print(f'Extracted {len(topics)} level keys from {os.path.relpath(LIBRARY_CONTEXT_TS, ROOT)}')
+    print(f'Loaded {len(chunks)} atomic code chunks from {os.path.relpath(CHUNK_DB_DIR, ROOT)}')
+
+    master = build_master_index(topics, chunks)
+    created = 0
+    # Drift self-check: every chunk slug must have a BIBLE_LEVEL_TOPICS key,
+    # otherwise the loader (loadBibleFiles) will skip its dir silently.
+    missing_topics = [cid for cid in chunks if cid not in topics]
+    if missing_topics:
+        print('⚠ chunk slugs missing from BIBLE_LEVEL_TOPICS (invisible to loader):', missing_topics)
+    for level, topic_list in sort_levels(topics):
+        level_dir = os.path.join(out_dir, level)
+        index_path = os.path.join(level_dir, '00-index.md')
+        chunk = chunks.get(level)
+        content = build_chunk_index(chunk) if chunk else build_level_index(level, topic_list)
+        if dry_run:
+            print(f'  [dry-run] would write {os.path.relpath(index_path, ROOT)}')
+            created += 1
+            continue
+        os.makedirs(level_dir, exist_ok=True)
+        with open(index_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+        created += 1
+
+    master_path = os.path.join(out_dir, 'MASTER-INDEX.txt')
+    if not dry_run:
+        os.makedirs(out_dir, exist_ok=True)
+        with open(master_path, 'w', encoding='utf-8') as f:
+            f.write(master)
+
+    print(f'{"[dry-run] would create" if dry_run else "Created"} {created} level dirs + MASTER-INDEX.txt under {out_dir}')
+    if not dry_run:
+        # Quick self-check: every level dir has a 00-index.* and MASTER-INDEX lists numbers 01..42.
+        dirs = [d for d in os.listdir(out_dir) if os.path.isdir(os.path.join(out_dir, d))]
+        missing = [d for d in dirs if not any(f.startswith('00-index.') for f in os.listdir(os.path.join(out_dir, d)))]
+        if missing:
+            print('⚠ levels missing 00-index.*:', missing)
+        nums = sorted({re.match(r'^(\d+)', d).group(1) for d in dirs if re.match(r'^(\d+)', d)})
+        print(f'  levels on disk: {len(dirs)} dirs; numbered 01..{nums[-1] if nums else "?"} ({len(nums)} numbers)')
+        if not os.path.exists(master_path):
+            print('⚠ MASTER-INDEX.txt missing!')
+    else:
+        # Even in dry-run, report the expected numbering.
+        nums = sorted({re.match(r'^(\d+)', k).group(1) for k in topics if re.match(r'^(\d+)', k)})
+        print(f'  expected: {len(topics)} levels; numbered 01..{nums[-1] if nums else "?"} ({len(nums)} numbers)')
+
+
+if __name__ == '__main__':
+    main()

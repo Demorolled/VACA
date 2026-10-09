@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terminal OS</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Fira Code','Consolas','Courier New',monospace;background:#0a0a14;color:#4ade80;height:100vh;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}
+.terminal-wrap{width:100%;max-width:850px;background:#0d0d1a;border:1px solid rgba(255,255,255,0.06);border-radius:12px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.5)}
+.titlebar{display:flex;align-items:center;padding:8px 14px;background:#12121e;border-bottom:1px solid rgba(255,255,255,0.06);gap:8px;font-family:'Segoe UI',Arial,sans-serif;font-size:0.65rem}
+.titlebar .dots{display:flex;gap:6px}
+.titlebar .dot{width:10px;height:10px;border-radius:50%}
+.titlebar .dot.r{background:#ff5f56}.titlebar .dot.y{background:#ffbd2e}.titlebar .dot.g{background:#27c93f}
+.titlebar .title{color:#555;flex:1;text-align:center}
+#terminal{height:450px;overflow-y:auto;padding:12px 16px;font-size:13px;line-height:1.5;color:#4ade80;cursor:text;white-space:pre-wrap;word-wrap:break-word}
+#terminal::-webkit-scrollbar{width:4px}
+#terminal::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.05);border-radius:2px}
+#terminal::-webkit-scrollbar-track{background:transparent}
+#terminal .prompt{color:#00d9ff}
+#terminal .cmd{color:#e0e0f0}
+#terminal .out{color:#888}
+#terminal .err{color:#f87171}
+#terminal .info{color:#00d9ff}
+#terminal .success{color:#4ade80}
+#terminal .warn{color:#fbbf24}
+#terminal .heading{color:#00d9ff;font-weight:bold}
+.input-line{display:flex;align-items:center;padding:0 16px 10px;gap:4px;font-size:15px}
+.input-line .prompt{color:#00d9ff}
+#terminalInput{flex:1;background:transparent;border:none;outline:none;color:#e0e0f0;font-family:inherit;font-size:13px;caret-color:#4ade80}
+.status{display:flex;justify-content:space-between;padding:4px 14px;background:#0a0a14;border-top:1px solid rgba(255,255,255,0.04);font-size:0.5rem;color:#333;font-family:'Segoe UI',Arial,sans-serif}
+</style>
+</head>
+<body>
+<div class="terminal-wrap">
+  <div class="titlebar">
+    <div class="dots"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span></div>
+    <span class="title">📟 terminal-os — bash 5.1</span>
+  </div>
+  <div id="terminal">
+<div style="color:#555;line-height:1.4">
+<span style="color:#00d9ff">╔══════════════════════════════════════╗</span>
+<span style="color:#00d9ff">║     TERMINAL OS v1.0                  ║</span>
+<span style="color:#00d9ff">║     Type 'help' for commands          ║</span>
+<span style="color:#00d9ff">╚══════════════════════════════════════╝</span><br></div>
+  </div>
+  <div class="input-line">
+    <span class="prompt">$</span>
+    <input id="terminalInput" spellcheck="false" autofocus onkeydown="handleInput(event)">
+  </div>
+  <div class="status">
+    <span>[user@terminal-os ~]$</span>
+    <span id="cmdCount">0 commands</span>
+  </div>
+</div>
+
+<script>
+const term=document.getElementById('terminal');
+const input=document.getElementById('terminalInput');
+let cmdHistory=[],historyIdx=-1,cmdNum=0;
+
+// ── FILE SYSTEM ──
+let fs={
+  '/':{type:'dir',children:{
+    'home':{type:'dir',children:{
+      'user':{type:'dir',children:{
+        'documents':{type:'dir',children:{
+          'notes.txt':{type:'file',content:'Terminal OS notes:\n- Type help for commands\n- Use mkdir to create directories\n- Try ls, cd, pwd, cat'},
+          'todo.md':{type:'file',content:'# TODO\n- Build terminal OS\n- Add more commands\n- Create file system'}
+        }},
+        'projects':{type:'dir',children:{
+          'game':{type:'dir',children:{}},
+          'website':{type:'dir',children:{}}
+        }},
+        '.bashrc':{type:'file',content:'alias ll="ls -la"\nalias ..="cd .."\nalias home="cd ~"'}
+      }}
+    }},
+    'etc':{type:'dir',children:{
+      'hostname':{type:'file',content:'terminal-os'},
+      'motd':{type:'file',content:'Welcome to Terminal OS!'}
+    }},
+    'tmp':{type:'dir',children:{}},
+    'usr':{type:'dir',children:{}},
+    'var':{type:'dir',children:{'log':{type:'dir',children:{}}}}
+  }}
+};
+
+let cwd='/home/user';
+let currentUser='user';
+
+function getNode(path){
+  let parts=path.split('/').filter(Boolean);
+  let node=fs['/'];
+  for(const p of parts){
+    if(!node||node.type!=='dir'||!node.children[p])return null;
+    node=node.children[p];
+  }
+  return node;
+}
+
+function resolvePath(p){
+  if(p.startsWith('/'))return p;
+  if(p.startsWith('~'))return '/home/user'+p.slice(1);
+  let cur=cwd;
+  const parts=p.split('/').filter(Boolean);
+  for(const part of parts){
+    if(part==='..'){const idx=cur.lastIndexOf('/');cur=idx>0?cur.slice(0,idx):'/'}
+    else if(part==='.')continue;
+    else cur=cur+(cur.endsWith('/')?'':'/')+part;
+  }
+  return cur;
+}
+
+function getDirContents(dirPath){
+  const node=getNode(dirPath);
+  if(!node||node.type!=='dir')return null;
+  return node.children||{};
+}
+
+// ── COMMANDS ──
+const COMMANDS={};
+
+function register(name,fn,help){
+  COMMANDS[name]=fn;
+  COMMANDS[name].help=help;
+}
+
+function print(text,cls='out'){
+  const d=document.createElement('div');d.className=cls;d.innerHTML=text;term.appendChild(d);
+}
+
+register('help',(args)=>{
+  print('<span style="color:#00d9ff">╔══════════════════════════════════════╗</span>','');
+  print('<span style="color:#00d9ff">║        AVAILABLE COMMANDS            ║</span>','');
+  print('<span style="color:#00d9ff">╚══════════════════════════════════════╝</span>','');
+  for(const [name,fn] of Object.entries(COMMANDS)){
+    print(`  <span style="color:#4ade80">${name.padEnd(12)}</span> ${fn.help||''}`, ' ');
+  }
+},'Show this help message');
+
+register('ls',(args)=>{
+  const target=args[0]||cwd;
+  const resolved=resolvePath(target);
+  const contents=getDirContents(resolved);
+  if(!contents){print(`ls: cannot access '${target}': No such directory`,'err');return}
+  if(args.includes('-la')||args.includes('-l')){
+    for(const [name,node] of Object.entries(contents)){
+      const perms=node.type==='dir'?'drwxr-xr-x':'-rw-r--r--';
+      const size=node.type==='file'?(node.content||'').length:4096;
+      print(`${perms} 1 user user ${String(size).padStart(6)} 2026-07-26 ${name}`);
+    }
+  }else{
+    print(Object.keys(contents).join('    '));
+  }
+},'List directory contents');
+
+register('pwd',()=>{print(cwd)},'Print working directory');
+
+register('cd',(args)=>{
+  if(!args[0]){cwd='/home/user';return}
+  const resolved=resolvePath(args[0]);
+  const node=getNode(resolved);
+  if(!node||node.type!=='dir'){print(`cd: ${args[0]}: No such directory`,'err');return}
+  cwd=resolved;
+},'Change directory');
+
+register('mkdir',(args)=>{
+  if(!args[0]){print('mkdir: missing operand','err');return}
+  const parts=args[0].split('/').filter(Boolean);
+  const dirName=parts.pop();
+  const parentPath=resolvePath(parts.join('/')||'.');
+  const parent=getNode(parentPath);
+  if(!parent||parent.type!=='dir'){print(`mkdir: cannot create directory '${args[0]}': No such file or directory`,'err');return}
+  if(parent.children[dirName]){print(`mkdir: cannot create directory '${args[0]}': File exists`,'err');return}
+  parent.children[dirName]={type:'dir',children:{}};
+},'Create directory');
+
+register('touch',(args)=>{
+  if(!args[0]){print('touch: missing operand','err');return}
+  const parts=args[0].split('/').filter(Boolean);
+  const fileName=parts.pop();
+  const parentPath=resolvePath(parts.join('/')||'.');
+  const parent=getNode(parentPath);
+  if(!parent||parent.type!=='dir'){print(`touch: cannot touch '${args[0]}': No such file or directory`,'err');return}
+  if(!parent.children[fileName])parent.children[fileName]={type:'file',content:''};
+},'Create empty file');
+
+register('cat',(args)=>{
+  if(!args[0]){print('cat: missing operand','err');return}
+  const resolved=resolvePath(args[0]);
+  const node=getNode(resolved);
+  if(!node){print(`cat: ${args[0]}: No such file or directory`,'err');return}
+  if(node.type==='dir'){print(`cat: ${args[0]}: Is a directory`,'err');return}
+  print(node.content||'');
+},'Display file contents');
+
+register('echo',(args)=>{
+  const text=args.join(' ');
+  // Handle redirect
+  if(args.includes('>')){
+    const idx=args.indexOf('>');
+    const content=args.slice(0,idx).join(' ');
+    const fileName=args[idx+1];
+    if(fileName){
+      const resolved=resolvePath(fileName);
+      const node=getNode(resolved);
+      if(node&&node.type!=='file'){print('echo: cannot write to directory','err');return}
+      const parts=fileName.split('/').filter(Boolean);
+      const fname=parts.pop();
+      const parentPath=resolvePath(parts.join('/')||'.');
+      const parent=getNode(parentPath);
+      if(parent&&parent.type==='dir')parent.children[fname]={type:'file',content:content.replace(/^["']|["']$/g,'')};
+    }
+  }else{
+    print(text.replace(/^["']|["']$/g,''));
+  }
+},'Display text or write to file');
+
+register('clear',()=>{term.innerHTML=''},'Clear terminal');
+
+register('whoami',()=>{print(currentUser)},'Display current user');
+
+register('date',()=>{print(new Date().toString())},'Display current date/time');
+
+register('uname',()=>{print('Terminal OS 1.0 x86_64')},'Display system info');
+
+register('neofetch',()=>{
+  print('<span style="color:#00d9ff">           .---.       </span>','');
+  print('<span style="color:#00d9ff">          /     \\      </span>','');
+  print('<span style="color:#00d9ff">         /       \\     </span>','');
+  print('<span style="color:#00d9ff">        |  OS:    |    </span>','');
+  print('<span style="color:#00d9ff">         \\       /     </span>','');
+  print('<span style="color:#00d9ff">          \\     /      </span>','');
+  print('<span style="color:#00d9ff">           \\___/       </span>','');
+  print('OS: Terminal OS 1.0 x86_64','info');
+  print('Kernel: JS 5.1','info');
+  print('Shell: bash 5.1','info');
+  print('User: '+currentUser,'info');
+  print('CPU: Event Loop v8','info');
+  print('Memory: '+Math.round((performance.memory?.usedJSHeapSize||0)/1024/1024)+'MB / '+Math.round((performance.memory?.jsHeapSizeLimit||0)/1024/1024)+'MB','info');
+},'Display system information');
+
+register('ps',()=>{
+  print('  PID TTY          TIME CMD','');
+  print('    1 pts/0    00:00:01 bash','');
+  print('    2 pts/0    00:00:00 '+input.value.split(' ')[0]||'idle','');
+},'Display running processes');
+
+register('grep',(args)=>{
+  if(args.length<2){print('Usage: grep <pattern> <file>','err');return}
+  const pattern=args[0];const fileName=args[1];
+  const resolved=resolvePath(fileName);
+  const node=getNode(resolved);
+  if(!node||node.type!=='file'){print(`grep: ${fileName}: No such file`,'err');return}
+  const lines=(node.content||'').split('\n');
+  const matching=lines.filter(l=>l.includes(pattern));
+  if(matching.length===0)print('No matches found','out');
+  else matching.forEach(l=>print(l));
+},'Search file for pattern');
+
+register('find',(args)=>{
+  const target=args[0]||'.';
+  const resolved=resolvePath(target);
+  const results=[];
+  function walk(path,node){
+    if(!node)return;
+    if(node.type==='dir'){
+      results.push(path);
+      for(const [name,child] of Object.entries(node.children||{}))walk(path+'/'+name,child);
+    }else{results.push(path)}
+  }
+  walk(resolved,getNode(resolved));
+  results.forEach(r=>print(r));
+},'Find files and directories');
+
+register('tree',(args)=>{
+  const target=args[0]||cwd;
+  const resolved=resolvePath(target);
+  function printTree(path,node,prefix=''){
+    if(!node)return;
+    const entries=Object.entries(node.children||{});
+    entries.forEach(([name,child],i)=>{
+      const isLast=i===entries.length-1;
+      const connector=isLast?'└── ':'├── ';
+      print(prefix+connector+(child.type==='dir'?'📁 ':'📄 ')+name);
+      if(child.type==='dir')printTree(path+'/'+name,child,prefix+(isLast?'    ':'│   '));
+    });
+  }
+  print(resolved);
+  printTree(resolved,getNode(resolved));
+},'Display directory tree');
+
+register('df',()=>{
+  print('Filesystem      Size  Used  Avail  Use%  Mounted on','');
+  print('rootfs          64M   12M    52M    19%   /','');
+  print('tmpfs           32M   2M     30M     6%   /tmp','');
+},'Display disk usage');
+
+register('history',()=>{cmdHistory.forEach((c,i)=>print(`  ${i+1}  ${c}`))},'Show command history');
+
+register('sudo',(args)=>{
+  if(args[0]==='rm'&&args[1]==='-rf'&&args[2]==='/'){
+    print('<span style="color:#f87171">⚠️  Nice try! This is a simulated terminal.</span>','');
+    print('<span style="color:#fbbf24">But in a real OS, that would be catastrophic 😅</span>','');
+    return;
+  }
+  currentUser='root';
+  print(`Executed as root: ${args.join(' ')}`);
+  setTimeout(()=>{currentUser='user'},5000);
+},'Execute command as superuser');
+
+// ── INPUT HANDLING ──
+function handleInput(e){
+  if(e.key==='Enter'){
+    const cmd=input.value.trim();
+    input.value='';
+    if(!cmd)return;
+    
+    cmdHistory.push(cmd);
+    historyIdx=-1;
+    cmdNum++;
+    document.getElementById('cmdCount').textContent=cmdNum+' commands';
+    
+    // Print command
+    term.innerHTML+=`<div><span class="prompt">${currentUser}@terminal-os:${cwd}$ </span><span class="cmd">${escapeHTML(cmd)}</span></div>`;
+    
+    // Parse
+    const parts=cmd.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g)||[];
+    const command=parts[0];
+    const args=parts.slice(1).map(a=>a.replace(/^["']|["']$/g,''));
+    
+    if(COMMANDS[command]){
+      try{COMMANDS[command](args)}catch(e){print(`Error: ${e.message}`,'err')}
+    }else{
+      print(`Command not found: ${command}. Type 'help' for available commands.`,'err');
+    }
+    
+    term.scrollTop=term.scrollHeight;
+  }else if(e.key==='ArrowUp'){
+    e.preventDefault();
+    if(historyIdx===-1)historyIdx=cmdHistory.length-1;
+    else if(historyIdx>0)historyIdx--;
+    input.value=cmdHistory[historyIdx]||'';
+  }else if(e.key==='ArrowDown'){
+    e.preventDefault();
+    if(historyIdx<cmdHistory.length-1){historyIdx++;input.value=cmdHistory[historyIdx]||''}
+    else{historyIdx=-1;input.value=''}
+  }
+}
+
+function escapeHTML(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+term.scrollTop=term.scrollHeight;
+input.focus();
+document.addEventListener('click',()=>input.focus());
+</script>
+</body>
+</html>

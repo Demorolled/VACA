@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vector Editor Pro</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:'Segoe UI',Arial,sans-serif;
+  background:#0a0a14;
+  color:#ccc;
+  height:100vh;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+header{display:flex;align-items:center;padding:6px 14px;background:#12121e;border-bottom:1px solid rgba(255,255,255,0.06);gap:12px}
+header h1{font-size:0.9rem;color:#00d9ff}
+header h1 small{color:#555;font-size:0.6rem;font-weight:400}
+.toolbar{display:flex;gap:3px;flex-wrap:wrap}
+.toolbar button,.toolbar .tool-btn{
+  padding:5px 10px;border:1px solid rgba(255,255,255,0.06);border-radius:4px;
+  background:rgba(255,255,255,0.03);color:#888;cursor:pointer;font-size:0.65rem;
+  font-family:inherit;transition:0.1s;line-height:1
+}
+.toolbar button:hover,.toolbar .tool-btn:hover{border-color:#00d9ff;color:#ccc}
+.toolbar .tool-btn.active{border-color:#00d9ff;color:#00d9ff;background:rgba(0,217,255,0.1)}
+.toolbar .sep{width:1px;background:rgba(255,255,255,0.08);margin:0 4px}
+.main{display:flex;flex:1;overflow:hidden}
+.canvas-wrap{flex:1;display:flex;align-items:center;justify-content:center;background:#080810;position:relative;overflow:hidden}
+.canvas-wrap svg{cursor:crosshair}
+.sidebar{
+  width:240px;background:#12121e;border-left:1px solid rgba(255,255,255,0.06);
+  display:flex;flex-direction:column;
+}
+.sidebar-tabs{display:flex;border-bottom:1px solid rgba(255,255,255,0.06)}
+.sidebar-tab{
+  flex:1;padding:7px;text-align:center;font-size:0.65rem;cursor:pointer;
+  color:#555;border-bottom:2px solid transparent;transition:0.1s
+}
+.sidebar-tab:hover{color:#888}
+.sidebar-tab.active{color:#00d9ff;border-bottom-color:#00d9ff}
+.sidebar-content{flex:1;overflow-y:auto;padding:8px}
+.layer-item{
+  display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:4px;
+  cursor:pointer;font-size:0.7rem;border:1px solid transparent;margin-bottom:2px
+}
+.layer-item:hover{background:rgba(255,255,255,0.03)}
+.layer-item.active{border-color:rgba(0,217,255,0.3);background:rgba(0,217,255,0.05)}
+.layer-item .thumb{width:24px;height:24px;border-radius:2px;background:rgba(255,255,255,0.05);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:0.5rem}
+.layer-item .lname{flex:1;color:#aaa}
+.layer-item .vis{cursor:pointer;color:#555;font-size:0.6rem}
+.prop-group{margin-bottom:8px}
+.prop-group label{font-size:0.6rem;color:#666;display:block;margin-bottom:2px}
+.prop-group input[type=color]{width:100%;height:28px;border:1px solid rgba(255,255,255,0.06);border-radius:4px;background:rgba(0,0,0,0.3);cursor:pointer}
+.prop-row{display:flex;gap:4px;margin-bottom:4px}
+.prop-row input{flex:1;padding:4px 6px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.06);border-radius:3px;color:#aaa;font-size:0.6rem;font-family:inherit;outline:none;width:0}
+.prop-row input:focus{border-color:#00d9ff}
+.status{font-size:0.6rem;color:#444;padding:4px 10px;border-top:1px solid rgba(255,255,255,0.04)}
+</style>
+</head>
+<body>
+<header>
+  <h1>✏️ Vector Editor <small>SVG · Layers · Shapes</small></h1>
+  <div class="toolbar">
+    <button class="tool-btn active" data-tool="select" onclick="setTool('select')">↖ Select</button>
+    <button class="tool-btn" data-tool="rect" onclick="setTool('rect')">▭ Rect</button>
+    <button class="tool-btn" data-tool="circle" onclick="setTool('circle')">○ Circle</button>
+    <button class="tool-btn" data-tool="line" onclick="setTool('line')">／ Line</button>
+    <button class="tool-btn" data-tool="path" onclick="setTool('path')">✎ Path</button>
+    <button class="tool-btn" data-tool="text" onclick="setTool('text')">T Text</button>
+    <span class="sep"></span>
+    <button onclick="deleteSelected()">🗑️</button>
+    <button onclick="duplicateSelected()">📋</button>
+    <span class="sep"></span>
+    <button onclick="exportSVG()">💾 SVG</button>
+    <button onclick="exportPNG()">🖼 PNG</button>
+    <button onclick="clearAll()">✕ Clear</button>
+  </div>
+</header>
+<div class="main">
+  <div class="canvas-wrap" id="canvasWrap" onclick="handleCanvasClick(event)">
+    <svg id="svgCanvas" width="800" height="600" viewBox="0 0 800 600"></svg>
+  </div>
+  <div class="sidebar">
+    <div class="sidebar-tabs">
+      <div class="sidebar-tab active" data-tab="layers" onclick="switchSidebarTab('layers')">📑 Layers</div>
+      <div class="sidebar-tab" data-tab="props" onclick="switchSidebarTab('props')">⚙️ Props</div>
+    </div>
+    <div class="sidebar-content" id="layersTab"><div id="layerList"></div></div>
+    <div class="sidebar-content" id="propsTab" style="display:none">
+      <div class="prop-group">
+        <label>Fill</label>
+        <input type="color" id="propFill" value="#3399ff" onchange="updateSelectedProp('fill',this.value)">
+      </div>
+      <div class="prop-group">
+        <label>Stroke</label>
+        <input type="color" id="propStroke" value="#ffffff" onchange="updateSelectedProp('stroke',this.value)">
+      </div>
+      <div class="prop-group">
+        <label>Stroke Width</label>
+        <input type="range" min="0" max="20" value="2" id="propStrokeWidth" oninput="updateSelectedProp('strokeWidth',this.value)">
+      </div>
+      <div class="prop-group">
+        <label>Opacity</label>
+        <input type="range" min="0" max="100" value="100" id="propOpacity" oninput="updateSelectedProp('opacity',this.value)">
+      </div>
+      <div class="prop-row">
+        <input type="number" id="propX" placeholder="X" onchange="updateSelectedProp('x',this.value)">
+        <input type="number" id="propY" placeholder="Y" onchange="updateSelectedProp('y',this.value)">
+      </div>
+      <div class="prop-row">
+        <input type="number" id="propW" placeholder="W" onchange="updateSelectedProp('width',this.value)">
+        <input type="number" id="propH" placeholder="H" onchange="updateSelectedProp('height',this.value)">
+      </div>
+      <div class="prop-row">
+        <input type="number" id="propRot" placeholder="Rot" onchange="updateSelectedProp('rotate',this.value)">
+      </div>
+    </div>
+    <div class="status" id="statusBar">Ready · 0 elements</div>
+  </div>
+</div>
+
+<script>
+// ── STATE ──
+let elements = [];
+let selectedId = null;
+let currentTool = 'select';
+let nextId = 1;
+let dragState = null;
+let pathPoints = [];
+let isDrawingPath = false;
+
+const COLORS = ['#3399ff','#ff6633','#33cc66','#cc33ff','#ffcc00','#ff3399','#00cccc','#ff6666'];
+
+// ── SVG NAMESPACE ──
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const svg = document.getElementById('svgCanvas');
+
+// ── TOOLS ──
+function setTool(tool) {
+  currentTool = tool;
+  document.querySelectorAll('.tool-btn').forEach(b => b.classList.toggle('active', b.dataset.tool === tool));
+  if (tool !== 'path') { pathPoints = []; isDrawingPath = false; }
+  svg.style.cursor = tool === 'select' ? 'default' : 'crosshair';
+  updateStatus();
+}
+
+// ── ELEMENTS ──
+function createElement(type, props) {
+  const el = { id: nextId++, type, ...props, visible: true };
+  elements.push(el);
+  render();
+  selectElement(el.id);
+  return el;
+}
+
+function getElement(id) { return elements.find(e => e.id === id); }
+
+function deleteSelected() {
+  if (!selectedId) return;
+  elements = elements.filter(e => e.id !== selectedId);
+  selectedId = null;
+  render();
+  updateStatus();
+}
+
+function duplicateSelected() {
+  if (!selectedId) return;
+  const el = getElement(selectedId);
+  if (!el) return;
+  const copy = { ...el, id: nextId++, x: (el.x || 0) + 20, y: (el.y || 0) + 20 };
+  elements.push(copy);
+  render();
+  selectElement(copy.id);
+}
+
+function clearAll() {
+  if (elements.length === 0) return;
+  if (!confirm('Clear all elements?')) return;
+  elements = [];
+  selectedId = null;
+  render();
+  updateStatus();
+}
+
+function selectElement(id) {
+  selectedId = id;
+  render();
+  updatePropsPanel();
+  updateStatus();
+}
+
+// ── RENDER ──
+function render() {
+  svg.innerHTML = '';
+  
+  // Grid
+  const defs = document.createElementNS(SVG_NS, 'defs');
+  const pattern = document.createElementNS(SVG_NS, 'pattern');
+  pattern.setAttribute('id', 'grid');
+  pattern.setAttribute('width', '20');
+  pattern.setAttribute('height', '20');
+  pattern.setAttribute('patternUnits', 'userSpaceOnUse');
+  const gridRect = document.createElementNS(SVG_NS, 'rect');
+  gridRect.setAttribute('width', '20');
+  gridRect.setAttribute('height', '20');
+  gridRect.setAttribute('fill', 'none');
+  gridRect.setAttribute('stroke', 'rgba(255,255,255,0.03)');
+  gridRect.setAttribute('stroke-width', '0.5');
+  pattern.appendChild(gridRect);
+  defs.appendChild(pattern);
+  svg.appendChild(defs);
+  
+  const bg = document.createElementNS(SVG_NS, 'rect');
+  bg.setAttribute('width', '100%');
+  bg.setAttribute('height', '100%');
+  bg.setAttribute('fill', 'url(#grid)');
+  svg.appendChild(bg);
+  
+  // Filter for selection
+  const selDefs = document.createElementNS(SVG_NS, 'defs');
+  const filter = document.createElementNS(SVG_NS, 'filter');
+  filter.setAttribute('id', 'selectedGlow');
+  const feG = document.createElementNS(SVG_NS, 'feGaussianBlur');
+  feG.setAttribute('stdDeviation', '2');
+  feG.setAttribute('result', 'blur');
+  filter.appendChild(feG);
+  const feM = document.createElementNS(SVG_NS, 'feMerge');
+  const fn1 = document.createElementNS(SVG_NS, 'feMergeNode');
+  fn1.setAttribute('in', 'blur');
+  const fn2 = document.createElementNS(SVG_NS, 'feMergeNode');
+  fn2.setAttribute('in', 'SourceGraphic');
+  feM.appendChild(fn1);
+  feM.appendChild(fn2);
+  filter.appendChild(feM);
+  selDefs.appendChild(filter);
+  svg.appendChild(selDefs);
+  
+  // Elements
+  for (const el of elements) {
+    if (!el.visible) continue;
+    const isSelected = el.id === selectedId;
+    let node;
+    
+    switch (el.type) {
+      case 'rect':
+        node = document.createElementNS(SVG_NS, 'rect');
+        node.setAttribute('x', el.x || 50);
+        node.setAttribute('y', el.y || 50);
+        node.setAttribute('width', el.width || 100);
+        node.setAttribute('height', el.height || 80);
+        node.setAttribute('rx', el.rx || 0);
+        break;
+      case 'circle':
+        node = document.createElementNS(SVG_NS, 'ellipse');
+        node.setAttribute('cx', el.x || 100);
+        node.setAttribute('cy', el.y || 80);
+        node.setAttribute('rx', el.rx || 60);
+        node.setAttribute('ry', el.ry || 50);
+        break;
+      case 'line':
+        node = document.createElementNS(SVG_NS, 'line');
+        node.setAttribute('x1', el.x1 || 50);
+        node.setAttribute('y1', el.y1 || 50);
+        node.setAttribute('x2', el.x2 || 200);
+        node.setAttribute('y2', el.y2 || 150);
+        break;
+      case 'path':
+        node = document.createElementNS(SVG_NS, 'path');
+        node.setAttribute('d', el.d || '');
+        break;
+      case 'text':
+        node = document.createElementNS(SVG_NS, 'text');
+        node.setAttribute('x', el.x || 100);
+        node.setAttribute('y', el.y || 100);
+        node.setAttribute('font-family', 'Arial');
+        node.setAttribute('font-size', el.fontSize || 24);
+        node.setAttribute('text-anchor', 'middle');
+        node.setAttribute('dominant-baseline', 'central');
+        node.textContent = el.text || 'Text';
+        break;
+    }
+    
+    if (node) {
+      node.setAttribute('fill', el.fill || 'rgba(51,153,255,0.3)');
+      node.setAttribute('stroke', el.stroke || '#3399ff');
+      node.setAttribute('stroke-width', el.strokeWidth || 2);
+      if (el.opacity !== undefined) node.setAttribute('opacity', el.opacity / 100);
+      
+      // Transform
+      let transforms = '';
+      if (el.rotate) transforms += `rotate(${el.rotate},${(el.x||0)+((el.width||el.rx||0)/2)},${(el.y||0)+((el.height||el.ry||0)/2)}) `;
+      if (transforms) node.setAttribute('transform', transforms.trim());
+      
+      if (isSelected) {
+        node.setAttribute('filter', 'url(#selectedGlow)');
+        node.setAttribute('stroke', '#00d9ff');
+        node.setAttribute('stroke-width', '3');
+      }
+      
+      node.dataset.id = el.id;
+      node.style.cursor = 'pointer';
+      node.onclick = (e) => { e.stopPropagation(); selectElement(el.id); };
+      node.onmousedown = (e) => { if (currentTool === 'select') { e.stopPropagation(); startDrag(e, el.id); } };
+      
+      svg.appendChild(node);
+      
+      // Selection handles
+      if (isSelected && currentTool === 'select') {
+        const bbox = getElementBBox(el);
+        if (bbox) {
+          const handles = [
+            { x: bbox.x, y: bbox.y },
+            { x: bbox.x + bbox.w / 2, y: bbox.y },
+            { x: bbox.x + bbox.w, y: bbox.y },
+            { x: bbox.x, y: bbox.y + bbox.h / 2 },
+            { x: bbox.x + bbox.w, y: bbox.y + bbox.h / 2 },
+            { x: bbox.x, y: bbox.y + bbox.h },
+            { x: bbox.x + bbox.w / 2, y: bbox.y + bbox.h },
+            { x: bbox.x + bbox.w, y: bbox.y + bbox.h },
+          ];
+          for (const h of handles) {
+            const dot = document.createElementNS(SVG_NS, 'circle');
+            dot.setAttribute('cx', h.x);
+            dot.setAttribute('cy', h.y);
+            dot.setAttribute('r', '4');
+            dot.setAttribute('fill', '#00d9ff');
+            dot.setAttribute('stroke', '#fff');
+            dot.setAttribute('stroke-width', '1');
+            dot.style.cursor = 'pointer';
+            dot.onmousedown = (e) => { e.stopPropagation(); startResize(e, el.id, h.x, h.y); };
+            svg.appendChild(dot);
+          }
+        }
+      }
+    }
+  }
+}
+
+function getElementBBox(el) {
+  switch (el.type) {
+    case 'rect': return { x: el.x, y: el.y, w: el.width, h: el.height };
+    case 'circle': return { x: el.x - el.rx, y: el.y - el.ry, w: el.rx * 2, h: el.ry * 2 };
+    case 'line': return { x: Math.min(el.x1, el.x2), y: Math.min(el.y1, el.y2), w: Math.abs(el.x2 - el.x1) || 10, h: Math.abs(el.y2 - el.y1) || 10 };
+    case 'path': return { x: 50, y: 50, w: 100, h: 80 };
+    case 'text': return { x: (el.x || 100) - 50, y: (el.y || 100) - 15, w: 100, h: 30 };
+    default: return { x: 0, y: 0, w: 100, h: 80 };
+  }
+}
+
+// ── DRAG ──
+function startDrag(e, id) {
+  if (currentTool !== 'select') return;
+  const rect = svg.getBoundingClientRect();
+  const scaleX = 800 / rect.width;
+  const scaleY = 600 / rect.height;
+  const startX = (e.clientX - rect.left) * scaleX;
+  const startY = (e.clientY - rect.top) * scaleY;
+  const el = getElement(id);
+  if (!el) return;
+  
+  dragState = { id, startX, startY, origX: el.x || 0, origY: el.y || 0 };
+  
+  document.onmousemove = (e) => {
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+    const dx = x - dragState.startX;
+    const dy = y - dragState.startY;
+    const el = getElement(dragState.id);
+    if (!el) return;
+    
+    if (el.type === 'line') {
+      el.x1 = (dragState.origX1 || el.x1) + dx;
+      el.y1 = (dragState.origY1 || el.y1) + dy;
+      el.x2 = (dragState.origX2 || el.x2) + dx;
+      el.y2 = (dragState.origY2 || el.y2) + dy;
+    } else {
+      el.x = dragState.origX + dx;
+      el.y = dragState.origY + dy;
+    }
+    render();
+  };
+  
+  document.onmouseup = () => {
+    dragState = null;
+    document.onmousemove = null;
+    document.onmouseup = null;
+  };
+}
+
+function startResize(e, id, hx, hy) {
+  // Simplified resize - will just scale
+  const rect = svg.getBoundingClientRect();
+  const scaleX = 800 / rect.width;
+  const scaleY = 600 / rect.height;
+  const el = getElement(id);
+  if (!el) return;
+  
+  const origW = el.width || el.rx * 2 || 100;
+  const origH = el.height || el.ry * 2 || 80;
+  
+  document.onmousemove = (e2) => {
+    const x = (e2.clientX - rect.left) * scaleX;
+    const y = (e2.clientY - rect.top) * scaleY;
+    const dx = x - hx;
+    const dy = y - hy;
+    
+    if (el.type === 'rect') {
+      el.width = Math.max(10, origW + dx);
+      el.height = Math.max(10, origH + dy);
+    } else if (el.type === 'circle') {
+      el.rx = Math.max(10, (origW / 2) + dx / 2);
+      el.ry = Math.max(10, (origH / 2) + dy / 2);
+    }
+    render();
+  };
+  
+  document.onmouseup = () => {
+    document.onmousemove = null;
+    document.onmouseup = null;
+  };
+}
+
+// ── CANVAS CLICK (create elements) ──
+function handleCanvasClick(e) {
+  if (currentTool === 'select') return;
+  const rect = svg.getBoundingClientRect();
+  const x = (e.clientX - rect.left) * (800 / rect.width);
+  const y = (e.clientY - rect.top) * (600 / rect.height);
+  
+  if (currentTool === 'path') {
+    if (!isDrawingPath) {
+      isDrawingPath = true;
+      pathPoints = [{ x, y }];
+    } else {
+      pathPoints.push({ x, y });
+      if (pathPoints.length > 2 && e.detail === 2) {
+        // Double-click to finish path
+        finishPath();
+        return;
+      }
+    }
+    // Preview path
+    drawPathPreview();
+    return;
+  }
+  
+  const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+  
+  switch (currentTool) {
+    case 'rect':
+      createElement('rect', { x: x - 50, y: y - 40, width: 100, height: 80, rx: 0, fill: color + '44', stroke: color, strokeWidth: 2, opacity: 100 });
+      break;
+    case 'circle':
+      createElement('circle', { x: x, y: y, rx: 50, ry: 45, fill: color + '44', stroke: color, strokeWidth: 2, opacity: 100 });
+      break;
+    case 'line':
+      createElement('line', { x1: x - 60, y1: y - 40, x2: x + 60, y2: y + 40, stroke: color, strokeWidth: 3, opacity: 100 });
+      break;
+    case 'text':
+      createElement('text', { x, y, text: 'Double-click', fontSize: 20, fill: color, stroke: 'none', strokeWidth: 0, opacity: 100 });
+      break;
+  }
+}
+
+function drawPathPreview() {
+  // Remove old preview
+  const old = document.getElementById('pathPreview');
+  if (old) old.remove();
+  
+  if (pathPoints.length < 2) return;
+  
+  let d = `M${pathPoints[0].x},${pathPoints[0].y}`;
+  for (let i = 1; i < pathPoints.length; i++) {
+    d += ` L${pathPoints[i].x},${pathPoints[i].y}`;
+  }
+  
+  const path = document.createElementNS(SVG_NS, 'path');
+  path.setAttribute('id', 'pathPreview');
+  path.setAttribute('d', d);
+  path.setAttribute('fill', 'none');
+  path.setAttribute('stroke', '#00d9ff');
+  path.setAttribute('stroke-width', '2');
+  path.setAttribute('stroke-dasharray', '5,5');
+  path.setAttribute('opacity', '0.5');
+  svg.appendChild(path);
+  
+  // Draw points
+  for (const p of pathPoints) {
+    const dot = document.createElementNS(SVG_NS, 'circle');
+    dot.setAttribute('cx', p.x);
+    dot.setAttribute('cy', p.y);
+    dot.setAttribute('r', '4');
+    dot.setAttribute('fill', '#00d9ff');
+    dot.setAttribute('opacity', '0.7');
+    dot.setAttribute('id', 'pathPreview');
+    svg.appendChild(dot);
+  }
+}
+
+function finishPath() {
+  if (pathPoints.length < 2) return;
+  let d = `M${pathPoints[0].x},${pathPoints[0].y}`;
+  for (let i = 1; i < pathPoints.length; i++) {
+    d += ` L${pathPoints[i].x},${pathPoints[i].y}`;
+  }
+  createElement('path', { d, fill: 'none', stroke: '#00d9ff', strokeWidth: 2, opacity: 100 });
+  pathPoints = [];
+  isDrawingPath = false;
+  render();
+}
+
+// ── PROPS PANEL ──
+function updatePropsPanel() {
+  const el = getElement(selectedId);
+  if (!el) {
+    document.getElementById('propFill').value = '#3399ff';
+    document.getElementById('propStroke').value = '#ffffff';
+    document.getElementById('propStrokeWidth').value = 2;
+    document.getElementById('propOpacity').value = 100;
+    document.getElementById('propX').value = '';
+    document.getElementById('propY').value = '';
+    document.getElementById('propW').value = '';
+    document.getElementById('propH').value = '';
+    return;
+  }
+  document.getElementById('propFill').value = el.fill || '#3399ff';
+  document.getElementById('propStroke').value = el.stroke || '#ffffff';
+  document.getElementById('propStrokeWidth').value = el.strokeWidth || 2;
+  document.getElementById('propOpacity').value = el.opacity !== undefined ? el.opacity : 100;
+  document.getElementById('propX').value = el.x || 0;
+  document.getElementById('propY').value = el.y || 0;
+  if (el.type === 'rect') {
+    document.getElementById('propW').value = el.width || 0;
+    document.getElementById('propH').value = el.height || 0;
+  } else if (el.type === 'circle') {
+    document.getElementById('propW').value = el.rx * 2 || 0;
+    document.getElementById('propH').value = el.ry * 2 || 0;
+  } else {
+    document.getElementById('propW').value = '';
+    document.getElementById('propH').value = '';
+  }
+  document.getElementById('propRot').value = el.rotate || 0;
+}
+
+function updateSelectedProp(key, value) {
+  const el = getElement(selectedId);
+  if (!el) return;
+  
+  const mappings = { strokeWidth: 'stroke-width', fill: 'fill', stroke: 'stroke' };
+  
+  switch (key) {
+    case 'x': el.x = parseFloat(value) || 0; break;
+    case 'y': el.y = parseFloat(value) || 0; break;
+    case 'width': if (el.type === 'rect') el.width = Math.max(1, parseFloat(value) || 1); break;
+    case 'height': if (el.type === 'rect') el.height = Math.max(1, parseFloat(value) || 1); break;
+    case 'fill': el.fill = value; break;
+    case 'stroke': el.stroke = value; break;
+    case 'strokeWidth': el.strokeWidth = parseFloat(value) || 0; break;
+    case 'opacity': el.opacity = parseFloat(value) || 100; break;
+    case 'rotate': el.rotate = parseFloat(value) || 0; break;
+  }
+  render();
+}
+
+// ── SIDEBAR ──
+function switchSidebarTab(tab) {
+  document.querySelectorAll('.sidebar-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.getElementById('layersTab').style.display = tab === 'layers' ? 'block' : 'none';
+  document.getElementById('propsTab').style.display = tab === 'props' ? 'block' : 'none';
+  render();
+}
+
+// ── EXPORT ──
+function exportSVG() {
+  const clone = svg.cloneNode(true);
+  // Remove handles
+  const toRemove = [];
+  clone.querySelectorAll('circle').forEach(c => {
+    if (c.getAttribute('fill') === '#00d9ff' && c.getAttribute('stroke') === '#fff') toRemove.push(c);
+  });
+  toRemove.forEach(c => c.remove());
+  
+  const serializer = new XMLSerializer();
+  const svgStr = serializer.serializeToString(clone);
+  const blob = new Blob([svgStr], { type: 'image/svg+xml' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'vector-art.svg';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportPNG() {
+  const serializer = new XMLSerializer();
+  const svgStr = serializer.serializeToString(svg);
+  const img = new Image();
+  const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  
+  img.onload = () => {
+    const c = document.createElement('canvas');
+    c.width = 800; c.height = 600;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#0a0a14';
+    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(img, 0, 0);
+    c.toBlob(b => {
+      const u = URL.createObjectURL(b);
+      const a = document.createElement('a');
+      a.href = u; a.download = 'vector-art.png';
+      a.click();
+      URL.revokeObjectURL(u);
+    });
+    URL.revokeObjectURL(url);
+  };
+  img.src = url;
+}
+
+// ── STATUS ──
+function updateStatus() {
+  const el = selectedId ? getElement(selectedId) : null;
+  document.getElementById('statusBar').textContent =
+    `${elements.length} elements · Tool: ${currentTool}${el ? ` · Selected: #${el.id} (${el.type})` : ''}`;
+}
+
+// ── INIT ──
+// Create some demo elements
+createElement('rect', { x: 100, y: 80, width: 160, height: 120, rx: 8, fill: '#3399ff44', stroke: '#3399ff', strokeWidth: 2, opacity: 100 });
+createElement('circle', { x: 350, y: 150, rx: 70, ry: 60, fill: '#33cc6644', stroke: '#33cc66', strokeWidth: 2, opacity: 100 });
+createElement('line', { x1: 100, y1: 300, x2: 300, y2: 400, stroke: '#ff6633', strokeWidth: 3, opacity: 100 });
+createElement('text', { x: 400, y: 350, text: 'Vector Editor', fontSize: 28, fill: '#ffffff', stroke: 'none', strokeWidth: 0, opacity: 100 });
+selectedId = null;
+render();
+updateStatus();
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  switch (e.key) {
+    case 'Delete': case 'Backspace': deleteSelected(); break;
+    case 'Escape': selectedId = null; render(); updateStatus(); break;
+    case 'v': setTool('select'); break;
+    case 'r': setTool('rect'); break;
+    case 'c': setTool('circle'); break;
+    case 'l': setTool('line'); break;
+    case 't': setTool('text'); break;
+    case 'p': setTool('path'); break;
+    case 'd': if (e.ctrlKey) { e.preventDefault(); duplicateSelected(); } break;
+  }
+});
+</script>
+</body>
+</html>

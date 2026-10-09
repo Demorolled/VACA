@@ -1,0 +1,18 @@
+{
+    "2026-12": [
+        {
+            "type": "sms",
+            "date": "2026-12-25T12:00:00",
+            "description": "Whole Foods",
+            "amount": 52.34,
+            "category": "unknown"
+        },
+        {
+            "type": "sms",
+            "date": "2026-12-26T09:15:00",
+            "description": "Gas Station",
+            "amount": 40.0,
+            "category": "unknown"
+        }
+    ]
+}

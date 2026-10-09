@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Multi-Store Price Comparison Tracker</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 680px; margin: 2rem auto; padding: 0 1rem; color: #e6edf3; background: #0d1117; }
+  h1 { font-size: 1.4rem; }
+  input, select { padding: .4rem; margin: .2rem .3rem .2rem 0; background: #161b22; color: #e6edf3; border: 1px solid #30363d; border-radius: 6px; }
+  button { padding: .4rem .9rem; background: #2ea043; color: #fff; border: 0; border-radius: 6px; cursor: pointer; }
+  table { width: 100%; border-collapse: collapse; margin: .5rem 0; }
+  th, td { border: 1px solid #30363d; padding: .35rem .5rem; text-align: left; font-size: .9rem; }
+  .cheapest { background: #1a3a22; font-weight: bold; }
+  .muted { color: #8b949e; font-size: .85rem; }
+</style>
+</head>
+<body>
+<h1>⚖️ Multi-Store Price Tracker</h1>
+<p class="muted">Scaffold (batch 2). Same item, many stores — unit price decides.</p>
+
+<form id="itemForm">
+  <input id="itemName" placeholder="Item (e.g. peanut butter)" autocomplete="off">
+  <input id="itemQty" placeholder="Size (e.g. 16 oz)" autocomplete="off">
+  <button type="submit">Add item</button>
+</form>
+
+<div id="items"></div>
+
+<script>
+const STORES = ['Walmart', 'Kroger', 'Safeway', 'Costco'];
+const state = JSON.parse(localStorage.getItem('msp') || '{"items":{}}');
+function save() { localStorage.setItem('msp', JSON.stringify(state)); }
+
+function unitPrice(price, size) {
+  const m = size.match(/([\d.]+)\s*(\w+)/);
+  if (!m || !price) return null;
+  const units = { oz: 1, floz: 1, lb: 16, 'fl oz': 1, g: 1 / 28.35, ml: 1 / 29.57, kg: 35.27, l: 33.81, qt: 32, gal: 128 };
+  const mult = units[m[2].toLowerCase()] || 1;
+  return price / (parseFloat(m[1]) * mult); // $ per oz-equivalent
+}
+
+function renderItems() {
+  const box = document.getElementById('items');
+  box.innerHTML = Object.entries(state.items).map(([name, it]) => {
+    const cells = STORES.map(store => {
+      const v = it.prices[store];
+      return `<input class="p" data-item="${name}" data-store="${store}" value="${v ?? ''}" type="number" step="0.01" min="0" placeholder="—">`;
+    }).join('');
+    const ups = STORES.map(store => unitPrice(it.prices[store], it.size)).filter(x => x != null);
+    const best = ups.length ? Math.min(...ups) : null;
+    const bestStore = best != null ? STORES[ups.indexOf(best)] : null;
+    const cells2 = STORES.map(store => {
+      const u = unitPrice(it.prices[store], it.size);
+      return `<td class="${store === bestStore ? 'cheapest' : ''}">${u != null ? '$' + u.toFixed(3) + '/oz' : '—'}</td>`;
+    }).join('');
+    return `<h3>${name} <span class="muted">(${it.size})</span></h3>` +
+           `<table><thead><tr><th>Store</th><th>Price</th><th>Unit</th></tr></thead>` +
+           `<tbody>${STORES.map((s, i) => `<tr><td>${s}</td><td>${cells.split('</td>')[i] + '</td>'}</td>${cells2.match(/<td[^>]*>.*?<\/td>/g)[i]}</tr>`).join('')}</tbody></table>`;
+  }).join('');
+  box.querySelectorAll('.p').forEach(inp => inp.onchange = () => {
+    const val = parseFloat(inp.value);
+    if (!isNaN(val)) { state.items[inp.dataset.item].prices[inp.dataset.store] = val; save(); renderItems(); }
+  });
+}
+
+document.getElementById('itemForm').onsubmit = e => {
+  e.preventDefault();
+  const name = document.getElementById('itemName').value.trim();
+  const size = document.getElementById('itemQty').value.trim();
+  if (name) {
+    if (!state.items[name]) state.items[name] = { size: size || '1 unit', prices: {} };
+    else state.items[name].size = size || state.items[name].size;
+    save(); document.getElementById('itemName').value = ''; document.getElementById('itemQty').value = ''; renderItems();
+  }
+};
+
+renderItems();
+</script>
+</body>
+</html>

@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grocery Price Radar</title>
+<style>
+  /* ═══════════════════════════════════════════════════════════════
+     Grocery Price Radar — premium upgrade
+     Playbook 69-premium-visual-art-direction: studio backdrop (lit
+     center, crushed corners) · glassmorphism HUD panels (translucent
+     fill + backdrop blur + 1px light hairline + soft drop shadow) ·
+     emissive status highlights · grounded cards with rim light ·
+     metallic green CTA. No flat fills, no pure black, no 100% shadows.
+     ═══════════════════════════════════════════════════════════════ */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg-1: #0f1a2e; --bg-2: #16233d; --bg-3: #0b1122; --bg-4: #060a17;
+    --green: #34d399; --green-dim: #059669; --green-deep: #065f46;
+    --text: #e8eef7; --dim: #9fb0c9; --faint: #6b7a94;
+    --panel: rgba(148, 163, 184, 0.07);
+  --hair: rgba(190, 210, 240, 0.16);
+  }
+
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    color: var(--text);
+    min-height: 100vh;
+    background:
+      /* studio backdrop: lit center, crushed corners */
+      radial-gradient(120% 110% at 35% -5%, #223452 0%, #15233e 42%, #0b1326 74%, #05080f 100%) fixed;
+    position: relative;
+  }
+
+  /* drifting key-light pool */
+  body::before {
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background: radial-gradient(40% 32% at 30% 12%, rgba(56, 189, 248, 0.12), transparent 70%);
+    animation: glow 12s ease-in-out infinite alternate;
+  }
+  @keyframes glow { from { opacity: .6; transform: translate(0,0); } to { opacity: 1; transform: translate(2%, -1%); } }
+
+  /* vignette */
+  body::after {
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 3;
+    background: radial-gradient(120% 100% at 50% 42%, transparent 58%, rgba(0,0,0,0.45) 100%);
+  }
+
+  .wrap { position: relative; z-index: 1; max-width: 760px; margin: 0 auto; padding: 30px 18px 80px; }
+
+  /* ── glass HUD header ── */
+  header.info {
+    display: flex; align-items: center; gap: 12px;
+    padding: 16px 22px; border-radius: 16px;
+    background: var(--panel);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--hair);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -30px 60px -40px rgba(0,0,0,0.6),
+                0 24px 50px -26px rgba(0,0,0,0.8);
+  }
+  header.info .radar { font-size: 26px; filter: drop-shadow(0 0 12px rgba(56,189,248,0.6)); }
+  header.info h1 {
+    font-size: 1.15rem; letter-spacing: .04em; color: #eaf1fb;
+    text-shadow: 0 0 18px rgba(120,180,255,0.4);
+  }
+  header.info .muted { margin-left: auto; color: var(--dim); font-size: .8rem; }
+
+  /* ── the form runs on its own glass card ── */
+  .card {
+    position: relative; margin-top: 20px; padding: 20px;
+    border-radius: 18px; overflow: hidden;
+    background: var(--panel);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--hair);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), inset 0 -40px 70px -40px rgba(0,0,0,0.65),
+                0 30px 60px -28px rgba(0,0,0,0.85);
+  }
+  /* rim light on the shadow side */
+  .card::after {
+    content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 2px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.5), rgba(52,211,153,0.12) 60%, transparent);
+    opacity: .7;
+  }
+  .form-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .card label { display: block; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); margin-bottom: 4px; }
+
+  input {
+    padding: 9px 12px; margin: 0;
+    background: rgba(10, 18, 34, 0.55); color: var(--text);
+    border: 1px solid rgba(148, 163, 184, 0.35); border-radius: 10px;
+    font-size: 14px; outline: none;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+    transition: border-color .2s, box-shadow .2s;
+  }
+  input:focus { border-color: rgba(52, 211, 153, 0.6);
+    box-shadow: 0 0 0 3px rgba(52,211,153,0.15), inset 0 1px 3px rgba(0,0,0,0.5); }
+  input#watchName { flex: 1 1 150px; }
+  input[type="number"] { width: 132px; }
+
+  /* metallic green CTA */
+  button.add {
+    padding: 10px 22px; font-weight: 700; font-size: 14px; letter-spacing: .03em;
+    color: #04141f; cursor: pointer; border-radius: 11px; border: 1px solid rgba(255,255,255,0.25);
+    background: linear-gradient(160deg, #6ee7b7 0%, #34d399 30%, #10b981 55%, #6ee7b7 78%, #059669 100%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), inset 0 -6px 12px -6px rgba(0,0,0,0.5),
+                0 14px 30px -12px rgba(52,211,153,0.55);
+    transition: transform .15s, box-shadow .15s;
+  }
+  button.add:hover { transform: translateY(-2px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.7),
+    0 18px 38px -12px rgba(52,211,153,0.7); }
+
+  /* ── the radar table as dimensional glass rows ── */
+  .radar-table { margin-top: 20px; }
+  .rrow {
+    display: grid; grid-template-columns: 1fr auto auto auto auto 36px;
+    gap: 12px; align-items: center;
+    padding: 14px 18px; margin-bottom: 10px; border-radius: 14px;
+    background: rgba(17, 29, 51, 0.5);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--hair);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 16px 34px -24px rgba(0,0,0,0.85);
+    transition: transform .15s, box-shadow .15s;
+  }
+  .rrow:hover { transform: translateY(-2px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.10),
+    0 22px 40px -22px rgba(56,189,248,0.2); }
+  .rrow .pname { font-weight: 600; color: #dce6f4; }
+  .rrow .price { font-variant-numeric: tabular-nums; color: var(--text); }
+  .rrow .best { font-variant-numeric: tabular-nums; color: var(--green); font-weight: 700; }
+  .rrow .muted { color: var(--dim); font-size: .82rem; }
+
+  /* emissive status pill — the "drop alert" reads as a lit warning */
+  .pill {
+    padding: 4px 11px; border-radius: 999px; font-size: 12px; font-weight: 700; letter-spacing: .02em;
+  }
+  .pill.ok { color: #6b7a94; border: 1px solid rgba(148,163,184,0.3); }
+  .pill.drop {
+    color: #a7f3d0;
+    border: 1px solid rgba(52,211,153,0.55);
+    background: rgba(52,211,153,0.14);
+    box-shadow: 0 0 18px -4px rgba(52,211,153,0.6), inset 0 0 10px -4px rgba(52,211,153,0.4);
+    text-shadow: 0 0 8px rgba(52,211,153,0.7);
+  }
+
+  button.x {
+    width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
+    color: var(--dim); background: rgba(148,163,184,0.12);
+    border: 1px solid rgba(190,210,240,0.18); font-size: 14px; line-height: 1;
+    transition: color .15s, border-color .15s, box-shadow .15s;
+  }
+  button.x:hover { color: #fca5a5; border-color: rgba(252,165,165,0.5); box-shadow: 0 0 12px -3px rgba(252,165,165,0.5); }
+
+  .empty { text-align: center; color: var(--dim); padding: 34px 0 16px; font-size: .88rem; }
+  .hint { text-align: center; color: var(--faint); margin-top: 26px; font-size: .74rem; letter-spacing: .05em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <!-- ══ glass HUD header ══ -->
+  <header class="info">
+    <span class="radar">📡</span>
+    <h1>Grocery Price Radar</h1>
+    <span class="muted">log · track · drop alerts</span>
+  </header>
+
+  <!-- ══ the watch form card (a form, so submit works) ══ -->
+  <form class="card" id="watchForm">
+    <div class="form-row">
+      <div style="flex:1 1 150px;"><label for="watchName">Product</label>
+        <input id="watchName" placeholder="e.g. eggs" autocomplete="off"></div>
+      <div><label for="watchPrice">Latest price ($)</label>
+        <input id="watchPrice" placeholder="2.49" type="number" step="0.01" min="0"></div>
+      <div><label for="watchAlert">Alert below ($)</label>
+        <input id="watchAlert" placeholder="2.00" type="number" step="0.01" min="0"></div>
+      <button class="add" type="submit">＋ Watch</button>
+    </div>
+  </form>
+
+  <!-- ══ radar rows ══ -->
+  <section class="radar-table" id="watchRows"></section>
+  <p class="hint">prices kept locally · a drop below your alert glows green</p>
+</div>
+
+<script>
+const watches = JSON.parse(localStorage.getItem('radar') || '[]');
+function save() { localStorage.setItem('radar', JSON.stringify(watches)); }
+
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function render() {
+  const tb = document.getElementById('watchRows');
+  if (!watches.length) {
+    tb.innerHTML = '<p class="empty">No products watched yet — add a product and its price above to begin tracking drops.</p>';
+    return;
+  }
+  tb.innerHTML = watches.map((w, i) => {
+    const latest = w.history[w.history.length - 1];
+    const best = Math.min(...w.history);
+    const hit = w.alert != null && latest <= w.alert;
+    const pillCls = hit ? 'pill drop' : 'pill ok';
+    const pillTxt = hit ? '⬇ below alert' : 'tracking';
+    return `<div class="rrow">
+        <span class="pname">${esc(w.name)}</span>
+        <span class="price">$${latest.toFixed(2)}</span>
+        <span class="best">best $${best.toFixed(2)}</span>
+        <span class="muted">${w.alert != null ? 'alert $' + w.alert.toFixed(2) : '—'}</span>
+        <span class="${pillCls}">${pillTxt}</span>
+        <button class="x" data-remove="${i}" title="Remove">✕</button>
+      </div>`;
+  }).join('');
+  tb.querySelectorAll('[data-remove]').forEach(b => b.onclick = () => {
+    watches.splice(+b.dataset.remove, 1); save(); render();
+  });
+}
+
+document.getElementById('watchForm').onsubmit = e => {
+  e.preventDefault();
+  const name = document.getElementById('watchName').value.trim();
+  const price = parseFloat(document.getElementById('watchPrice').value);
+  const alert = parseFloat(document.getElementById('watchAlert').value);
+  if (name && !isNaN(price)) {
+    const existing = watches.find(w => w.name.toLowerCase() === name.toLowerCase());
+    if (existing) existing.history.push(price);
+    else watches.push({ name, history: [price], alert: isNaN(alert) ? null : alert });
+    save();
+    document.getElementById('watchName').value = '';
+    document.getElementById('watchPrice').value = '';
+    document.getElementById('watchAlert').value = '';
+    render();
+  }
+};
+
+render();
+</script>
+</body>
+</html>

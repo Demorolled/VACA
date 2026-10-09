@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Collage Maker</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#ccc;min-height:100vh;padding:20px;display:flex;justify-content:center}
+.container{max-width:1000px;width:100%}
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+header h1{color:#00d9ff;font-size:1.2rem}header h1 small{color:#555;font-size:0.55rem;font-weight:400}
+.controls{display:flex;gap:4px}
+.controls button,.controls select{padding:5px 10px;border:1px solid rgba(255,255,255,0.06);border-radius:4px;background:transparent;color:#888;cursor:pointer;font-size:0.6rem;font-family:inherit;transition:0.1s}
+.controls button:hover{border-color:#00d9ff;color:#ccc}
+.controls button.primary{background:rgba(0,217,255,0.1);border-color:rgba(0,217,255,0.2);color:#00d9ff}
+.layout{display:flex;gap:14px}
+.canvas-wrap{flex:1;background:#0e0e1a;border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:10px;display:flex;align-items:center;justify-content:center;min-height:500px}
+#collageCanvas{max-width:100%;max-height:100%;cursor:pointer;background:repeating-conic-gradient(#111122 0% 25%,#0e0e1a 0% 50%) 0 0 / 20px 20px}
+.sidebar{width:240px;background:#12121e;border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px;font-size:0.6rem}
+.sidebar h3{font-size:0.65rem;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.3px}
+.slot-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:10px}
+.slot{aspect-ratio:1;border:2px dashed rgba(255,255,255,0.06);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;color:#444;cursor:pointer;transition:0.1s;position:relative;overflow:hidden}
+.slot:hover{border-color:rgba(0,217,255,0.2);color:#888}
+.slot.filled{border-style:solid;border-color:rgba(0,217,255,0.2)}
+.slot img{width:100%;height:100%;object-fit:cover}
+.slot .remove{position:absolute;top:2px;right:2px;width:16px;height:16px;border-radius:50%;background:rgba(0,0,0,0.6);color:#f87171;font-size:0.4rem;display:none;align-items:center;justify-content:center;cursor:pointer}
+.slot:hover .remove{display:flex}
+.layout-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:10px}
+.layout-preset{aspect-ratio:1;border:1px solid rgba(255,255,255,0.06);border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:0.7rem;color:#555;transition:0.1s;background:rgba(255,255,255,0.02);padding:4px}
+.layout-preset:hover{border-color:#00d9ff;color:#ccc}
+.layout-preset.active{border-color:#00d9ff;color:#00d9ff;background:rgba(0,217,255,0.05)}
+.slider-row{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.slider-row label{min-width:40px;color:#666;font-size:0.5rem}
+.slider-row input[type=range]{flex:1;accent-color:#00d9ff;height:4px}
+.slider-row .val{min-width:20px;text-align:right;color:#00d9ff;font-size:0.5rem}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+  <h1>🎨 Collage Maker <small>Grid · Stickers · Export</small></h1>
+  <div class="controls">
+    <button onclick="addImage()">🖼 Add Image</button>
+    <button onclick="addSticker()">🌟 Add Sticker</button>
+    <button onclick="exportCollage()" class="primary">💾 Export</button>
+    <button onclick="clearCollage()">🗑️ Clear</button>
+  </div>
+</header>
+<div class="layout">
+  <div class="canvas-wrap">
+    <canvas id="collageCanvas" width="600" height="600"></canvas>
+  </div>
+  <div class="sidebar">
+    <h3>📐 Layout</h3>
+    <div class="layout-grid" id="layoutGrid"></div>
+    <h3>🖼 Images</h3>
+    <div class="slot-grid" id="slotGrid"></div>
+    <h3>⚙️ Settings</h3>
+    <div class="slider-row"><label>Spacing</label><input type="range" min="0" max="40" value="10" id="spacing" oninput="renderCollage()"><span class="val" id="spacingVal">10</span></div>
+    <div class="slider-row"><label>Radius</label><input type="range" min="0" max="20" value="5" id="radius" oninput="renderCollage()"><span class="val" id="radiusVal">5</span></div>
+    <div class="slider-row"><label>Rotate</label><input type="range" min="-30" max="30" value="0" id="rotation" oninput="renderCollage()"><span class="val" id="rotationVal">0</span></div>
+  </div>
+</div></div>
+
+<script>
+const canvas=document.getElementById('collageCanvas'),ctx=canvas.getContext('2d');
+const COLORS=['#ff6b6b','#ffd93d','#6bcb77','#4d96ff','#9b59b6','#ff9ff3','#54a0ff','#5f27cd'];
+let images=[],stickers=[],currentLayout=0,spacing=10,radius=5,rotation=0;
+
+const LAYOUTS=[
+  {name:'1x1',cells:[{x:0,y:0,w:1,h:1}]},
+  {name:'1x2',cells:[{x:0,y:0,w:1,h:0.5},{x:0,y:0.5,w:1,h:0.5}]},
+  {name:'2x1',cells:[{x:0,y:0,w:0.5,h:1},{x:0.5,y:0,w:0.5,h:1}]},
+  {name:'2x2',cells:[{x:0,y:0,w:0.5,h:0.5},{x:0.5,y:0,w:0.5,h:0.5},{x:0,y:0.5,w:0.5,h:0.5},{x:0.5,y:0.5,w:0.5,h:0.5}]},
+  {name:'3x3',cells:[]},
+  {name:'Hero',cells:[{x:0,y:0,w:0.6,h:1},{x:0.6,y:0,w:0.4,h:0.5},{x:0.6,y:0.5,w:0.4,h:0.5}]},
+  {name:'Panorama',cells:[{x:0,y:0,w:0.5,h:0.5},{x:0.5,y:0,w:0.5,h:0.5},{x:0,y:0.5,w:1,h:0.5}]},
+  {name:'Grid 4',cells:[]},
+  {name:'Diag',cells:[{x:0,y:0,w:0.6,h:0.6},{x:0.6,y:0,w:0.4,h:0.4},{x:0,y:0.6,w:0.4,h:0.4},{x:0.4,y:0.4,w:0.6,h:0.6}]}
+];
+
+// Fill 3x3 and Grid 4
+for(let i=0;i<9;i++)LAYOUTS[4].cells.push({x:(i%3)/3,y:Math.floor(i/3)/3,w:1/3,h:1/3});
+for(let i=0;i<4;i++)LAYOUTS[7].cells.push({x:(i%2)/2,y:Math.floor(i/2)/2,w:0.5,h:0.5});
+
+function init(){
+  renderLayouts();
+  renderSlots();
+  generateDemoImages();
+  renderCollage();
+}
+
+function renderLayouts(){
+  const grid=document.getElementById('layoutGrid');
+  grid.innerHTML='';
+  LAYOUTS.forEach((l,i)=>{
+    const div=document.createElement('div');div.className='layout-preset'+(i===currentLayout?' active':'');
+    div.innerHTML=`<div style="display:grid;grid-template-columns:${l.cells.length>4?'repeat(3,1fr)':'repeat(2,1fr)'};gap:2px;width:100%">`+l.cells.slice(0,9).map(c=>`<div style="background:${i===currentLayout?'rgba(0,217,255,0.3)':'rgba(255,255,255,0.05)'};aspect-ratio:${(c.w/c.h)}"></div>`).join('')+`</div><div style="font-size:0.45rem;margin-top:2px">${l.name}</div>`;
+    div.onclick=()=>{currentLayout=i;renderLayouts();renderCollage()};
+    grid.appendChild(div);
+  });
+}
+
+function renderSlots(){
+  const grid=document.getElementById('slotGrid');
+  const layout=LAYOUTS[currentLayout];
+  grid.innerHTML='';
+  layout.cells.forEach((_,i)=>{
+    const slot=document.createElement('div');slot.className='slot'+(images[i]?' filled':'');
+    if(images[i]){
+      const img=new Image();img.src=images[i];
+      slot.innerHTML=`<img src="${images[i]}">`+`<div class="remove" onclick="event.stopPropagation();removeImage(${i})">×</div>`;
+    }else{slot.textContent='+';slot.style.fontSize='1.5rem'}
+    slot.onclick=()=>{
+      if(images[i]){canvas.style.cursor='default';return}
+      const input=document.createElement('input');input.type='file';input.accept='image/*';
+      input.onchange=e=>{const r=new FileReader();r.onload=ev=>{images[i]=ev.target.result;renderSlots();renderCollage()};r.readAsDataURL(e.target.files[0])};
+      input.click();
+    };
+    grid.appendChild(slot);
+  });
+}
+
+function generateDemoImages(){
+  const w=200,h=200;
+  for(let i=0;i<4;i++){
+    const c=document.createElement('canvas');c.width=w;c.height=h;
+    const cx=c.getContext('2d');
+    const grad=cx.createLinearGradient(0,0,w,h);
+    grad.addColorStop(0,COLORS[i*2]);grad.addColorStop(1,COLORS[i*2+1]);
+    cx.fillStyle=grad;cx.fillRect(0,0,w,h);
+    cx.fillStyle='rgba(255,255,255,0.3)';
+    cx.font='bold 40px Arial';cx.textAlign='center';cx.textBaseline='middle';
+    cx.fillText('📸',w/2,h/2);
+    images[i]=c.toDataURL();
+  }
+  renderSlots();
+}
+
+function addImage(){
+  const input=document.createElement('input');input.type='file';input.accept='image/*';input.multiple=true;
+  input.onchange=e=>{
+    for(const file of e.target.files){
+      const r=new FileReader();
+      r.onload=ev=>{const idx=images.findIndex(i=>!i);if(idx>=0&&idx<LAYOUTS[currentLayout].cells.length)images[idx]=ev.target.result;else images.push(ev.target.result);renderSlots();renderCollage()};
+      r.readAsDataURL(file);
+    }
+  };
+  input.click();
+}
+
+function removeImage(i){images.splice(i,1);renderSlots();renderCollage()}
+
+function addSticker(){
+  const emojis=['🌟','❤️','🔥','⭐','💎','🌈','🎯','🚀','💡','🎨','✨','🌺'];
+  const sticker=emojis[Math.floor(Math.random()*emojis.length)];
+  stickers.push({x:Math.random()*400+100,y:Math.random()*400+100,text:sticker,size:30+Math.random()*20,rot:Math.random()*60-30});
+  renderCollage();
+}
+
+function renderCollage(){
+  const w=canvas.width,h=canvas.height;
+  ctx.clearRect(0,0,w,h);
+  
+  // Background
+  const bg=ctx.createRadialGradient(w/2,h/2,0,w/2,h/2,w);
+  bg.addColorStop(0,'#1a1a2e');bg.addColorStop(1,'#0a0a14');
+  ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
+  
+  spacing=parseInt(document.getElementById('spacing').value);
+  radius=parseInt(document.getElementById('radius').value);
+  rotation=parseInt(document.getElementById('rotation').value);
+  document.getElementById('spacingVal').textContent=spacing;
+  document.getElementById('radiusVal').textContent=radius;
+  document.getElementById('rotationVal').textContent=rotation;
+  
+  const layout=LAYOUTS[currentLayout];
+  const pad=20;
+  const usableW=w-pad*2,usableH=h-pad*2;
+  
+  layout.cells.forEach((cell,i)=>{
+    if(!images[i])return;
+    const x=pad+cell.x*usableW+spacing/2;
+    const y=pad+cell.y*usableH+spacing/2;
+    const cw=cell.w*usableW-spacing;
+    const ch=cell.h*usableH-spacing;
+    
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(x,y,cw,ch,radius);
+    ctx.clip();
+    
+    const img=new Image();
+    img.onload=()=>{
+      ctx.save();
+      ctx.translate(x+cw/2,y+ch/2);
+      ctx.rotate(rotation*Math.PI/180);
+      ctx.translate(-(x+cw/2),-(y+ch/2));
+      
+      // Cover fill
+      const imgRatio=img.width/img.height;
+      const cellRatio=cw/ch;
+      let dw,dh,dx,dy;
+      if(imgRatio>cellRatio){
+        dh=ch;dw=dh*imgRatio;dx=x-(dw-cw)/2;dy=y;
+      }else{
+        dw=cw;dh=dw/imgRatio;dx=x;dy=y-(dh-ch)/2;
+      }
+      ctx.drawImage(img,dx,dy,dw,dh);
+      ctx.restore();
+      
+      // Border
+      ctx.strokeStyle='rgba(255,255,255,0.05)';ctx.lineWidth=1;
+      ctx.strokeRect(x,y,cw,ch);
+      ctx.restore();
+    };
+    img.src=images[i];
+  });
+  
+  // Stickers
+  for(const s of stickers){
+    ctx.save();
+    ctx.translate(s.x,s.y);
+    ctx.rotate(s.rot*Math.PI/180);
+    ctx.font=`${s.size}px Arial`;ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(s.text,0,0);
+    ctx.restore();
+  }
+}
+
+function exportCollage(){
+  const link=document.createElement('a');
+  link.download='collage.png';
+  link.href=canvas.toDataURL('image/png');
+  link.click();
+}
+
+function clearCollage(){
+  if(!confirm('Clear all images and stickers?'))return;
+  images=[];stickers=[];
+  renderSlots();renderCollage();
+}
+
+init();
+</script>
+</body>
+</html>

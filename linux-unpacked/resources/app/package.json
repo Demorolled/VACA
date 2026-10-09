@@ -1,0 +1,12 @@
+{
+  "name": "veronica",
+  "productName": "Veronica",
+  "version": "1.0.0",
+  "description": "Veronica (VACA) — AI Code Architect desktop app",
+  "main": "main.js",
+  "private": true,
+  "license": "UNLICENSED",
+  "author": "demorolled <demorolled@users.noreply.github.com>",
+  "homepage": "https://github.com/demorolled/visual-ai-architect",
+  "desktopName": "veronica.desktop"
+}

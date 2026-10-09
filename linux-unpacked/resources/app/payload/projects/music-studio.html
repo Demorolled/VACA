@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Music Studio</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+  min-height: 100vh;
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+.container { max-width: 950px; width: 100%; }
+h1 { color: #00d9ff; font-size: 1.5rem; text-align: center; margin-bottom: 4px; }
+.subtitle { color: #666; font-size: 0.8rem; text-align: center; margin-bottom: 12px; }
+.layout { display: flex; gap: 12px; }
+@media (max-width: 700px) { .layout { flex-direction: column; } }
+/* Keyboard */
+.keyboard-panel {
+  flex: 1;
+  background: linear-gradient(145deg, #1a1a2e, #1e1e3a);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 16px;
+}
+.keyboard-panel h2 { color: #ccc; font-size: 0.9rem; margin-bottom: 8px; }
+.kb-keys {
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+  margin-bottom: 8px;
+  position: relative;
+  height: 160px;
+  user-select: none;
+}
+.kb-key {
+  position: relative;
+  cursor: pointer;
+  transition: 0.05s;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 4px;
+  font-size: 0.55rem;
+  border-radius: 0 0 3px 3px;
+  user-select: none;
+}
+.kb-key.white {
+  width: 32px;
+  height: 120px;
+  background: linear-gradient(180deg, #e8e8e8, #ccc);
+  border: 1px solid #aaa;
+  color: #555;
+  z-index: 1;
+}
+.kb-key.white:hover { background: linear-gradient(180deg, #fff, #ddd); }
+.kb-key.white:active, .kb-key.white.active { background: linear-gradient(180deg, #ccc, #aaa); height: 116px; }
+.kb-key.black {
+  width: 22px;
+  height: 72px;
+  background: linear-gradient(180deg, #333, #111);
+  border: 1px solid #000;
+  color: #888;
+  z-index: 2;
+  margin-left: -11px;
+  margin-right: -11px;
+}
+.kb-key.black:hover { background: linear-gradient(180deg, #444, #222); }
+.kb-key.black:active, .kb-key.black.active { background: linear-gradient(180deg, #222, #000); height: 68px; }
+/* Controls */
+.controls-panel {
+  width: 260px;
+  background: linear-gradient(145deg, #1a1a2e, #1e1e3a);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 16px;
+  flex-shrink: 0;
+}
+.controls-panel h3 { color: #888; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 8px; margin-top: 12px; }
+.controls-panel h3:first-child { margin-top: 0; }
+.waveform-select { display: flex; gap: 4px; }
+.wave-btn {
+  flex: 1;
+  padding: 6px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px;
+  background: rgba(255,255,255,0.03);
+  color: #888;
+  cursor: pointer;
+  font-size: 0.7rem;
+  text-align: center;
+  transition: 0.1s;
+  font-family: inherit;
+}
+.wave-btn:hover { border-color: #00d9ff; color: #ccc; }
+.wave-btn.active { border-color: #00d9ff; background: rgba(0,217,255,0.1); color: #00d9ff; }
+.slider-group { margin-bottom: 8px; }
+.slider-group .slider-header { display: flex; justify-content: space-between; font-size: 0.7rem; color: #666; margin-bottom: 2px; }
+.slider-group .slider-header .val { color: #00d9ff; }
+.slider-group input[type="range"] { width: 100%; accent-color: #00d9ff; }
+.effect-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.effect-row label { font-size: 0.7rem; color: #888; min-width: 60px; }
+.effect-row input[type="range"] { flex: 1; accent-color: #00d9ff; }
+.effect-row .val { font-size: 0.65rem; color: #00d9ff; min-width: 30px; text-align: right; }
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: 0.2s;
+  width: 100%;
+  margin-bottom: 4px;
+}
+.btn-primary { background: linear-gradient(135deg, #00d9ff, #0099ff); color: #0f0f1a; }
+.btn-primary:hover { box-shadow: 0 2px 10px rgba(0,217,255,0.3); }
+.btn-secondary { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); color: #aaa; }
+.btn-secondary:hover { background: rgba(255,255,255,0.1); }
+.btn-danger { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.2); color: #f87171; }
+.btn-danger:hover { background: rgba(248,113,113,0.2); }
+.sequencer-grid {
+  display: grid;
+  grid-template-columns: 40px repeat(8, 1fr);
+  gap: 2px;
+  margin-top: 8px;
+  font-size: 0.6rem;
+}
+.sequencer-grid .seq-label { color: #555; display: flex; align-items: center; }
+.sequencer-grid .seq-cell {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 3px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.02);
+  cursor: pointer;
+  transition: 0.05s;
+}
+.sequencer-grid .seq-cell:hover { background: rgba(0,217,255,0.05); }
+.sequencer-grid .seq-cell.active { background: #00d9ff; border-color: #00d9ff; }
+.sequencer-grid .seq-cell.playing { background: #4ade80; border-color: #4ade80; }
+.sequencer-tempo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.sequencer-tempo label { font-size: 0.7rem; color: #888; }
+.sequencer-tempo input { flex: 1; accent-color: #00d9ff; }
+.sequencer-tempo .val { font-size: 0.7rem; color: #00d9ff; min-width: 30px; }
+/* Info */
+.info-bar { display: flex; gap: 12px; justify-content: center; margin-top: 8px; font-size: 0.7rem; color: #555; }
+.info-bar span { display: flex; align-items: center; gap: 4px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🎹 Music Studio</h1>
+  <p class="subtitle">Synthesizer, sequencer, and effects processor</p>
+  <div class="layout">
+    <div class="keyboard-panel">
+      <h2>🎹 Keyboard <span style="font-size:0.65rem;color:#555;font-weight:400">Click or use keyboard (A-K, W-O)</span></h2>
+      <div class="kb-keys" id="keyboard"></div>
+      <div class="controls-panel" style="width:auto;border:none;padding:0">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <div style="flex:1;min-width:150px">
+            <h3>🎸 Waveform</h3>
+            <div class="waveform-select">
+              <button class="wave-btn active" data-wave="sine" onclick="setWave('sine')">Sine</button>
+              <button class="wave-btn" data-wave="square" onclick="setWave('square')">Square</button>
+              <button class="wave-btn" data-wave="sawtooth" onclick="setWave('sawtooth')">Saw</button>
+              <button class="wave-btn" data-wave="triangle" onclick="setWave('triangle')">Tri</button>
+            </div>
+            <div class="slider-group">
+              <div class="slider-header"><span>Volume</span><span class="val" id="volumeVal">80</span></div>
+              <input type="range" min="0" max="100" value="80" id="volume" oninput="updateParams()">
+            </div>
+          </div>
+          <div style="flex:1;min-width:150px">
+            <h3>🎛️ Effects</h3>
+            <div class="effect-row"><label>Reverb</label><input type="range" min="0" max="100" value="15" id="reverb" oninput="updateParams()"><span class="val" id="reverbVal">15</span></div>
+            <div class="effect-row"><label>Delay</label><input type="range" min="0" max="100" value="20" id="delay" oninput="updateParams()"><span class="val" id="delayVal">20</span></div>
+            <div class="effect-row"><label>Filter</label><input type="range" min="20" max="100" value="80" id="filter" oninput="updateParams()"><span class="val" id="filterVal">80</span></div>
+          </div>
+          <div style="flex:1;min-width:200px">
+            <h3>🔢 Sequencer</h3>
+            <div class="sequencer-grid" id="sequencer"></div>
+            <div class="sequencer-tempo">
+              <label>BPM</label>
+              <input type="range" min="40" max="200" value="120" id="bpmSlider" oninput="updateBPM()">
+              <span class="val" id="bpmVal">120</span>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <button class="btn btn-primary" style="flex:1" id="playBtn" onclick="togglePlay()">▶ Play</button>
+          <button class="btn btn-secondary" style="flex:1" onclick="stopAllNotes()">🔇 Mute</button>
+          <button class="btn btn-danger" style="flex:1" onclick="clearSequencer()">🗑️ Clear</button>
+        </div>
+        <div class="info-bar">
+          <span>🎵 Note: <span id="currentNote">-</span></span>
+          <span>🎹 Octave: <span id="octaveDisplay">4</span></span>
+          <span>⏱️ Sequencer: <span id="seqStatus">Stopped</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── AUDIO ENGINE ──
+let audioCtx = null;
+let masterGain = null;
+let reverbNode = null, delayNode = null, filterNode = null;
+let currentWave = 'sine';
+let activeOscillators = {};
+let currentOctave = 4;
+let isPlaying = false;
+let seqInterval = null;
+let seqStep = 0;
+let seqRunning = false;
+
+const NOTE_FREQS = {
+  'C': 261.63, 'C#': 277.18, 'D': 293.66, 'D#': 311.13,
+  'E': 329.63, 'F': 349.23, 'F#': 369.99, 'G': 392.00,
+  'G#': 415.30, 'A': 440.00, 'A#': 466.16, 'B': 493.88
+};
+
+const WHITE_NOTES = ['C','D','E','F','G','A','B'];
+const BLACK_NOTES = ['C#','D#',null,'F#','G#','A#',null];
+const NOTES_12 = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+
+const KB_LAYOUT = [
+  { note: 'C', white: true }, { note: 'C#', white: false }, { note: 'D', white: true },
+  { note: 'D#', white: false }, { note: 'E', white: true }, { note: 'F', white: true },
+  { note: 'F#', white: false }, { note: 'G', white: true }, { note: 'G#', white: false },
+  { note: 'A', white: true }, { note: 'A#', white: false }, { note: 'B', white: true }
+];
+
+const KEY_MAP = {
+  'a': 'C', 'w': 'C#', 's': 'D', 'e': 'D#', 'd': 'E', 'f': 'F',
+  't': 'F#', 'g': 'G', 'y': 'G#', 'h': 'A', 'u': 'A#', 'j': 'B',
+  'k': 'C_up', 'o': 'C#_up'
+};
+
+const SEQ_NOTES = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+let seqGrid = Array(8).fill(null).map(() => Array(8).fill(false));
+
+function initAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0.8;
+    masterGain.connect(audioCtx.destination);
+    
+    reverbNode = audioCtx.createConvolver();
+    delayNode = audioCtx.createDelay(0.5);
+    filterNode = audioCtx.createBiquadFilter();
+    filterNode.type = 'lowpass';
+    filterNode.frequency.value = 2000;
+    
+    // Simple reverb using impulse response
+    const irLen = audioCtx.sampleRate * 1.5;
+    const irBuffer = audioCtx.createBuffer(2, irLen, audioCtx.sampleRate);
+    for (let ch = 0; ch < 2; ch++) {
+      const data = irBuffer.getChannelData(ch);
+      for (let i = 0; i < irLen; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / irLen, 3);
+    }
+    reverbNode.buffer = irBuffer;
+    
+    masterGain.connect(filterNode);
+    filterNode.connect(reverbNode);
+    filterNode.connect(delayNode);
+    reverbNode.connect(masterGain);
+    delayNode.connect(masterGain);
+    delayNode.delayTime.value = 0.15;
+  }
+  updateParams();
+}
+
+function getFrequency(note, octave) {
+  if (note === 'C_up' || note === 'C#_up') {
+    octave++;
+    note = note === 'C_up' ? 'C' : 'C#';
+  }
+  const base = NOTE_FREQS[note];
+  return base ? base * Math.pow(2, octave - 4) : 440;
+}
+
+function playNote(note, octave) {
+  initAudio();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  
+  const freq = getFrequency(note, octave);
+  const key = note + octave;
+  if (activeOscillators[key]) return;
+  
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  
+  osc.type = currentWave;
+  osc.frequency.value = freq;
+  
+  gain.gain.value = masterGain.gain.value * 0.15;
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+  
+  osc.connect(gain);
+  gain.connect(filterNode);
+  
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.5);
+  activeOscillators[key] = { osc, gain };
+  
+  setTimeout(() => { delete activeOscillators[key]; }, 600);
+  
+  document.getElementById('currentNote').textContent = note + octave;
+  highlightKeyboard(note, true);
+}
+
+function stopNote(note, octave) {
+  const key = note + octave;
+  if (activeOscillators[key]) {
+    activeOscillators[key].gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+    setTimeout(() => {
+      if (activeOscillators[key]) {
+        activeOscillators[key].osc.stop();
+        delete activeOscillators[key];
+      }
+    }, 100);
+  }
+  highlightKeyboard(note, false);
+}
+
+function stopAllNotes() {
+  Object.keys(activeOscillators).forEach(key => {
+    activeOscillators[key].gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+    setTimeout(() => {
+      if (activeOscillators[key]) {
+        activeOscillators[key].osc.stop();
+        delete activeOscillators[key];
+      }
+    }, 100);
+  });
+  document.querySelectorAll('.kb-key').forEach(k => k.classList.remove('active'));
+}
+
+function setWave(wave) {
+  currentWave = wave;
+  document.querySelectorAll('.wave-btn').forEach(b => b.classList.toggle('active', b.dataset.wave === wave));
+}
+
+function updateParams() {
+  if (!masterGain || !audioCtx) return;
+  const vol = parseInt(document.getElementById('volume').value) / 100;
+  masterGain.gain.value = vol;
+  document.getElementById('volumeVal').textContent = parseInt(document.getElementById('volume').value);
+  
+  const rev = parseInt(document.getElementById('reverb').value) / 100;
+  reverbNode && (reverbNode.connect ? (() => { try { reverbNode.disconnect(); } catch {} reverbNode.connect(masterGain); })() : null);
+  document.getElementById('reverbVal').textContent = parseInt(document.getElementById('reverb').value);
+  
+  const del = parseInt(document.getElementById('delay').value) / 100;
+  if (delayNode) {
+    delayNode.delayTime.value = del * 0.3;
+    try { delayNode.disconnect(); } catch {}
+    delayNode.connect(masterGain);
+  }
+  document.getElementById('delayVal').textContent = parseInt(document.getElementById('delay').value);
+  
+  const filt = parseInt(document.getElementById('filter').value);
+  if (filterNode) filterNode.frequency.value = 50 + (filt / 100) * 19500;
+  document.getElementById('filterVal').textContent = parseInt(document.getElementById('filter').value);
+}
+
+function updateBPM() {
+  const bpm = parseInt(document.getElementById('bpmSlider').value);
+  document.getElementById('bpmVal').textContent = bpm;
+  if (seqRunning) {
+    clearInterval(seqInterval);
+    startSequencer();
+  }
+}
+
+function highlightKeyboard(note, active) {
+  document.querySelectorAll('.kb-key').forEach(k => {
+    if (k.dataset.note === note) k.classList.toggle('active', active);
+  });
+}
+
+// ── KEYBOARD RENDER ──
+function renderKeyboard() {
+  const kb = document.getElementById('keyboard');
+  kb.innerHTML = '';
+  KB_LAYOUT.forEach((item, i) => {
+    const el = document.createElement('div');
+    el.className = 'kb-key ' + (item.white ? 'white' : 'black');
+    el.dataset.note = item.note;
+    el.textContent = item.white ? item.note : '';
+    el.style.left = (i * 34) + 'px';
+    el.onmousedown = () => playNote(item.note, currentOctave);
+    el.onmouseup = () => stopNote(item.note, currentOctave);
+    el.onmouseleave = () => stopNote(item.note, currentOctave);
+    kb.appendChild(el);
+  });
+}
+
+// ── SEQUENCER ──
+function renderSequencer() {
+  const seq = document.getElementById('sequencer');
+  seq.innerHTML = '';
+  for (let r = 0; r < SEQ_NOTES.length; r++) {
+    seq.innerHTML += `<div class="seq-label">${SEQ_NOTES[r]}</div>`;
+    for (let c = 0; c < 8; c++) {
+      seq.innerHTML += `<div class="seq-cell ${seqGrid[r][c] ? 'active' : ''}" data-row="${r}" data-col="${c}" onclick="toggleSeqCell(${r},${c})"></div>`;
+    }
+  }
+}
+
+function toggleSeqCell(r, c) {
+  seqGrid[r][c] = !seqGrid[r][c];
+  renderSequencer();
+}
+
+function togglePlay() {
+  if (seqRunning) {
+    stopSequencer();
+  } else {
+    startSequencer();
+  }
+}
+
+function startSequencer() {
+  seqRunning = true;
+  seqStep = 0;
+  const bpm = parseInt(document.getElementById('bpmSlider').value);
+  const intervalMs = (60 / bpm) * 500; // 16th notes
+  document.getElementById('playBtn').textContent = '⏹ Stop';
+  document.getElementById('seqStatus').textContent = 'Playing';
+  
+  seqInterval = setInterval(() => {
+    // Clear previous
+    document.querySelectorAll('.seq-cell').forEach(c => c.classList.remove('playing'));
+    
+    // Play current step
+    for (let r = 0; r < SEQ_NOTES.length; r++) {
+      if (seqGrid[r][seqStep]) {
+        const octave = 4 + Math.floor(r / 3);
+        playNote(SEQ_NOTES[r], octave);
+      }
+    }
+    
+    // Highlight
+    document.querySelectorAll(`.seq-cell[data-col="${seqStep}"]`).forEach(c => c.classList.add('playing'));
+    
+    seqStep = (seqStep + 1) % 8;
+  }, (60 / parseInt(document.getElementById('bpmSlider').value)) * 500);
+}
+
+function stopSequencer() {
+  seqRunning = false;
+  clearInterval(seqInterval);
+  document.getElementById('playBtn').textContent = '▶ Play';
+  document.getElementById('seqStatus').textContent = 'Stopped';
+  document.querySelectorAll('.seq-cell').forEach(c => c.classList.remove('playing'));
+  stopAllNotes();
+}
+
+function clearSequencer() {
+  if (seqRunning) stopSequencer();
+  seqGrid = Array(8).fill(null).map(() => Array(8).fill(false));
+  renderSequencer();
+}
+
+// ── KEYBOARD EVENTS ──
+document.addEventListener('keydown', (e) => {
+  if (e.repeat) return;
+  const key = e.key.toLowerCase();
+  if (key === 'z') { currentOctave = Math.max(1, currentOctave - 1); document.getElementById('octaveDisplay').textContent = currentOctave; return; }
+  if (key === 'x') { currentOctave = Math.min(7, currentOctave + 1); document.getElementById('octaveDisplay').textContent = currentOctave; return; }
+  
+  if (KEY_MAP[key]) {
+    e.preventDefault();
+    const note = KEY_MAP[key];
+    playNote(note.includes('_up') ? note : note, note.includes('_up') ? currentOctave + 1 : currentOctave);
+  }
+});
+
+document.addEventListener('keyup', (e) => {
+  const key = e.key.toLowerCase();
+  if (KEY_MAP[key]) {
+    const note = KEY_MAP[key];
+    stopNote(note.includes('_up') ? note : note, note.includes('_up') ? currentOctave + 1 : currentOctave);
+  }
+});
+
+// ── INIT ──
+renderKeyboard();
+renderSequencer();
+</script>
+</body>
+</html>

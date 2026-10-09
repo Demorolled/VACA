@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>File Explorer</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+  min-height: 100vh;
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+.container { max-width: 1000px; width: 100%; }
+h1 { color: #00d9ff; font-size: 1.5rem; text-align: center; margin-bottom: 4px; }
+.subtitle { color: #666; font-size: 0.8rem; text-align: center; margin-bottom: 12px; }
+.layout { display: flex; gap: 12px; height: 580px; }
+@media (max-width: 700px) { .layout { flex-direction: column; height: auto; } }
+/* Tree */
+.tree-panel {
+  width: 240px;
+  background: linear-gradient(145deg, #15152a, #1a1a30);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 10px;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+.tree-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+.tree-header span { font-size: 0.7rem; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
+.tree-header .tree-actions { display: flex; gap: 2px; }
+.tree-header .tree-actions button {
+  padding: 2px 6px;
+  border: none; border-radius: 3px;
+  background: transparent; color: #555;
+  cursor: pointer; font-size: 0.7rem;
+}
+.tree-header .tree-actions button:hover { color: #00d9ff; background: rgba(0,217,255,0.1); }
+.tree-node { user-select: none; margin: 1px 0; }
+.tree-node-content {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  color: #888;
+  transition: 0.1s;
+}
+.tree-node-content:hover { background: rgba(255,255,255,0.04); color: #ccc; }
+.tree-node-content.selected { background: rgba(0,217,255,0.08); color: #00d9ff; }
+.tree-node-content .arrow { width: 14px; text-align: center; font-size: 0.6rem; color: #555; }
+.tree-node-content .icon { font-size: 0.9rem; }
+.tree-node-content .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tree-children { padding-left: 18px; }
+/* Content */
+.content-panel {
+  flex: 1;
+  background: linear-gradient(145deg, #1a1a2e, #1e1e3a);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.path-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: rgba(0,0,0,0.1);
+  flex-shrink: 0;
+}
+.path-bar .path { font-size: 0.75rem; color: #888; flex: 1; }
+.path-bar .path span { color: #00d9ff; }
+.path-bar .btn {
+  padding: 3px 8px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 4px;
+  background: transparent;
+  color: #666;
+  cursor: pointer;
+  font-size: 0.65rem;
+  font-family: inherit;
+}
+.path-bar .btn:hover { border-color: #00d9ff; color: #00d9ff; }
+.file-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 6px;
+  padding: 12px;
+  overflow-y: auto;
+  align-content: start;
+}
+.file-grid .file-item {
+  padding: 10px 6px;
+  border: 1px solid rgba(255,255,255,0.04);
+  border-radius: 8px;
+  text-align: center;
+  cursor: pointer;
+  transition: 0.1s;
+}
+.file-grid .file-item:hover { border-color: rgba(0,217,255,0.2); background: rgba(0,217,255,0.03); }
+.file-grid .file-item .icon { font-size: 1.8rem; }
+.file-grid .file-item .name { font-size: 0.65rem; color: #888; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-grid .file-item .size { font-size: 0.55rem; color: #444; }
+.empty-folder { grid-column: 1 / -1; text-align: center; padding: 40px; color: #555; font-size: 0.8rem; }
+/* Detail */
+.detail-panel {
+  position: fixed;
+  right: -350px;
+  top: 0; bottom: 0;
+  width: 320px;
+  background: #1a1a2e;
+  border-left: 1px solid rgba(255,255,255,0.08);
+  padding: 20px;
+  transition: 0.3s;
+  z-index: 50;
+  overflow-y: auto;
+}
+.detail-panel.open { right: 0; }
+.detail-panel h3 { color: #00d9ff; font-size: 1rem; margin-bottom: 12px; }
+.detail-panel .detail-icon { font-size: 3rem; text-align: center; margin-bottom: 12px; }
+.detail-panel .field { margin-bottom: 8px; }
+.detail-panel .field .lbl { font-size: 0.65rem; color: #555; text-transform: uppercase; }
+.detail-panel .field .val { font-size: 0.85rem; color: #ccc; }
+.detail-panel .close-btn {
+  position: absolute;
+  top: 16px; right: 16px;
+  background: none; border: none;
+  color: #666; font-size: 1.2rem;
+  cursor: pointer;
+}
+.detail-panel .close-btn:hover { color: #f87171; }
+.overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.3);
+  display: none;
+  z-index: 49;
+}
+.overlay.open { display: block; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>📁 File Explorer</h1>
+  <p class="subtitle">Browse a virtual file system</p>
+  <div class="layout">
+    <div class="tree-panel" id="treePanel"></div>
+    <div class="content-panel">
+      <div class="path-bar">
+        <div class="path" id="pathDisplay">/</div>
+        <button class="btn" onclick="newFolder()">📁 New</button>
+        <button class="btn" onclick="openNewFileDialog()">📄 New File</button>
+        <button class="btn" onclick="deleteSelected()">🗑️ Delete</button>
+      </div>
+      <div class="file-grid" id="fileGrid">
+        <div class="empty-folder">Select a folder to view its contents</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay" onclick="closeDetail()"></div>
+<div class="detail-panel" id="detailPanel">
+  <button class="close-btn" onclick="closeDetail()">✕</button>
+  <div class="detail-icon" id="detIcon">📄</div>
+  <h3 id="detName">File Name</h3>
+  <div class="field"><div class="lbl">Type</div><div class="val" id="detType">File</div></div>
+  <div class="field"><div class="lbl">Size</div><div class="val" id="detSize">0 B</div></div>
+  <div class="field"><div class="lbl">Path</div><div class="val" id="detPath">/</div></div>
+  <div class="field"><div class="lbl">Created</div><div class="val" id="detCreated">-</div></div>
+  <div class="field"><div class="lbl">Contents</div><div class="val" id="detContent" style="font-size:0.7rem;font-family:monospace;color:#888;max-height:150px;overflow-y:auto;white-space:pre-wrap;background:rgba(0,0,0,0.15);padding:6px;border-radius:4px;margin-top:4px"></div></div>
+</div>
+
+<script>
+const ROOT = { id: 'root', name: '/', type: 'folder', children: [], created: new Date().toISOString() };
+let selectedPath = ['root'];
+let detailOpen = false;
+
+const FILE_TYPES = {
+  images: ['jpg','jpeg','png','gif','svg','webp','ico'],
+  documents: ['txt','md','pdf','doc','docx','csv','json','xml','html','css','js','ts'],
+  archives: ['zip','tar','gz','rar','7z'],
+  media: ['mp3','wav','mp4','avi','mov','flac'],
+  code: ['js','ts','jsx','tsx','py','java','c','cpp','h','rs','go','rb','php','sh','yaml','yml']
+};
+
+function getNode(path) {
+  let node = ROOT;
+  for (let i = 1; i < path.length; i++) {
+    node = node.children.find(c => c.id === path[i]);
+    if (!node) return null;
+  }
+  return node;
+}
+
+function generateId() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+function formatSize(bytes) {
+  if (bytes === 0) return '0 B';
+  const k = 1024; const sizes = ['B','KB','MB','GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+function formatDate(iso) {
+  return new Date(iso).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' }) + ' ' + new Date(iso).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' });
+}
+
+function getFileIcon(name, type) {
+  if (type === 'folder') return '📁';
+  const ext = name.split('.').pop().toLowerCase();
+  if (FILE_TYPES.images.includes(ext)) return '🖼️';
+  if (ext === 'pdf') return '📕';
+  if (ext === 'md') return '📝';
+  if (ext === 'json' || ext === 'xml') return '📋';
+  if (FILE_TYPES.code.includes(ext)) return '📜';
+  if (FILE_TYPES.archives.includes(ext)) return '🗜️';
+  if (FILE_TYPES.media.some(m => m === ext)) return '🎵';
+  if (ext === 'csv') return '📊';
+  if (ext === 'html') return '🌐';
+  return '📄';
+}
+
+function loadData() {
+  try {
+    const d = localStorage.getItem('fe-data');
+    if (d) {
+      const data = JSON.parse(d);
+      ROOT.children = data;
+      return;
+    }
+  } catch {}
+  // Sample data
+  const docs = { id: generateId(), name: 'Documents', type: 'folder', created: new Date().toISOString(), children: [
+    { id: generateId(), name: 'report.md', type: 'file', size: 2450, content: '# Project Report\n\n## Summary\nThis is a sample markdown file.', created: new Date().toISOString() },
+    { id: generateId(), name: 'notes.txt', type: 'file', size: 520, content: 'Meeting notes:\n- Discussed architecture\n- Set up CI/CD pipeline', created: new Date().toISOString() },
+    { id: generateId(), name: 'data.csv', type: 'file', size: 3200, content: 'name,value,date\nAlpha,100,2024-01-01\nBeta,200,2024-01-02', created: new Date().toISOString() }
+  ]};
+  const projects = { id: generateId(), name: 'Projects', type: 'folder', created: new Date().toISOString(), children: [
+    { id: generateId(), name: 'app.js', type: 'file', size: 800, content: 'function hello() {\n  console.log("Hello, World!");\n}\n\nhello();', created: new Date().toISOString() },
+    { id: generateId(), name: 'index.html', type: 'file', size: 1200, content: '<!DOCTYPE html>\n<html>\n<head><title>App</title></head>\n<body>\n  <h1>Hello</h1>\n</body>\n</html>', created: new Date().toISOString() },
+    { id: generateId(), name: 'style.css', type: 'file', size: 340, content: 'body {\n  margin: 0;\n  padding: 20px;\n  font-family: sans-serif;\n}', created: new Date().toISOString() }
+  ]};
+  const images = { id: generateId(), name: 'Images', type: 'folder', created: new Date().toISOString(), children: [
+    { id: generateId(), name: 'photo.jpg', type: 'file', size: 245000, content: '[Image data placeholder - 245 KB]', created: new Date().toISOString() },
+    { id: generateId(), name: 'logo.png', type: 'file', size: 45000, content: '[Image data placeholder - 45 KB]', created: new Date().toISOString() }
+  ]};
+  const archive = { id: generateId(), name: 'archive.zip', type: 'file', size: 1200000, content: '[Archive - 1.2 MB]', created: new Date().toISOString() };
+  const readme = { id: generateId(), name: 'README.md', type: 'file', size: 890, content: '# File Explorer\n\nA virtual file system for browsing files.', created: new Date().toISOString() };
+  ROOT.children = [docs, projects, images, archive, readme];
+  saveData();
+}
+
+function saveData() {
+  try { localStorage.setItem('fe-data', JSON.stringify(ROOT.children)); } catch {}
+}
+
+function render() {
+  renderTree();
+  renderContent();
+}
+
+function renderTree() {
+  const tree = document.getElementById('treePanel');
+  tree.innerHTML = '';
+  // Root
+  const rootHtml = buildTreeNode(ROOT, ['root'], 0);
+  tree.innerHTML = rootHtml;
+  // Expand current path
+  selectedPath.forEach((id, i) => {
+    const el = document.querySelector(`[data-path-id="${id}"]`);
+    if (el && el.dataset.expanded === 'false') el.click();
+  });
+  // Highlight selected
+  const lastId = selectedPath[selectedPath.length - 1];
+  document.querySelectorAll('.tree-node-content').forEach(el => {
+    el.classList.toggle('selected', el.dataset.pathId === lastId);
+  });
+}
+
+function buildTreeNode(node, path, depth) {
+  const isExpanded = path.length <= selectedPath.length && path.every((id, i) => id === selectedPath[i]);
+  const isFolder = node.type === 'folder';
+  const hasChildren = isFolder && node.children && node.children.length > 0;
+  const isSelected = path[path.length-1] === selectedPath[selectedPath.length-1];
+  const icon = isFolder ? (hasChildren ? '📂' : '📁') : getFileIcon(node.name, node.type);
+  const arrow = isFolder ? (isExpanded ? '▼' : '▶') : '<span style="width:14px;display:inline-block"></span>';
+  
+  let html = `<div class="tree-node">`;
+  html += `<div class="tree-node-content ${isSelected ? 'selected' : ''}" data-path-id="${node.id}" data-path="${path.join(',')}" onclick="selectNode('${path.join(',')}')" ${isFolder ? `data-expanded="${isExpanded}" ondblclick="toggleExpand('${path.join(',')}')"` : ''}>`;
+  html += `<span class="arrow">${arrow}</span>`;
+  html += `<span class="icon">${icon}</span>`;
+  html += `<span class="name">${node.name}</span>`;
+  html += `</div>`;
+  
+  if (isFolder && isExpanded && hasChildren) {
+    html += `<div class="tree-children">`;
+    node.children.forEach(child => {
+      html += buildTreeNode(child, [...path, child.id], depth + 1);
+    });
+    html += `</div>`;
+  }
+  
+  html += `</div>`;
+  return html;
+}
+
+function selectNode(pathStr) {
+  const path = pathStr.split(',').filter(Boolean);
+  selectedPath = path;
+  saveData();
+  render();
+}
+
+function toggleExpand(pathStr) {
+  const path = pathStr.split(',').filter(Boolean);
+  // Collapse if current path is an ancestor of selected
+  if (selectedPath.length > path.length && selectedPath.slice(0, path.length).every((id, i) => id === path[i])) {
+    selectedPath = path;
+  } else {
+    selectedPath = path;
+  }
+  render();
+}
+
+function renderContent() {
+  const node = getNode(selectedPath);
+  const grid = document.getElementById('fileGrid');
+  const pathDisplay = document.getElementById('pathDisplay');
+  
+  if (!node) {
+    grid.innerHTML = '<div class="empty-folder">Folder not found</div>';
+    pathDisplay.innerHTML = '/ <span>???</span>';
+    return;
+  }
+  
+  // Build path string
+  let pathStr = '/';
+  let cur = ROOT;
+  for (let i = 1; i < selectedPath.length; i++) {
+    const child = cur.children.find(c => c.id === selectedPath[i]);
+    if (child) { pathStr += child.name + '/'; cur = child; }
+  }
+  pathDisplay.innerHTML = pathStr.replace(/\//g, ' / <span>').replace(/\/ <span>$/, '') || '/';
+  
+  if (node.type === 'file') {
+    grid.innerHTML = `<div class="empty-folder">📄 Viewing file: ${node.name}<br><br><div onclick="showDetail('${node.id}')" style="cursor:pointer;color:#00d9ff;font-size:0.7rem">Click to view details</div></div>`;
+    return;
+  }
+  
+  const items = node.children || [];
+  if (items.length === 0) {
+    grid.innerHTML = '<div class="empty-folder">📂 This folder is empty</div>'; return;
+  }
+  
+  // Sort: folders first, then alphabetical
+  const sorted = [...items].sort((a, b) => {
+    if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
+  
+  grid.innerHTML = sorted.map(item => {
+    const icon = item.type === 'folder' ? '📁' : getFileIcon(item.name, item.type);
+    const size = item.type === 'file' ? formatSize(item.size || 0) : '';
+    return `<div class="file-item" onclick="${item.type === 'folder' ? `navigateTo('${item.id}')` : `showDetail('${item.id}')`}">
+      <div class="icon">${icon}</div>
+      <div class="name">${escapeHTML(item.name)}</div>
+      ${size ? `<div class="size">${size}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function navigateTo(id) {
+  selectedPath = [...selectedPath, id];
+  render();
+}
+
+function showDetail(id) {
+  const node = getNode([...selectedPath.slice(0, -1), id]);
+  if (!node) {
+    // Search in current folder
+    const folder = getNode(selectedPath);
+    if (!folder || !folder.children) return;
+    const item = folder.children.find(c => c.id === id);
+    if (!item) return;
+    showDetailPanel(item);
+  } else {
+    showDetailPanel(node);
+  }
+}
+
+function showDetailPanel(item) {
+  document.getElementById('detIcon').textContent = item.type === 'folder' ? '📁' : getFileIcon(item.name, item.type);
+  document.getElementById('detName').textContent = item.name;
+  document.getElementById('detType').textContent = item.type === 'folder' ? 'Folder' : 'File';
+  document.getElementById('detSize').textContent = item.type === 'file' ? formatSize(item.size || 0) : '-';
+  document.getElementById('detPath').textContent = '/' + item.name;
+  document.getElementById('detCreated').textContent = item.created ? formatDate(item.created) : '-';
+  document.getElementById('detContent').textContent = item.content || (item.type === 'folder' ? `${(item.children || []).length} items` : 'No preview available');
+  document.getElementById('detailPanel').classList.add('open');
+  document.getElementById('overlay').classList.add('open');
+  detailOpen = true;
+}
+
+function closeDetail() {
+  document.getElementById('detailPanel').classList.remove('open');
+  document.getElementById('overlay').classList.remove('open');
+  detailOpen = false;
+}
+
+function newFolder() {
+  const name = prompt('Folder name:');
+  if (!name || !name.trim()) return;
+  const folder = getNode(selectedPath);
+  if (!folder || folder.type !== 'folder') return;
+  folder.children.push({ id: generateId(), name: name.trim(), type: 'folder', created: new Date().toISOString(), children: [] });
+  saveData();
+  render();
+}
+
+function openNewFileDialog() {
+  const name = prompt('File name (e.g., notes.txt):');
+  if (!name || !name.trim()) return;
+  const folder = getNode(selectedPath);
+  if (!folder || folder.type !== 'folder') return;
+  folder.children.push({ id: generateId(), name: name.trim(), type: 'file', size: 0, content: '', created: new Date().toISOString() });
+  saveData();
+  render();
+}
+
+function deleteSelected() {
+  const folder = getNode(selectedPath.slice(0, -1));
+  if (!folder || !folder.children) return;
+  const id = selectedPath[selectedPath.length - 1];
+  const item = folder.children.find(c => c.id === id);
+  if (!item) return;
+  if (!confirm(`Delete "${item.name}"?`)) return;
+  folder.children = folder.children.filter(c => c.id !== id);
+  selectedPath = selectedPath.slice(0, -1);
+  saveData();
+  render();
+}
+
+function escapeHTML(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+loadData();
+if (ROOT.children.length > 0) selectedPath = ['root', ROOT.children[0].id];
+render();
+</script>
+</body>
+</html>

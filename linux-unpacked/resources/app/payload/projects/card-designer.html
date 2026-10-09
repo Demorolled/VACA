@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Card Designer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0f0f1a;--surface:#1a1a2e;--surface2:#252542;--border:#4a4a6a;--text:#e0e0f0;--text2:#8888aa;--accent:#00d9ff;--danger:#f87171;--success:#4ade80;--radius:6px;--shadow:0 4px 24px rgba(0,0,0,.4)}
+body{font-family:'Inter','Segoe UI',sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display:flex;flex-direction:column}
+/* ── Top Toolbar ── */
+.toolbar{display:flex;align-items:center;gap:8px;padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap}
+.toolbar .brand{font-weight:700;font-size:16px;color:var(--accent);margin-right:12px;letter-spacing:.5px}
+.toolbar .brand small{font-weight:400;font-size:11px;color:var(--text2);margin-left:6px}
+.toolbar .sep{width:1px;height:28px;background:var(--border);margin:0 4px}
+.toolbar button{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:6px 12px;border-radius:var(--radius);cursor:pointer;font-size:13px;transition:.15s;display:flex;align-items:center;gap:5px;white-space:nowrap}
+.toolbar button:hover{background:#2d2d5a;border-color:var(--accent);color:#fff}
+.toolbar button:active{transform:scale(.97)}
+.toolbar button.primary{background:var(--accent);color:#0f0f1a;font-weight:600;border-color:var(--accent)}
+.toolbar button.primary:hover{background:#00e8ff}
+.toolbar button.danger{color:var(--danger)}
+.toolbar button:disabled{opacity:.4;cursor:not-allowed}
+.toolbar .export-group{display:flex;gap:4px;margin-left:auto}
+/* ── Main Layout ── */
+.main{display:flex;flex:1;overflow:hidden}
+/* ── Left Panel (Data) ── */
+.panel-left{width:280px;min-width:200px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}
+.panel-tabs{display:flex;background:var(--surface2);border-bottom:1px solid var(--border);flex-shrink:0}
+.panel-tabs button{flex:1;padding:8px;background:none;border:none;color:var(--text2);cursor:pointer;font-size:12px;font-weight:600;transition:.15s;border-bottom:2px solid transparent}
+.panel-tabs button:hover{color:var(--text)}
+.panel-tabs button.active{color:var(--accent);border-bottom-color:var(--accent)}
+.panel-content{flex:1;overflow-y:auto;padding:8px}
+.panel-content.hidden{display:none}
+.panel-content h3{font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;margin-top:4px}
+.col-header{display:flex;gap:4px;margin-bottom:6px}
+.col-header input{flex:1;padding:5px 8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:4px;font-size:12px}
+.col-header input:focus{outline:none;border-color:var(--accent)}
+.col-header select{padding:5px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:4px;font-size:12px}
+.col-header button{padding:5px 10px;background:var(--accent);border:none;color:#0f0f1a;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600}
+.cols-list{display:flex;flex-direction:column;gap:3px;margin-bottom:10px}
+.col-item{display:flex;align-items:center;gap:4px;padding:4px 6px;background:var(--surface2);border-radius:4px;font-size:12px;cursor:pointer;transition:.1s}
+.col-item:hover{background:#2d2d5a}
+.col-item .col-name{flex:1;font-weight:500}
+.col-item .col-type{font-size:10px;color:var(--text2);background:var(--bg);padding:1px 5px;border-radius:3px}
+.col-item .col-del{color:var(--danger);cursor:pointer;padding:2px 4px;border:none;background:none;font-size:14px;opacity:.6}
+.col-item .col-del:hover{opacity:1}
+.data-rows{display:flex;flex-direction:column;gap:3px;max-height:300px;overflow-y:auto}
+.data-row{display:flex;gap:3px;align-items:stretch}
+.data-row .row-idx{width:22px;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text2);background:var(--surface2);border-radius:3px;flex-shrink:0}
+.data-row input{flex:1;min-width:0;padding:4px 5px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:3px;font-size:11px}
+.data-row input:focus{outline:none;border-color:var(--accent)}
+.data-row .row-del{padding:4px 5px;background:none;border:none;color:var(--danger);cursor:pointer;font-size:13px;opacity:.6}
+.data-row .row-del:hover{opacity:1}
+.data-actions{display:flex;gap:4px;margin-top:6px}
+.data-actions button{flex:1;padding:5px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:4px;cursor:pointer;font-size:11px;transition:.1s}
+.data-actions button:hover{background:#2d2d5a;border-color:var(--accent)}
+.csv-import{position:relative;overflow:hidden}
+.csv-import input[type=file]{position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;cursor:pointer}
+/* ── Center (Canvas) ── */
+.canvas-area{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);position:relative;overflow:hidden;padding:24px}
+.canvas-wrap{background:#ffffff;border-radius:8px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.canvas-wrap canvas{display:block}
+.canvas-size-info{position:absolute;bottom:-22px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--text2);white-space:nowrap}
+.canvas-empty{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:var(--text2);font-size:14px;text-align:center;pointer-events:none}
+.canvas-empty p{margin-top:4px;font-size:11px;opacity:.6}
+/* Zoom controls */
+.zoom-bar{position:absolute;bottom:8px;right:16px;display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px 8px}
+.zoom-bar button{background:none;border:none;color:var(--text2);cursor:pointer;font-size:16px;padding:0 4px;line-height:1}
+.zoom-bar button:hover{color:var(--text)}
+.zoom-bar span{font-size:11px;color:var(--text2);min-width:36px;text-align:center}
+/* ── Right Panel (Properties) ── */
+.panel-right{width:280px;min-width:200px;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}
+.prop-scroll{flex:1;overflow-y:auto;padding:10px}
+.prop-section{margin-bottom:14px}
+.prop-section h4{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.prop-row{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.prop-row label{font-size:11px;color:var(--text2);width:50px;flex-shrink:0}
+.prop-row input,.prop-row select{flex:1;padding:4px 6px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:3px;font-size:12px}
+.prop-row input:focus,.prop-row select:focus{outline:none;border-color:var(--accent)}
+.prop-row input[type=color]{width:32px;height:28px;padding:2px;flex:none;cursor:pointer}
+.prop-row input[type=number]{width:60px;flex:none}
+.prop-row .prop-hint{font-size:9px;color:var(--text2);opacity:.6}
+.no-selection{display:flex;align-items:center;justify-content:center;height:100%;color:var(--text2);font-size:13px;text-align:center;padding:20px}
+.no-selection span{opacity:.6}
+.bound-badge{display:inline-block;font-size:9px;background:var(--accent);color:#0f0f1a;padding:1px 6px;border-radius:3px;font-weight:600}
+/* ── Preview Gallery ── */
+.gallery-bar{border-top:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.gallery-header{display:flex;align-items:center;gap:8px;padding:6px 12px;background:var(--surface2);border-bottom:1px solid var(--border)}
+.gallery-header h3{font-size:12px;color:var(--text2);font-weight:600}
+.gallery-header span{font-size:11px;color:var(--text2)}
+.gallery-header button{margin-left:auto;padding:3px 10px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:4px;cursor:pointer;font-size:11px}
+.gallery-header button:hover{background:#2d2d5a;border-color:var(--accent)}
+.gallery-scroll{display:flex;gap:8px;padding:8px 12px;overflow-x:auto;overflow-y:hidden;min-height:160px;max-height:220px}
+.gallery-card{flex-shrink:0;border-radius:6px;overflow:hidden;border:1px solid var(--border);background:#fff;position:relative;cursor:pointer;transition:.15s;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.gallery-card:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,.5);border-color:var(--accent)}
+.gallery-card img{display:block;width:auto;height:140px}
+.gallery-card .card-label{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.7);color:#fff;font-size:10px;padding:3px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gallery-empty{display:flex;align-items:center;justify-content:center;width:100%;color:var(--text2);font-size:12px;opacity:.6}
+/* ── Modal ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:.2s}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;min-width:340px;max-width:90vw;box-shadow:var(--shadow)}
+.modal h2{font-size:15px;color:var(--accent);margin-bottom:12px}
+.modal-actions{display:flex;gap:6px;margin-top:14px;justify-content:flex-end}
+.modal-actions button{padding:7px 16px;border-radius:5px;cursor:pointer;font-size:13px;font-weight:600}
+.modal-actions .m-primary{background:var(--accent);border:none;color:#0f0f1a}
+.modal-actions .m-secondary{background:var(--surface2);border:1px solid var(--border);color:var(--text)}
+.modal-actions .m-secondary:hover{background:#2d2d5a}
+/* ── Toast ── */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 16px;font-size:13px;box-shadow:var(--shadow);z-index:2000;opacity:0;transform:translateY(10px);transition:.2s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.success{border-color:var(--success)}
+.toast.success .toast-icon{color:var(--success)}
+.toast.error{border-color:var(--danger)}
+.toast.error .toast-icon{color:var(--danger)}
+/* ── Scrollbar ── */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:#5a5a7a}
+/* ── Responsive ── */
+@media(max-width:900px){.panel-left{width:200px}.panel-right{width:200px}.gallery-card img{height:100px}}
+@media(max-width:640px){.panel-left,.panel-right{display:none}}
+</style>
+</head>
+<body>
+
+<!-- ─── TOOLBAR ─── -->
+<div class="toolbar" id="toolbar">
+  <span class="brand">🃏 Card Designer <small>Template Studio</small></span>
+  <div class="sep"></div>
+  <button onclick="addElement('text_box')" title="Add Text Box">📝 Text</button>
+  <button onclick="addElement('image_frame')" title="Add Image Frame">🖼 Image</button>
+  <button onclick="addElement('shape')" title="Add Shape">⬡ Shape</button>
+  <div class="sep"></div>
+  <button onclick="undo()" id="undoBtn" disabled title="Undo">↶</button>
+  <button onclick="redo()" id="redoBtn" disabled title="Redo">↷</button>
+  <div class="sep"></div>
+  <button onclick="deleteSelected()" id="delBtn" disabled class="danger" title="Delete Selected">🗑 Delete</button>
+  <div class="export-group">
+    <button onclick="exportPNG()">📷 Export PNG</button>
+    <button onclick="showPrintSheetDialog()" class="primary">🖨 Print Sheet</button>
+    <button onclick="openCSV()" title="Import CSV">📂 CSV</button>
+  </div>
+</div>
+
+<!-- ─── MAIN ─── -->
+<div class="main">
+
+  <!-- LEFT PANEL -->
+  <div class="panel-left">
+    <div class="panel-tabs">
+      <button class="active" data-tab="data-tab" onclick="switchPanelTab('data-tab',this)">📊 Data</button>
+      <button data-tab="layers-tab" onclick="switchPanelTab('layers-tab',this)">📑 Layers</button>
+    </div>
+    <div class="panel-content" id="data-tab">
+      <h3>Columns</h3>
+      <div class="col-header">
+        <input id="newColName" placeholder="Column name" onkeydown="if(event.key==='Enter')addColumn()"/>
+        <select id="newColType"><option value="text">Text</option><option value="number">Number</option><option value="image_url">Image URL</option></select>
+        <button onclick="addColumn()">+</button>
+      </div>
+      <div class="cols-list" id="colsList"></div>
+      <h3>Data Rows <span id="rowCount" style="font-weight:400;color:var(--text2);font-size:11px"></span></h3>
+      <div class="data-rows" id="dataRows"></div>
+      <div class="data-actions">
+        <button onclick="addRow()">+ Add Row</button>
+        <button class="csv-import">📄 Import CSV<input type="file" accept=".csv" onchange="importCSV(event)"/></button>
+      </div>
+    </div>
+    <div class="panel-content hidden" id="layers-tab">
+      <h3>Template Elements</h3>
+      <div id="layersList" style="display:flex;flex-direction:column;gap:3px"><div style="color:var(--text2);font-size:12px;opacity:.6;padding:10px;text-align:center">No elements yet. Use the toolbar to add elements to your card template.</div></div>
+    </div>
+  </div>
+
+  <!-- CANVAS -->
+  <div class="canvas-area" id="canvasArea">
+    <div class="canvas-wrap" id="canvasWrap" style="width:320px;height:440px">
+      <canvas id="editorCanvas" width="320" height="440"></canvas>
+      <div class="canvas-size-info">63.5 × 88.9 mm (poker card)</div>
+    </div>
+    <div class="zoom-bar">
+      <button onclick="zoomIn()">+</button>
+      <span id="zoomLabel">100%</span>
+      <button onclick="zoomOut()">−</button>
+      <button onclick="fitView()" title="Fit to view">⊡</button>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="panel-right">
+    <div class="prop-scroll" id="propPanel">
+      <div class="no-selection" id="noSelection"><span>Select an element on the canvas to edit its properties</span></div>
+      <div id="propContent" style="display:none">
+        <div class="prop-section">
+          <h4>Position & Size</h4>
+          <div class="prop-row"><label>X</label><input type="number" id="propX" onchange="updateProp('left',this)"/></div>
+          <div class="prop-row"><label>Y</label><input type="number" id="propY" onchange="updateProp('top',this)"/></div>
+          <div class="prop-row"><label>Width</label><input type="number" id="propW" onchange="updateProp('width',this)"/></div>
+          <div class="prop-row"><label>Height</label><input type="number" id="propH" onchange="updateProp('height',this)"/></div>
+          <div class="prop-row"><label>Rotation</label><input type="number" id="propRot" onchange="updateProp('angle',this)"/><span class="prop-hint">°</span></div>
+        </div>
+        <div class="prop-section" id="styleSection">
+          <h4>Style</h4>
+          <div class="prop-row" id="propFillRow"><label>Fill</label><input type="color" id="propFill" onchange="updateProp('fill',this)"/></div>
+          <div class="prop-row" id="propStrokeRow"><label>Stroke</label><input type="color" id="propStroke" onchange="updateProp('stroke',this)"/><input type="number" id="propStrokeW" min="0" max="20" style="width:50px" onchange="updateProp('strokeWidth',this)"/><span class="prop-hint">px</span></div>
+          <div class="prop-row" id="propRadiusRow"><label>Radius</label><input type="number" id="propRadius" min="0" max="100" onchange="updateProp('rx',this)"/><span class="prop-hint">px</span></div>
+          <div class="prop-row" id="propFontRow"><label>Font</label>
+            <select id="propFont" onchange="updateProp('fontFamily',this)">
+              <option value="Arial">Arial</option><option value="Georgia">Georgia</option>
+              <option value="Times New Roman">Times New Roman</option><option value="Courier New">Courier New</option>
+              <option value="Verdana">Verdana</option><option value="Impact">Impact</option>
+            </select>
+          </div>
+          <div class="prop-row" id="propFontSizeRow"><label>Size</label><input type="number" id="propFontSize" min="4" max="200" onchange="updateProp('fontSize',this)"/><span class="prop-hint">pt</span></div>
+          <div class="prop-row" id="propAlignRow"><label>Align</label>
+            <select id="propAlign" onchange="updateProp('textAlign',this)">
+              <option value="left">Left</option><option value="center">Center</option><option value="right">Right</option>
+            </select>
+          </div>
+          <div class="prop-row" id="propBoldRow"><label>Bold</label><input type="checkbox" id="propBold" onchange="updateBold()"/></div>
+          <div class="prop-row" id="propOpacityRow"><label>Opacity</label><input type="range" id="propOpacity" min="0" max="1" step=".05" oninput="updateProp('opacity',this)" style="flex:1"/><span id="propOpacityLabel" style="font-size:11px;width:30px;text-align:right">1.0</span></div>
+        </div>
+        <div class="prop-section">
+          <h4>Data Binding</h4>
+          <div class="prop-row"><label>Column</label>
+            <select id="propBinding" onchange="updateBinding()">
+              <option value="">— None —</option>
+            </select>
+          </div>
+          <div class="prop-row" id="propDefaultRow"><label>Default</label><input type="text" id="propDefault" placeholder="Fallback value" onchange="updateBinding()"/></div>
+          <div class="prop-row" id="propTransformRow"><label>Transform</label>
+            <select id="propTransform" onchange="updateBinding()">
+              <option value="none">None</option><option value="uppercase">UPPERCASE</option>
+              <option value="lowercase">lowercase</option><option value="capitalize">Capitalize</option>
+            </select>
+          </div>
+          <div id="bindingStatus" style="font-size:10px;color:var(--text2);margin-top:4px;padding:4px 6px;background:var(--surface2);border-radius:3px"></div>
+        </div>
+        <div class="prop-section">
+          <h4>Element Info</h4>
+          <div style="font-size:11px;color:var(--text2)" id="elementInfo"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── GALLERY ─── -->
+<div class="gallery-bar" id="galleryBar">
+  <div class="gallery-header">
+    <h3>🔍 Card Preview Gallery</h3>
+    <span id="galleryCount">0 cards</span>
+    <button onclick="refreshGallery()">⟳ Refresh</button>
+  </div>
+  <div class="gallery-scroll" id="galleryScroll">
+    <div class="gallery-empty">Add data rows and template elements to see card previews</div>
+  </div>
+</div>
+
+<!-- ─── TOAST ─── -->
+<div class="toast" id="toast"><span class="toast-icon">✓</span> <span id="toastMsg"></span></div>
+
+<!-- ─── PRINT SHEET MODAL ─── -->
+<div class="modal-overlay" id="printModal">
+  <div class="modal">
+    <h2>🖨 Export Print Sheet</h2>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:12px">Generate a print-ready card sheet with all cards laid out in a grid.</p>
+    <div class="prop-row"><label>Columns</label><input type="number" id="sheetCols" value="3" min="1" max="8"/></div>
+    <div class="prop-row"><label>Rows</label><input type="number" id="sheetRows" value="3" min="1" max="8"/></div>
+    <div class="prop-row"><label>Scale</label><select id="sheetScale"><option value="1">1× (72 DPI)</option><option value="2" selected>2× (144 DPI)</option><option value="3">3× (216 DPI)</option><option value="4">4× (300 DPI)</option></select></div>
+    <div style="font-size:11px;color:var(--text2);margin-top:6px" id="sheetInfo"></div>
+    <div class="modal-actions">
+      <button class="m-secondary" onclick="closeModal('printModal')">Cancel</button>
+      <button class="m-primary" onclick="exportPrintSheet()">Generate & Download</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════════════════
+const DEFAULT_WIDTH = 300;
+const DEFAULT_HEIGHT = 420;
+
+const state = {
+  columns: [
+    { id: uid(), name: 'Name', type: 'text', defaultValue: '' },
+    { id: uid(), name: 'Type', type: 'text', defaultValue: '' },
+    { id: uid(), name: 'Cost', type: 'number', defaultValue: '0' },
+    { id: uid(), name: 'Ability', type: 'text', defaultValue: '' },
+  ],
+  rows: [
+    { id: uid(), data: {} },
+    { id: uid(), data: {} },
+    { id: uid(), data: {} },
+  ],
+  undoStack: [],
+  redoStack: [],
+  saveNeeded: false,
+};
+
+// Seed row data
+const seedData = [
+  { Name: 'Shadow Blade', Type: 'Weapon', Cost: '3', Ability: 'Deal 3 damage to target enemy.' },
+  { Name: 'Arcane Shield', Type: 'Armor', Cost: '2', Ability: 'Prevent all damage this turn.' },
+  { Name: 'Phoenix Wing', Type: 'Spell', Cost: '5', Ability: 'Revive a creature from your discard.' },
+];
+state.rows.forEach((r, i) => {
+  state.columns.forEach(c => { r.data[c.id] = seedData[i]?.[c.name] ?? '' });
+});
+
+// ════════════════════════════════════════════════════════════════
+//  FABRIC.JS SETUP
+// ════════════════════════════════════════════════════════════════
+const canvas = new fabric.Canvas('editorCanvas', {
+  selection: true,
+  preserveObjectStacking: true,
+  backgroundColor: '#ffffff',
+});
+
+// Card background
+const cardBg = new fabric.Rect({
+  left: 0, top: 0, width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT,
+  fill: '#1a1a2e', selectable: false, evented: false,
+  name: '__cardBg__',
+});
+canvas.add(cardBg);
+canvas.sendToBack(cardBg);
+
+// Clip to card bounds
+function ensureClipPath() {
+  const clip = new fabric.Rect({
+    left: 0, top: 0, width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT,
+    absolutePositioned: true, selectable: false, evented: false,
+  });
+  canvas.clipPath = clip;
+  canvas.renderAll();
+}
+ensureClipPath();
+
+// ── Default Card Art ──
+let defaultElementsAdded = false;
+function addDefaultElements() {
+  if (defaultElementsAdded) return;
+  defaultElementsAdded = true;
+
+  const titleBg = new fabric.Rect({
+    left: 10, top: 10, width: 280, height: 46,
+    fill: '#e0b354', rx: 4, ry: 4,
+    _elementType: 'shape', _elementId: uid(), _dataBinding: null,
+  });
+  addCustomSerialization(titleBg);
+  canvas.add(titleBg);
+
+  const titleText = new fabric.Textbox('Card Name', {
+    left: 16, top: 14, width: 268, height: 38,
+    fontSize: 22, fontFamily: 'Georgia', fill: '#1a1a2e', fontWeight: 'bold',
+    textAlign: 'center', splitByGrapheme: false,
+    _elementType: 'text_box', _elementId: uid(), _dataBinding: { sourceColumn: state.columns[0].id, defaultValue: 'Card Name', transform: 'uppercase' },
+  });
+  addCustomSerialization(titleText);
+  canvas.add(titleText);
+
+  const artFrame = new fabric.Rect({
+    left: 40, top: 66, width: 220, height: 180,
+    fill: '#2a2a4e', stroke: '#e0b354', strokeWidth: 2, rx: 6, ry: 6,
+    _elementType: 'image_frame', _elementId: uid(), _dataBinding: null,
+  });
+  addCustomSerialization(artFrame);
+  canvas.add(artFrame);
+
+  const artLabel = new fabric.Textbox('Art Area', {
+    left: 40, top: 145, width: 220, height: 24,
+    fontSize: 14, fontFamily: 'Arial', fill: '#555577', textAlign: 'center',
+    selectable: false, evented: false,
+    _elementType: 'text_box', _elementId: uid(), _dataBinding: null,
+  });
+  addCustomSerialization(artLabel);
+  canvas.add(artLabel);
+
+  const statBox = new fabric.Rect({
+    left: 50, top: 258, width: 200, height: 52,
+    fill: '#252542', rx: 4, ry: 4,
+    _elementType: 'shape', _elementId: uid(), _dataBinding: null,
+  });
+  addCustomSerialization(statBox);
+  canvas.add(statBox);
+
+  const typeText = new fabric.Textbox('{{Type}}', {
+    left: 56, top: 262, width: 88, height: 22,
+    fontSize: 12, fontFamily: 'Arial', fill: '#888', textAlign: 'left',
+    _elementType: 'text_box', _elementId: uid(), _dataBinding: { sourceColumn: state.columns[1].id, defaultValue: 'Type', transform: 'uppercase' },
+  });
+  addCustomSerialization(typeText);
+  canvas.add(typeText);
+
+  const costText = new fabric.Textbox('Cost: {{Cost}}', {
+    left: 156, top: 262, width: 88, height: 22,
+    fontSize: 12, fontFamily: 'Arial', fill: '#00d9ff', textAlign: 'right',
+    _elementType: 'text_box', _elementId: uid(), _dataBinding: { sourceColumn: state.columns[2].id, defaultValue: '0', transform: 'none' },
+  });
+  addCustomSerialization(costText);
+  canvas.add(costText);
+
+  const abilityBox = new fabric.Textbox('{{Ability}}', {
+    left: 16, top: 320, width: 268, height: 80,
+    fontSize: 13, fontFamily: 'Arial', fill: '#ccccdd', textAlign: 'left',
+    _elementType: 'text_box', _elementId: uid(), _dataBinding: { sourceColumn: state.columns[3].id, defaultValue: 'Ability text...', transform: 'none' },
+  });
+  addCustomSerialization(abilityBox);
+  canvas.add(abilityBox);
+
+  updateLayersPanel();
+  updatePropertiesPanel();
+  canvas.renderAll();
+}
+
+// Add default elements on load
+addDefaultElements();
+
+// ════════════════════════════════════════════════════════════════
+//  CUSTOM SERIALIZATION HELPERS
+// ════════════════════════════════════════════════════════════════
+function addCustomSerialization(obj) {
+  const orig = obj.toObject;
+  obj.toObject = function() {
+    return fabric.util.object.extend(orig.call(this), {
+      _elementType: this._elementType,
+      _elementId: this._elementId,
+      _dataBinding: this._dataBinding,
+    });
+  };
+}
+
+canvas.on('object:modified', () => { saveState(); updatePropertiesPanel(); updateLayersPanel(); });
+
+// ════════════════════════════════════════════════════════════════
+//  ELEMENT MANAGEMENT
+// ════════════════════════════════════════════════════════════════
+let _nextId = 100;
+function uid() { return 'id_' + (Date.now().toString(36)) + '_' + (Math.random().toString(36).slice(2, 6)); }
+
+function addElement(type) {
+  const id = uid();
+  let obj;
+  const cx = DEFAULT_WIDTH / 2, cy = DEFAULT_HEIGHT / 2;
+
+  if (type === 'text_box') {
+    obj = new fabric.Textbox('Text', {
+      left: cx - 80, top: cy - 20, width: 160, height: 40,
+      fontSize: 16, fontFamily: 'Arial', fill: '#ffffff',
+      textAlign: 'center', splitByGrapheme: false,
+      _elementType: 'text_box', _elementId: id, _dataBinding: null,
+    });
+  } else if (type === 'image_frame') {
+    obj = new fabric.Rect({
+      left: cx - 60, top: cy - 60, width: 120, height: 120,
+      fill: '#2a2a4e', stroke: '#4a4a6a', strokeWidth: 1,
+      rx: 4, ry: 4,
+      _elementType: 'image_frame', _elementId: id, _dataBinding: null,
+    });
+    const label = new fabric.Textbox('🖼 Image', {
+      left: cx - 25, top: cy - 10, width: 50, height: 20,
+      fontSize: 11, fontFamily: 'Arial', fill: '#444466', textAlign: 'center',
+      selectable: false, evented: false,
+      _elementType: 'text_box', _elementId: uid(), _dataBinding: null,
+    });
+    addCustomSerialization(label);
+    canvas.add(label);
+    canvas.sendBackwards(label);
+  } else if (type === 'shape') {
+    obj = new fabric.Rect({
+      left: cx - 40, top: cy - 40, width: 80, height: 80,
+      fill: '#e0b354', rx: 4, ry: 4,
+      _elementType: 'shape', _elementId: id, _dataBinding: null,
+    });
+  }
+
+  if (obj) {
+    addCustomSerialization(obj);
+    canvas.add(obj);
+    canvas.setActiveObject(obj);
+    saveState();
+    updatePropertiesPanel();
+    updateLayersPanel();
+    canvas.renderAll();
+  }
+}
+
+function deleteSelected() {
+  const active = canvas.getActiveObject();
+  if (!active) return;
+  if (active === cardBg) { toast('Cannot delete card background', 'error'); return; }
+  canvas.remove(active);
+  saveState();
+  updatePropertiesPanel();
+  updateLayersPanel();
+  canvas.renderAll();
+}
+
+// ── Selection Events ──
+canvas.on('selection:created', (e) => { updatePropertiesPanel(); updateDeleteBtn(); });
+canvas.on('selection:updated', (e) => { updatePropertiesPanel(); updateDeleteBtn(); });
+canvas.on('selection:cleared', () => { showNoSelection(); updateDeleteBtn(); });
+canvas.on('object:modified', () => { updatePropertiesPanel(); updateLayersPanel(); });
+
+// ── Canvas sizing ──
+function updateCanvasSize() {
+  // Uses fixed 320x440 for poker card proportions
+}
+
+// ════════════════════════════════════════════════════════════════
+//  PROPERTIES PANEL
+// ════════════════════════════════════════════════════════════════
+function showNoSelection() {
+  document.getElementById('noSelection').style.display = 'flex';
+  document.getElementById('propContent').style.display = 'none';
+}
+
+function updatePropertiesPanel() {
+  const active = canvas.getActiveObject();
+  if (!active || active === cardBg) { showNoSelection(); return; }
+  document.getElementById('noSelection').style.display = 'none';
+  document.getElementById('propContent').style.display = 'block';
+
+  document.getElementById('propX').value = Math.round(active.left || 0);
+  document.getElementById('propY').value = Math.round(active.top || 0);
+  document.getElementById('propW').value = Math.round(active.width * (active.scaleX || 1));
+  document.getElementById('propH').value = Math.round(active.height * (active.scaleY || 1));
+  document.getElementById('propRot').value = Math.round(active.angle || 0);
+  document.getElementById('propOpacity').value = active.opacity ?? 1;
+  document.getElementById('propOpacityLabel').textContent = (active.opacity ?? 1).toFixed(2);
+
+  const eType = active._elementType || 'shape';
+
+  // Show/hide style sections based on type
+  document.getElementById('propFillRow').style.display = (eType === 'shape' || eType === 'image_frame') ? 'flex' : 'none';
+  document.getElementById('propStrokeRow').style.display = (eType !== 'text_box') ? 'flex' : 'none';
+  document.getElementById('propRadiusRow').style.display = (eType === 'shape' || eType === 'image_frame') ? 'flex' : 'none';
+  document.getElementById('propFontRow').style.display = (eType === 'text_box') ? 'flex' : 'none';
+  document.getElementById('propFontSizeRow').style.display = (eType === 'text_box') ? 'flex' : 'none';
+  document.getElementById('propAlignRow').style.display = (eType === 'text_box') ? 'flex' : 'none';
+  document.getElementById('propBoldRow').style.display = (eType === 'text_box') ? 'flex' : 'none';
+
+  if (eType === 'shape' || eType === 'image_frame') {
+    document.getElementById('propFill').value = active.fill || '#cccccc';
+    document.getElementById('propStroke').value = active.stroke || '#4a4a6a';
+    document.getElementById('propStrokeW').value = active.strokeWidth || 0;
+    document.getElementById('propRadius').value = active.rx || 0;
+  }
+  if (eType === 'text_box') {
+    document.getElementById('propFont').value = active.fontFamily || 'Arial';
+    document.getElementById('propFontSize').value = active.fontSize || 16;
+    document.getElementById('propAlign').value = active.textAlign || 'left';
+    document.getElementById('propBold').checked = active.fontWeight === 'bold';
+  }
+
+  // Data binding
+  const bind = active._dataBinding;
+  const sel = document.getElementById('propBinding');
+  sel.innerHTML = '<option value="">— None —</option>' +
+    state.columns.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  if (bind && bind.sourceColumn) {
+    sel.value = bind.sourceColumn;
+    document.getElementById('propDefault').value = bind.defaultValue || '';
+    document.getElementById('propTransform').value = bind.transform || 'none';
+    const col = state.columns.find(c => c.id === bind.sourceColumn);
+    document.getElementById('bindingStatus').textContent = col ? `✓ Bound to "${col.name}" column` : '⚠ Column not found';
+    document.getElementById('bindingStatus').style.color = col ? 'var(--success)' : 'var(--danger)';
+  } else {
+    sel.value = '';
+    document.getElementById('propDefault').value = '';
+    document.getElementById('propTransform').value = 'none';
+    document.getElementById('bindingStatus').textContent = 'Not bound to any column';
+    document.getElementById('bindingStatus').style.color = 'var(--text2)';
+  }
+
+  // Element info
+  document.getElementById('elementInfo').textContent = `Type: ${eType.replace('_',' ').toUpperCase()} • ID: ${active._elementId?.slice(0,8)}...`;
+}
+
+function updateProp(prop, el) {
+  const active = canvas.getActiveObject();
+  if (!active) return;
+  const val = parseFloat(el.value);
+  if (prop === 'left' || prop === 'top') {
+    active.set(prop, val);
+  } else if (prop === 'width' || prop === 'height') {
+    const scaleProp = prop === 'width' ? 'scaleX' : 'scaleY';
+    const origSize = prop === 'width' ? (active.width || 1) : (active.height || 1);
+    if (origSize > 0) active.set(scaleProp, val / origSize);
+  } else if (prop === 'angle') {
+    active.set('angle', val);
+  } else if (prop === 'opacity') {
+    active.set('opacity', val);
+    document.getElementById('propOpacityLabel').textContent = parseFloat(val).toFixed(2);
+  } else if (prop === 'fill') {
+    active.set('fill', el.value);
+  } else if (prop === 'stroke') {
+    active.set('stroke', el.value);
+  } else if (prop === 'strokeWidth') {
+    active.set('strokeWidth', val);
+  } else if (prop === 'rx') {
+    active.set({ rx: val, ry: val });
+  } else if (prop === 'fontFamily') {
+    active.set('fontFamily', el.value);
+  } else if (prop === 'fontSize') {
+    active.set('fontSize', val);
+  } else if (prop === 'textAlign') {
+    active.set('textAlign', el.value);
+  }
+  canvas.renderAll();
+  saveState();
+}
+
+function updateBold() {
+  const active = canvas.getActiveObject();
+  if (!active) return;
+  active.set('fontWeight', document.getElementById('propBold').checked ? 'bold' : 'normal');
+  canvas.renderAll();
+  saveState();
+}
+
+function updateBinding() {
+  const active = canvas.getActiveObject();
+  if (!active) return;
+  const colId = document.getElementById('propBinding').value;
+  if (colId) {
+    active._dataBinding = {
+      sourceColumn: colId,
+      defaultValue: document.getElementById('propDefault').value,
+      transform: document.getElementById('propTransform').value,
+    };
+    const col = state.columns.find(c => c.id === colId);
+    document.getElementById('bindingStatus').textContent = col ? `✓ Bound to "${col.name}"` : '⚠ Column not found';
+    document.getElementById('bindingStatus').style.color = col ? 'var(--success)' : 'var(--danger)';
+  } else {
+    active._dataBinding = null;
+    document.getElementById('bindingStatus').textContent = 'Not bound';
+    document.getElementById('bindingStatus').style.color = 'var(--text2)';
+  }
+  saveState();
+  refreshGallery();
+}
+
+// ════════════════════════════════════════════════════════════════
+//  LAYERS PANEL
+// ════════════════════════════════════════════════════════════════
+function updateLayersPanel() {
+  const list = document.getElementById('layersList');
+  const objs = canvas.getObjects().filter(o => o !== cardBg && o._elementType);
+  if (objs.length === 0) {
+    list.innerHTML = '<div style="color:var(--text2);font-size:12px;opacity:.6;padding:10px;text-align:center">No elements yet.</div>';
+    return;
+  }
+  list.innerHTML = '';
+  // Show in reverse (top layer first)
+  [...objs].reverse().forEach((o, i) => {
+    const div = document.createElement('div');
+    const eType = o._elementType || '?';
+    const icon = eType === 'text_box' ? '📝' : eType === 'image_frame' ? '🖼' : '⬡';
+    const label = eType === 'text_box' ? (o.text?.slice(0, 20) || 'Text') : eType === 'image_frame' ? 'Image' : 'Shape';
+    const bound = o._dataBinding ? ' <span style="color:var(--accent);font-size:9px">🔗</span>' : '';
+    div.innerHTML = `<span style="flex:1">${icon} ${label}${bound}</span><span style="font-size:10px;color:var(--text2)">${eType.replace('_',' ')}</span>`;
+    div.style.cssText = 'display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--surface2);border-radius:4px;font-size:12px;cursor:pointer;transition:.1s';
+    div.onmouseenter = () => { div.style.background = '#2d2d5a' };
+    div.onmouseleave = () => { div.style.background = 'var(--surface2)' };
+    div.onclick = () => {
+      canvas.discardActiveObject();
+      canvas.setActiveObject(o);
+      canvas.renderAll();
+      updatePropertiesPanel();
+    };
+    if (canvas.getActiveObject() === o) {
+      div.style.borderLeft = '3px solid var(--accent)';
+      div.style.background = '#2d2d5a';
+    }
+    list.appendChild(div);
+  });
+}
+
+// ════════════════════════════════════════════════════════════════
+//  DATA SOURCE MANAGEMENT
+// ════════════════════════════════════════════════════════════════
+function addColumn() {
+  const nameInput = document.getElementById('newColName');
+  const typeSelect = document.getElementById('newColType');
+  const name = nameInput.value.trim();
+  if (!name) { toast('Enter a column name', 'error'); return; }
+  if (state.columns.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+    toast('Column already exists', 'error'); return;
+  }
+  state.columns.push({ id: uid(), name, type: typeSelect.value, defaultValue: '' });
+  nameInput.value = '';
+  renderColumns();
+  renderDataRows();
+  updateBindingDropdown();
+  toast(`Added column "${name}"`);
+}
+
+function renderColumns() {
+  const list = document.getElementById('colsList');
+  list.innerHTML = state.columns.map(c => `
+    <div class="col-item">
+      <span class="col-name">${escHtml(c.name)}</span>
+      <span class="col-type">${c.type}</span>
+      <button class="col-del" onclick="removeColumn('${c.id}')">×</button>
+    </div>
+  `).join('');
+}
+
+function removeColumn(id) {
+  if (state.columns.length <= 1) { toast('Need at least one column', 'error'); return; }
+  state.columns = state.columns.filter(c => c.id !== id);
+  // Clean up data binding references
+  canvas.getObjects().forEach(o => {
+    if (o._dataBinding && o._dataBinding.sourceColumn === id) {
+      o._dataBinding = null;
+    }
+  });
+  renderColumns();
+  renderDataRows();
+  updateBindingDropdown();
+  updatePropertiesPanel();
+  saveState();
+  toast('Column removed');
+}
+
+function addRow() {
+  const row = { id: uid(), data: {} };
+  state.columns.forEach(c => { row.data[c.id] = ''; });
+  state.rows.push(row);
+  renderDataRows();
+  updateGalleryCount();
+}
+
+function removeRow(id) {
+  if (state.rows.length <= 1) { toast('Need at least one row', 'error'); return; }
+  state.rows = state.rows.filter(r => r.id !== id);
+  renderDataRows();
+  updateGalleryCount();
+}
+
+function renderDataRows() {
+  const container = document.getElementById('dataRows');
+  if (state.rows.length === 0 || state.columns.length === 0) {
+    container.innerHTML = '<div style="color:var(--text2);font-size:12px;opacity:.6;padding:10px;text-align:center">No data rows. Add columns first.</div>';
+    document.getElementById('rowCount').textContent = '(0)';
+    return;
+  }
+  document.getElementById('rowCount').textContent = `(${state.rows.length})`;
+  container.innerHTML = state.rows.map((r, ri) => {
+    const cells = state.columns.map(c => {
+      const val = r.data[c.id] ?? '';
+      return `<input type="${c.type === 'number' ? 'number' : 'text'}" value="${escHtml(val)}" 
+        placeholder="${escHtml(c.defaultValue || c.name)}" 
+        onchange="updateCell('${r.id}','${c.id}',this.value)"
+        title="${escHtml(c.name)}"/>`;
+    }).join('');
+    return `<div class="data-row">
+      <span class="row-idx" title="Row ${ri+1}">${ri+1}</span>
+      ${cells}
+      <button class="row-del" onclick="removeRow('${r.id}')">×</button>
+    </div>`;
+  }).join('');
+  updateGalleryCount();
+}
+
+function updateCell(rowId, colId, value) {
+  const row = state.rows.find(r => r.id === rowId);
+  if (row) { row.data[colId] = value;
+    // Debounced gallery refresh
+    clearTimeout(window._galleryDebounce);
+    window._galleryDebounce = setTimeout(refreshGallery, 300);
+  }
+}
+
+function updateBindingDropdown() {
+  const sel = document.getElementById('propBinding');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">— None —</option>' +
+    state.columns.map(c => `<option value="${c.id}">${escHtml(c.name)}</option>`).join('');
+  sel.value = current;
+}
+
+// ════════════════════════════════════════════════════════════════
+//  CSV IMPORT
+// ════════════════════════════════════════════════════════════════
+function importCSV(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const text = e.target.result;
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    if (lines.length < 2) { toast('CSV needs a header row and at least one data row', 'error'); return; }
+    const headers = parseCSVLine(lines[0]);
+    const dataLines = lines.slice(1);
+
+    // Create columns
+    state.columns = headers.map(h => ({ id: uid(), name: h.trim(), type: 'text', defaultValue: '' }));
+    state.rows = dataLines.map(line => {
+      const vals = parseCSVLine(line);
+      const data = {};
+      headers.forEach((h, i) => { data[state.columns[i]?.id || uid()] = vals[i] ?? ''; });
+      return { id: uid(), data };
+    });
+
+    renderColumns();
+    renderDataRows();
+    updateBindingDropdown();
+    saveState();
+    toast(`Imported ${state.rows.length} cards from CSV`);
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let current = '', inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') { inQuotes = !inQuotes; }
+    else if (ch === ',' && !inQuotes) { result.push(current.trim()); current = ''; }
+    else { current += ch; }
+  }
+  result.push(current.trim());
+  return result;
+}
+
+function openCSV() {
+  document.querySelector('.csv-import input').click();
+}
+
+// ════════════════════════════════════════════════════════════════
+//  CARD RENDER ENGINE
+// ════════════════════════════════════════════════════════════════
+function renderCardToDataURL(rowData) {
+  // Get current canvas state as JSON
+  const json = canvas.toJSON(['_elementType', '_elementId', '_dataBinding']);
+  return new Promise((resolve) => {
+    const tempCanvas = new fabric.StaticCanvas(null, { width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT });
+    tempCanvas.backgroundColor = '#ffffff';
+
+    fabric.util.enlivenObjects(json.objects, (objs) => {
+      objs.forEach(o => {
+        // Resolve data binding
+        if (o._dataBinding && o._dataBinding.sourceColumn) {
+          const bind = o._dataBinding;
+          let val = rowData[bind.sourceColumn] ?? bind.defaultValue ?? '';
+          if (bind.transform === 'uppercase') val = String(val).toUpperCase();
+          else if (bind.transform === 'lowercase') val = String(val).toLowerCase();
+          else if (bind.transform === 'capitalize') val = String(val).replace(/\b\w/g, c => c.toUpperCase());
+
+          if (o.isType('textbox') || o.type === 'i-text') {
+            o.set('text', String(val));
+          } else if (o._elementType === 'image_frame') {
+            o.set('fill', val && String(val).startsWith('http') ? '#3a3a5e' : '#2a2a4e');
+          }
+        }
+
+        // Restore custom properties
+        o._elementType = o._elementType;
+        o._elementId = o._elementId;
+        o._dataBinding = o._dataBinding;
+        tempCanvas.add(o);
+      });
+
+          // Apply clip path
+      const clip = new fabric.Rect({
+        left: 0, top: 0, width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT,
+        absolutePositioned: true, selectable: false, evented: false,
+      });
+      tempCanvas.clipPath = clip;
+      tempCanvas.renderAll();
+      const dataURL = tempCanvas.toDataURL({ format: 'png', quality: 1, multiplier: 1 });
+      tempCanvas.dispose();
+      resolve(dataURL);
+    });
+  });
+}
+
+// ════════════════════════════════════════════════════════════════
+//  PREVIEW GALLERY
+// ════════════════════════════════════════════════════════════════
+async function refreshGallery() {
+  const container = document.getElementById('galleryScroll');
+  if (state.rows.length === 0 || state.columns.length === 0) {
+    container.innerHTML = '<div class="gallery-empty">Add data rows and template elements to see card previews</div>';
+    updateGalleryCount();
+    return;
+  }
+
+  container.innerHTML = '<div class="gallery-empty">Rendering cards...</div>';
+
+  const cardDataURLs = await Promise.all(
+    state.rows.map(row => renderCardToDataURL(row.data))
+  );
+
+  container.innerHTML = cardDataURLs.map((url, i) => {
+    const firstCol = state.columns[0];
+    const label = firstCol ? (state.rows[i]?.data[firstCol.id] || `Card ${i+1}`) : `Card ${i+1}`;
+    const firstColVal = state.columns[0] ? (state.rows[i]?.data[state.columns[0].id] || '') : '';
+    return `<div class="gallery-card" title="${escHtml(firstColVal)}">
+      <img src="${url}" alt="${escHtml(label)}"/>
+      <div class="card-label">${escHtml(label.slice(0, 25))}</div>
+    </div>`;
+  }).join('');
+
+  updateGalleryCount();
+}
+
+function updateGalleryCount() {
+  document.getElementById('galleryCount').textContent = `${state.rows.length} card${state.rows.length !== 1 ? 's' : ''}`;
+}
+
+// ════════════════════════════════════════════════════════════════
+//  ZOOM CONTROLS
+// ════════════════════════════════════════════════════════════════
+let currentZoom = 1;
+function applyZoom() {
+  const wrap = document.getElementById('canvasWrap');
+  wrap.style.transform = `scale(${currentZoom})`;
+  wrap.style.transformOrigin = 'center center';
+  document.getElementById('zoomLabel').textContent = Math.round(currentZoom * 100) + '%';
+}
+function zoomIn() { currentZoom = Math.min(currentZoom + 0.1, 3); applyZoom(); }
+function zoomOut() { currentZoom = Math.max(currentZoom - 0.1, 0.3); applyZoom(); }
+function fitView() { currentZoom = 1; applyZoom(); }
+
+// ════════════════════════════════════════════════════════════════
+//  UNDO / REDO
+// ════════════════════════════════════════════════════════════════
+function saveState() {
+  const json = canvas.toJSON(['_elementType', '_elementId', '_dataBinding']);
+  state.undoStack.push(JSON.stringify(json));
+  if (state.undoStack.length > 50) state.undoStack.shift();
+  state.redoStack = [];
+  updateUndoRedoButtons();
+}
+
+function undo() {
+  if (state.undoStack.length < 2) return;
+  const current = state.undoStack.pop();
+  state.redoStack.push(current);
+  const prev = state.undoStack[state.undoStack.length - 1];
+  loadCanvasState(JSON.parse(prev));
+  updateUndoRedoButtons();
+}
+
+function redo() {
+  if (state.redoStack.length === 0) return;
+  const next = state.redoStack.pop();
+  state.undoStack.push(next);
+  loadCanvasState(JSON.parse(next));
+  updateUndoRedoButtons();
+}
+
+function loadCanvasState(json) {
+  canvas.loadFromJSON(json, () => {
+    // Restore custom properties on revived objects
+    canvas.getObjects().forEach(o => {
+      if (o._elementType) {
+        addCustomSerialization(o);
+      }
+    });
+    // Re-apply clipPath (not always serialized reliably in Fabric.js 5.x)
+    ensureClipPath();
+    updatePropertiesPanel();
+    updateLayersPanel();
+  });
+}
+
+function updateUndoRedoButtons() {
+  document.getElementById('undoBtn').disabled = state.undoStack.length < 2;
+  document.getElementById('redoBtn').disabled = state.redoStack.length === 0;
+}
+
+function updateDeleteBtn() {
+  document.getElementById('delBtn').disabled = !canvas.getActiveObject();
+}
+
+// ════════════════════════════════════════════════════════════════
+//  EXPORT
+// ════════════════════════════════════════════════════════════════
+async function exportPNG() {
+  // Export the current template view as PNG
+  const dataURL = canvas.toDataURL({ format: 'png', quality: 1, multiplier: 2 });
+  downloadFile(dataURL, 'card-template.png');
+  toast('Template exported as PNG');
+}
+
+function showPrintSheetDialog() {
+  document.getElementById('printModal').classList.add('open');
+  updateSheetInfo();
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+function updateSheetInfo() {
+  const cols = parseInt(document.getElementById('sheetCols').value) || 3;
+  const rows = parseInt(document.getElementById('sheetRows').value) || 3;
+  const scale = parseInt(document.getElementById('sheetScale').value) || 2;
+  const cardsPerPage = cols * rows;
+  const numCards = state.rows.length;
+  const pages = Math.ceil(numCards / cardsPerPage);
+  const sheetW = cols * DEFAULT_WIDTH * scale;
+  const sheetH = rows * DEFAULT_HEIGHT * scale;
+  document.getElementById('sheetInfo').textContent =
+    `${cardsPerPage} cards per page, ${pages} page${pages !== 1 ? 's' : ''} • ${sheetW}×${sheetH}px at ${scale}×`;
+}
+
+document.getElementById('sheetCols').oninput = updateSheetInfo;
+document.getElementById('sheetRows').oninput = updateSheetInfo;
+document.getElementById('sheetScale').oninput = updateSheetInfo;
+
+async function exportPrintSheet() {
+  const cols = parseInt(document.getElementById('sheetCols').value) || 3;
+  const rows = parseInt(document.getElementById('sheetRows').value) || 3;
+  const scale = parseInt(document.getElementById('sheetScale').value) || 2;
+  const cardsPerPage = cols * rows;
+  const numCards = state.rows.length;
+  const pages = Math.ceil(numCards / cardsPerPage);
+
+  closeModal('printModal');
+  toast(`Generating ${pages} page sheet${pages > 1 ? 's' : ''}...`);
+
+  const cardW = DEFAULT_WIDTH * scale;
+  const cardH = DEFAULT_HEIGHT * scale;
+  const gap = 20 * scale;
+
+  for (let p = 0; p < pages; p++) {
+    const sheetW = cols * cardW + (cols - 1) * gap;
+    const sheetH = rows * cardH + (rows - 1) * gap;
+    const sheetCanvas = new fabric.StaticCanvas(null, { width: sheetW, height: sheetH });
+    sheetCanvas.backgroundColor = '#ffffff';
+
+    const startIdx = p * cardsPerPage;
+    const pageRows = state.rows.slice(startIdx, startIdx + cardsPerPage);
+
+    for (let i = 0; i < pageRows.length; i++) {
+      const row = pageRows[i];
+      const col = i % cols;
+      const row2 = Math.floor(i / cols);
+      const x = col * (cardW + gap);
+      const y = row2 * (cardH + gap);
+
+      const dataURL = await renderCardToDataURL(row.data);
+      await new Promise((resolve) => {
+        fabric.Image.fromURL(dataURL, (img) => {
+          if (img) {
+            img.set({ left: x, top: y, scaleX: scale, scaleY: scale, selectable: false, evented: false });
+            sheetCanvas.add(img);
+          }
+          resolve();
+        });
+      });
+    }
+
+    sheetCanvas.renderAll();
+    const sheetURL = sheetCanvas.toDataURL({ format: 'png', quality: 1, multiplier: 1 });
+    const pageLabel = pages > 1 ? `-page-${p+1}` : '';
+    downloadFile(sheetURL, `card-sheet${pageLabel}.png`);
+    sheetCanvas.dispose();
+  }
+
+  toast(`Downloaded ${pages} print sheet${pages > 1 ? 's' : ''}!`);
+}
+
+function downloadFile(dataURL, filename) {
+  const link = document.createElement('a');
+  link.download = filename;
+  link.href = dataURL;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+// ════════════════════════════════════════════════════════════════
+//  TAB SWITCHING
+// ════════════════════════════════════════════════════════════════
+function switchPanelTab(tabId, btn) {
+  document.querySelectorAll('.panel-tabs button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.panel-content').forEach(p => p.classList.add('hidden'));
+  document.getElementById(tabId).classList.remove('hidden');
+  if (tabId === 'layers-tab') updateLayersPanel();
+}
+
+// ════════════════════════════════════════════════════════════════
+//  UTILITY
+// ════════════════════════════════════════════════════════════════
+function escHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toast(msg, type = 'success') {
+  const el = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  el.className = 'toast ' + type + ' show';
+  clearTimeout(el._timeout);
+  el._timeout = setTimeout(() => { el.classList.remove('show'); }, 2500);
+}
+
+// ════════════════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════════════════
+applyZoom();
+renderColumns();
+renderDataRows();
+updateBindingDropdown();
+saveState();
+updateUndoRedoButtons();
+updateDeleteBtn();
+
+// Trigger gallery after initial render
+requestAnimationFrame(() => requestAnimationFrame(() => refreshGallery()));
+
+// Auto-refresh gallery when template changes
+canvas.on('object:modified', () => {
+  clearTimeout(window._galleryDebounce);
+  window._galleryDebounce = setTimeout(refreshGallery, 500);
+});
+
+console.log('🃏 Card Designer loaded!');
+</script>
+</body>
+</html>

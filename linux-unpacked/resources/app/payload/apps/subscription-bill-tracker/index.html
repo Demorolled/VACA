@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Subscription & Bill Tracker</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; color: #e6edf3; background: #0d1117; }
+  h1 { font-size: 1.4rem; }
+  input, select { padding: .4rem; margin: .2rem .3rem .2rem 0; background: #161b22; color: #e6edf3; border: 1px solid #30363d; border-radius: 6px; }
+  button { padding: .4rem .9rem; background: #2ea043; color: #fff; border: 0; border-radius: 6px; cursor: pointer; }
+  table { width: 100%; border-collapse: collapse; margin: .5rem 0; }
+  th, td { border: 1px solid #30363d; padding: .35rem .5rem; text-align: left; font-size: .9rem; }
+  .summary { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: .8rem 1rem; }
+  .muted { color: #8b949e; font-size: .85rem; }
+</style>
+</head>
+<body>
+<h1>💳 Subscription & Bill Tracker</h1>
+<p class="muted">Scaffold (batch 2). Know exactly what you must set aside each month.</p>
+
+<div class="summary">
+  <strong>Monthly set-aside: $<span id="monthlyTotal">0.00</span></strong>
+  <span class="muted">— across <span id="subCount">0</span> recurring bills</span>
+</div>
+
+<form id="subForm">
+  <input id="subName" placeholder="Name (e.g. Netflix)" autocomplete="off">
+  <input id="subAmount" placeholder="Amount ($)" type="number" step="0.01" min="0">
+  <select id="subPeriod">
+    <option value="monthly">monthly</option>
+    <option value="weekly">weekly</option>
+    <option value="yearly">yearly</option>
+  </select>
+  <button type="submit">Add</button>
+</form>
+
+<table>
+  <thead><tr><th>Name</th><th>Amount</th><th>Per</th><th>Monthly equiv.</th><th></th></tr></thead>
+  <tbody id="subRows"></tbody>
+</table>
+
+<script>
+const subs = JSON.parse(localStorage.getItem('subs') || '[]');
+function save() { localStorage.setItem('subs', JSON.stringify(subs)); }
+const MONTHLY = { weekly: 52 / 12, monthly: 1, yearly: 1 / 12 };
+
+function render() {
+  const tb = document.getElementById('subRows');
+  let total = 0;
+  tb.innerHTML = subs.map((s, i) => {
+    const me = s.amount * MONTHLY[s.period];
+    total += me;
+    return `<tr><td>${s.name}</td><td>$${s.amount.toFixed(2)}</td><td>${s.period}</td>` +
+           `<td>$${me.toFixed(2)}</td><td><button data-remove="${i}">✕</button></td></tr>`;
+  }).join('');
+  document.getElementById('monthlyTotal').textContent = total.toFixed(2);
+  document.getElementById('subCount').textContent = subs.length;
+  tb.querySelectorAll('[data-remove]').forEach(b => b.onclick = () => { subs.splice(+b.dataset.remove, 1); save(); render(); });
+}
+
+document.getElementById('subForm').onsubmit = e => {
+  e.preventDefault();
+  const name = document.getElementById('subName').value.trim();
+  const amount = parseFloat(document.getElementById('subAmount').value);
+  const period = document.getElementById('subPeriod').value;
+  if (name && !isNaN(amount)) { subs.push({ name, amount, period }); save(); document.getElementById('subName').value = ''; document.getElementById('subAmount').value = ''; render(); }
+};
+
+render();
+</script>
+</body>
+</html>

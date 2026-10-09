@@ -1,0 +1,47 @@
+{
+  "name": "Veronica — AI Code Architect",
+  "short_name": "Veronica",
+  "description": "Visual AI-powered code architect with voice control, emotion-aware LLM reasoning, and multi-agent code generation",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "window-controls-overlay"],
+  "background_color": "#0d0d1a",
+  "theme_color": "#00d9ff",
+  "orientation": "any",
+  "lang": "en-US",
+  "categories": ["productivity", "development", "education"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "New Project",
+      "short_name": "New",
+      "description": "Start a new architecture project",
+      "url": "/?new=true"
+    },
+{
+      "name": "Terminal",
+      "short_name": "Term",
+      "description": "Open the code builder terminal",
+      "url": "/terminal.html"
+    }
+  ],
+  "edge_side_panel": {
+    "preferred_width": 480
+  }
+}

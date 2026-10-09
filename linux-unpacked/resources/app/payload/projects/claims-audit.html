@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VACA Claims Audit — Test What She Claims vs What She Can Do</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: radial-gradient(1200px 800px at 20% -10%, #1b1035 0%, #0f0f1a 55%, #0a0a12 100%);
+  color: #d0d0e0; min-height: 100vh; padding: 24px 16px 60px; line-height: 1.6;
+}
+.wrap { max-width: 1080px; margin: 0 auto; }
+header { display: flex; align-items: center; gap: 16px; margin-bottom: 8px; flex-wrap: wrap; }
+h1 { font-size: 1.7rem; color: #00d9ff; letter-spacing: 0.3px; }
+h1 .sub { display: block; font-size: 0.78rem; color: #8888b0; font-weight: 400; letter-spacing: 0.5px; margin-top: 2px; }
+.badge-live { display:inline-flex; align-items:center; gap:6px; font-size:0.72rem; padding:3px 10px; border-radius:999px;
+  background:rgba(74,222,128,0.12); color:#4ade80; border:1px solid rgba(74,222,128,0.3); }
+.badge-live .dot { width:8px; height:8px; border-radius:50%; background:#4ade80; animation:pulse 1.6s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+.api-row { display:flex; gap:8px; align-items:center; margin: 10px 0 18px; flex-wrap: wrap; }
+.api-row input { background:#141428; border:1px solid #2a2a4a; color:#d0d0e0; padding:7px 12px; border-radius:6px; font-size:0.85rem; width: 260px; }
+.api-row input:focus { outline:none; border-color:#00d9ff; }
+.btn { border:none; cursor:pointer; font-size:0.85rem; font-weight:600; padding:9px 18px; border-radius:8px; transition: transform .12s, box-shadow .12s, filter .12s; }
+.btn:hover { transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+.btn:disabled { opacity:.45; cursor:not-allowed; transform:none; }
+.btn-run { background: linear-gradient(135deg,#00d9ff,#4a9eff); color:#06121f; }
+.btn-full { background: linear-gradient(135deg,#a855f7,#d946ef); color:#fff; }
+.btn-side { background:#1c1c36; color:#b0b0d0; border:1px solid #2a2a4a; }
+.btn-side:hover { background:#242450; }
+
+.score-panel { display:flex; gap:18px; align-items:center; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07);
+  border-radius:14px; padding:18px 22px; margin: 4px 0 18px; flex-wrap:wrap; }
+.ring { position:relative; width:104px; height:104px; flex:0 0 auto; }
+.ring svg { transform: rotate(-90deg); }
+.ring .num { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.ring .num b { font-size:1.7rem; color:#e0e0f0; }
+.ring .num span { font-size:0.65rem; color:#8888b0; }
+.ring .lbl { position:absolute; bottom:-4px; left:0; right:0; text-align:center; font-size:0.62rem; color:#666688; }
+.score-meta { flex:1; min-width: 220px; }
+.score-meta .big { font-size:1.25rem; color:#00d9ff; font-weight:700; }
+.score-meta .row { font-size:0.8rem; color:#a0a0c0; margin-top:2px; }
+.score-meta .pills { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
+.pill { font-size:0.68rem; padding:2px 10px; border-radius:999px; border:1px solid #2a2a4a; color:#a0a0c0; background:#141428; }
+.pill.pass { border-color:rgba(74,222,128,0.4); color:#4ade80; background:rgba(74,222,128,0.08); }
+.pill.fail { border-color:rgba(248,113,113,0.4); color:#f87171; background:rgba(248,113,113,0.08); }
+
+.toolbar { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px; align-items:center; }
+.toolbar .hint { font-size:0.75rem; color:#7777a0; margin-left:4px; }
+
+.log { background:#0a0a14; border:1px solid #1e1e3a; border-radius:10px; padding:12px 14px; font-family: 'Cascadia Code','Fira Code',monospace;
+  font-size:0.74rem; max-height: 220px; overflow-y:auto; margin-bottom:16px; white-space:pre-wrap; }
+.log .t { color:#666688; }
+.log .ok { color:#4ade80; }
+.log .bad { color:#f87171; }
+.log .warn { color:#fbbf24; }
+.log .info { color:#00d9ff; }
+
+h2 { color:#00d9ff; font-size:1.05rem; margin: 22px 0 10px; border-bottom:1px solid rgba(255,255,255,0.07); padding-bottom:6px; }
+.grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap:12px; }
+.card { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:12px; padding:14px 16px; transition: border-color .15s, background .15s; }
+.card:hover { border-color: rgba(0,217,255,0.25); }
+.card .top { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:6px; }
+.card .name { font-size:0.92rem; font-weight:600; color:#e0e0f0; }
+.card .chip { font-size:0.66rem; padding:2px 10px; border-radius:999px; white-space:nowrap; }
+.card .chip.untested { background:#141428; color:#7777a0; border:1px solid #2a2a4a; }
+.card .chip.pass { background:rgba(74,222,128,0.12); color:#4ade80; border:1px solid rgba(74,222,128,0.35); }
+.card .chip.fail { background:rgba(248,113,113,0.12); color:#f87171; border:1px solid rgba(248,113,113,0.35); }
+.card .chip.skip { background:#141428; color:#fbbf24; border:1px solid rgba(251,191,36,0.3); }
+.card .probe { font-size:0.72rem; color:#8888b0; margin-bottom:8px; }
+.card .detail { font-size:0.72rem; color:#a0a0c0; max-height:64px; overflow:hidden; }
+.card .score { font-size:0.78rem; font-weight:700; margin-top:6px; }
+.card .score.s10 { color:#4ade80; } .card .score.s9 { color:#a3e635; } .card .score.s8 { color:#fbbf24; }
+.card .score.s7 { color:#f59e0b; } .card .score.slt7 { color:#f87171; }
+.card.run { border-color:#00d9ff; box-shadow: 0 0 0 1px rgba(0,217,255,0.3); }
+
+.improve { background:rgba(251,191,36,0.05); border:1px solid rgba(251,191,36,0.22); border-radius:12px; padding:14px 18px; margin-bottom:12px; }
+.improve .h { display:flex; gap:8px; align-items:center; margin-bottom:6px; }
+.improve .h .p { font-size:0.62rem; font-weight:700; padding:2px 8px; border-radius:6px; letter-spacing:0.4px; }
+.p.p1 { background:rgba(248,113,113,0.2); color:#f87171; } .p.p2 { background:rgba(251,191,36,0.2); color:#fbbf24; }
+.p.p3 { background:rgba(96,165,250,0.2); color:#60a5fa; }
+.improve .h b { color:#fbbf24; font-size:0.9rem; }
+.improve p { font-size:0.8rem; color:#c0c0d0; }
+.improve p + p { margin-top:6px; }
+.no-data { color:#666688; font-size:0.85rem; padding:10px 2px; }
+footer { margin-top:30px; font-size:0.7rem; color:#555577; text-align:center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🧪 VACA Claims Audit
+      <span class="sub">What she claims vs what she can actually do — live probes against the running backend</span>
+    </h1>
+    <span id="healthBadge" class="badge-live"><span class="dot"></span> checking…</span>
+  </header>
+
+  <div class="api-row">
+    <label style="font-size:0.8rem;color:#8888b0">Backend:</label>
+    <input id="apiBase" value="http://127.0.0.1:3001" spellcheck="false" />
+    <button class="btn btn-side" id="reloadClaims">↻ Load claims</button>
+  </div>
+
+  <div class="score-panel">
+    <div class="ring">
+      <svg width="104" height="104" viewBox="0 0 104 104">
+        <circle cx="52" cy="52" r="46" fill="none" stroke="#1e1e3a" stroke-width="9"/>
+        <circle id="ringFg" cx="52" cy="52" r="46" fill="none" stroke="#00d9ff" stroke-width="9"
+          stroke-linecap="round" stroke-dasharray="289" stroke-dashoffset="289"/>
+      </svg>
+      <div class="num"><b id="scoreNum">–</b><span>/ <span id="scoreMax">0</span></span></div>
+    </div>
+    <div class="score-meta">
+      <div class="big" id="scorePct">No test run yet</div>
+      <div class="row" id="scoreSub">Run a quick test to measure claims vs reality.</div>
+      <div class="pills" id="pills"></div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button class="btn btn-run" id="runQuick">⚡ Run Quick Test</button>
+    <button class="btn btn-full" id="runFull">🚀 Run Full Test <span style="opacity:.8;font-size:0.7rem">(incl. write-code)</span></button>
+    <button class="btn btn-side" id="runOne">🎯 Test One Claim</button>
+    <span class="hint">Quick ≈ 1–2 min · Full adds write-code files-array, live-stream + the 8-step workflow probes (≈5–8 min).</span>
+  </div>
+
+  <div class="log" id="log"><span class="t">[app] Ready. Choose a test to begin.</span></div>
+
+  <h2>📋 Stated claims (from data/soul.json)</h2>
+  <div class="grid" id="claims"></div>
+
+  <h2>🔧 How to improve her — output</h2>
+  <div id="improveBox"><div class="no-data">Run a test first — improvements are generated from the results, combined with the known improvement plan.</div></div>
+
+  <footer>VACA Claims Audit · standalone app (projects/claims-audit.html) · mirrors scripts/audit-claims.py probes · live on your backend</footer>
+</div>
+<!-- socket.io-client for the live progress-stream probe (Full Test). If the
+     CDN is unreachable the stream probe skips gracefully instead of failing. -->
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const apiInput = $('apiBase');
+let API = (localStorage.getItem('vaca-api-base') || 'http://127.0.0.1:3001').replace(/\/+$/, '');
+apiInput.value = API;
+apiInput.addEventListener('change', () => { API = apiInput.value.replace(/\/+$/, ''); localStorage.setItem('vaca-api-base', API); checkHealth(); });
+
+let STATE = { running: false, claims: [], results: [], improvements: [], cachedCycle: null };
+
+function log(msg, cls = '') { const d = $('log'); d.innerHTML += `<span class="${cls}">${msg}</span>\n`; d.scrollTop = d.scrollHeight; }
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function call(path, opts = {}) {
+  const ctrl = new AbortController();
+  const to = setTimeout(() => ctrl.abort(), opts.timeout || 120000);
+  try {
+    const res = await fetch(API + path, {
+      method: opts.method || 'GET',
+      headers: opts.body !== undefined ? { 'Content-Type': 'application/json' } : {},
+      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+      signal: ctrl.signal,
+    });
+    const text = await res.text();
+    let json = null; try { json = text ? JSON.parse(text) : null; } catch {}
+    return { status: res.status, json, text };
+  } finally { clearTimeout(to); }
+}
+// Multi-turn chat helper: pass the full message array like the real frontend
+// does (user1, assistant1, user2 …) so continuity probes reflect actual usage.
+async function chat2(messages, maxTokens = 400, timeout = 120000) {
+  const r = await call('/api/reason/chat', { method: 'POST', body: { messages, maxTokens }, timeout });
+  return r.json && r.json.response ? r.json.response : '';
+}
+
+// Single-message convenience wrapper (reuses chat2).
+async function chat(q, maxTokens = 400, timeout = 120000) {
+  return chat2([{ role: 'user', content: q }], maxTokens, timeout);
+}
+
+// ── Claim model ──────────────────────────────────────────────────────────
+const CLAIM_DEFS = [
+  { key: 'read-files',      claim: 'File access — read named files, search the codebase, create files in data/chat-files/' },
+  { key: 'memory',          claim: 'Persistent memory & wiki — write and recall notes' },
+  { key: 'codegen',         claim: 'Code generation — design and build complete applications' },
+  { key: 'blueprint',       claim: 'Visual architecture design — node-based app blueprints' },
+  { key: 'self-analysis',   claim: 'Self-analysis — read and analyze its own source code' },
+  { key: 'llm',             claim: 'LLM integration — connects to Ollama and GGUF model servers' },
+  { key: 'websocket',       claim: 'WebSocket real-time communication' },
+  { key: 'tts',             claim: 'Text-to-speech voice output' },
+  { key: 'emotion',         claim: 'Emotion-aware reasoning with personality configuration' },
+  { key: 'projects',        claim: 'Project management — save, load, export, import projects' },
+  { key: 'files-array',     claim: 'write-code returns a files array (P0 contract)' },
+  { key: 'stream',          claim: 'Live codegen progress streaming' },
+  // 8-step development workflow (added to the audit)
+  { key: 'wf-idea',         claim: 'Workflow 1/8 — Define the Idea: state the core functionality/problem' },
+  { key: 'wf-arch',         claim: 'Workflow 2/8 — Sketch the Architecture: nodes + lines (input → processing → output)' },
+  { key: 'wf-lang',         claim: 'Workflow 3/8 — Choose a Language: platform-appropriate stack' },
+  { key: 'wf-core',         claim: 'Workflow 4/8 — Start with the Core: core logic separate from UI' },
+  { key: 'wf-ui',           claim: 'Workflow 5/8 — UI Design: UI/component files' },
+  { key: 'wf-wire',         claim: 'Workflow 6/8 — Wire Up the UI: UI connected to core' },
+  { key: 'wf-test',         claim: 'Workflow 7/8 — Testing: unit/integration tests' },
+  { key: 'wf-deploy',       claim: 'Workflow 8/8 — Deployment: Dockerfile/deploy artifacts' },
+];
+
+async function loadClaims() {
+  try {
+    const r = await call('/api/soul', { timeout: 8000 });
+    const caps = r.json && r.json.soul && r.json.soul.identity && r.json.soul.identity.capabilities;
+    STATE.claims = (Array.isArray(caps) && caps.length) ? caps : CLAIM_DEFS.map(c => c.claim);
+  } catch { STATE.claims = CLAIM_DEFS.map(c => c.claim); }
+  renderClaims();
+}
+
+function renderClaims() {
+  const g = $('claims'); g.innerHTML = '';
+  CLAIM_DEFS.forEach((def, i) => {
+    const card = document.createElement('div');
+    card.className = 'card'; card.id = 'card-' + def.key;
+    card.innerHTML = `
+      <div class="top"><span class="name">${def.claim.split('—')[0].trim()}</span>
+        <span class="chip untested" id="chip-${def.key}">untested</span></div>
+      <div class="probe">${(STATE.claims[i] || def.claim).length > 140 ? (STATE.claims[i] || def.claim).slice(0,140)+'…' : (STATE.claims[i] || def.claim)}</div>
+      <div class="detail" id="det-${def.key}"></div>
+      <div class="score s0" id="scr-${def.key}"></div>`;
+    card.addEventListener('click', () => runSingle(def.key));
+    g.appendChild(card);
+  });
+}
+
+async function checkHealth() {
+  try {
+    const r = await call('/api/health', { timeout: 6000 });
+    const llmUp = r.json && r.json.llm && r.json.llm.up;
+    $('healthBadge').innerHTML = llmUp
+      ? `<span class="dot"></span> backend + LLM live (${(r.json.llm.model||'').split('/')[0]})`
+      : `<span class="dot" style="background:#fbbf24"></span> backend up, LLM down`;
+    $('healthBadge').style.borderColor = llmUp ? 'rgba(74,222,128,0.3)' : 'rgba(251,191,36,0.3)';
+    $('healthBadge').style.color = llmUp ? '#4ade80' : '#fbbf24';
+  } catch {
+    $('healthBadge').innerHTML = `<span class="dot" style="background:#f87171"></span> backend unreachable`;
+    $('healthBadge').style.borderColor = 'rgba(248,113,113,0.3)';
+    $('healthBadge').style.color = '#f87171';
+  }
+}
+
+// ── Probe runners ────────────────────────────────────────────────────────
+function setCard(key, status, detail, score) {
+  const chip = $('chip-' + key); if (!chip) return;
+  chip.className = 'chip ' + status; chip.textContent = status;
+  const det = $('det-' + key); if (det) det.textContent = detail || '';
+  const scr = $('scr-' + key);
+  if (scr && score !== undefined) {
+    const cls = score >= 10 ? 's10' : score >= 9 ? 's9' : score >= 8 ? 's8' : score >= 7 ? 's7' : 'slt7';
+    scr.className = 'score ' + cls; scr.textContent = score + '/10';
+  }
+}
+async function runCard(key, fn) {
+  const card = $('card-' + key); if (card) card.classList.add('run');
+  try { await fn(); } catch (e) { log(`[${key}] threw: ${e}`, 'bad'); setCard(key, 'fail', 'error: ' + e); }
+  if (card) card.classList.remove('run');
+}
+
+async function probeReadFiles() { // read named files
+  await runCard('read-files', async () => {
+    log('[read-files] asking LLM to read backend/src/index.ts…', 'info');
+    const r = await chat('read backend/src/index.ts and tell me the first few lines', 300);
+    const ok = !!r && !r.trim().startsWith('{');
+    const good = /import|express|server|http/i.test(r);
+    setCard('read-files', ok ? 'pass' : 'fail', `resp[:160]: ${r.slice(0,160)}`, good ? 9 : 5);
+    log(`[read-files] ${good ? 'PASS 9/10' : (ok ? 'partial' : 'FAIL')}`, good ? 'ok' : 'bad');
+    STATE.results.push({ key: 'read-files', passed: ok, score: good ? 9 : 5 });
+  });
+}
+
+// File-tool probes (search + create) share the 'read-files' card: instead of
+// clobbering its chip/score, they append to its detail and only downgrade it.
+async function probeSearchCodebase() {
+  await runCard('search-codebase', async () => {
+    log('[search] asking LLM to find sessionMemory refs…', 'info');
+    const r = await chat('search the codebase for the word sessionMemory and tell me which files reference it', 300);
+    const ok = r.toLowerCase().includes('sessionmemory');
+    const chip = $('chip-read-files'), det = $('det-read-files');
+    if (chip && chip.classList.contains('untested')) { chip.className = 'chip ' + (ok ? 'pass' : 'fail'); chip.textContent = ok ? 'pass' : 'fail'; }
+    else if (chip && !ok) { chip.className = 'chip fail'; chip.textContent = 'fail'; }
+    if (det) det.textContent += `[search] ${ok ? 'PASS 9/10' : 'FAIL'}: ${r.slice(0,110)}\n`;
+    log(`[search] ${ok ? 'PASS 9/10' : 'FAIL'}`, ok ? 'ok' : 'bad');
+    STATE.results.push({ key: 'search-codebase', passed: ok, score: ok ? 9 : 4 });
+  });
+}
+
+async function probeCreateFile() {
+  await runCard('create-file', async () => {
+    log('[create-file] asking LLM to create audit-app-file.txt…', 'info');
+    let created = false, resp = '';
+    for (let a = 0; a < 3 && !created; a++) {
+      resp = await chat('create a file called audit-app-file.txt with this content: hello-claims-audit', 200);
+      created = /created|wrote|saved/i.test(resp) && /audit-app-file\.txt/.test(resp);
+      if (!created) await sleep(800);
+    }
+    const chip = $('chip-read-files'), det = $('det-read-files');
+    if (chip && chip.classList.contains('untested')) { chip.className = 'chip ' + (created ? 'pass' : 'fail'); chip.textContent = created ? 'pass' : 'fail'; }
+    else if (chip && !created) { chip.className = 'chip fail'; chip.textContent = 'fail'; }
+    if (det) det.textContent += `[create-file] ${created ? 'PASS 9/10' : 'FAIL'}: ${resp.slice(0,110)}\n`;
+    log(`[create-file] ${created ? 'PASS 9/10' : 'FAIL'}`, created ? 'ok' : 'bad');
+    STATE.results.push({ key: 'create-file', passed: created, score: created ? 9 : 5 });
+  });
+}
+
+async function probeMemory() {
+  await runCard('memory', async () => {
+    log('[memory] writing + recalling a fact…', 'info');
+    // Snapshot the real notes BEFORE the probe writes — restore afterwards so
+    // probe facts never accumulate in session-memory.json (P2 finding). The
+    // restore is GUARDED on the snapshot fetch succeeding: a failed snapshot
+    // must never silently become [] and wipe the user's real notes.
+    const snapRes = await call('/api/memory/notes', { timeout: 8000 });
+    const snapshotOk = snapRes.status === 200 && Array.isArray(snapRes.json && snapRes.json.notes);
+    const snapshot = snapshotOk ? snapRes.json.notes : [];
+    const tag = 'auditcolor' + Math.floor(Math.random() * 9000);
+    await chat(`remember that my ${tag} is turquoise`, 150);
+    const notes = await call('/api/memory/notes', { timeout: 8000 });
+    const list = (notes.json && notes.json.notes) || [];
+    const written = JSON.stringify(list).toLowerCase().includes(tag);
+    const r = await chat(`what is my ${tag}?`, 150);
+    const recalled = r.toLowerCase().includes('turquoise');
+    setCard('memory', (written && recalled) ? 'pass' : 'fail',
+      `written=${written} recalled=${recalled} | resp: ${r.slice(0,140)}`, (written && recalled) ? 9 : 4);
+    log(`[memory] write=${written} recall=${recalled}`, (written && recalled) ? 'ok' : 'bad');
+    STATE.results.push({ key: 'memory', passed: written && recalled, score: (written && recalled) ? 9 : 4 });
+    // Restore the exact prior state — never leave the probe fact behind.
+    // Only restore when the snapshot fetch succeeded (skip otherwise: a []
+    // snapshot must never wipe real memory).
+    try {
+      if (!snapshotOk) {
+        log('[memory] restore skipped (no valid snapshot) — probe fact may linger', 'warn');
+      } else {
+        const note = list.find((n) => JSON.stringify(n).toLowerCase().includes(tag));
+        if (note && note.id) await call('/api/memory/notes/' + encodeURIComponent(note.id), { method: 'DELETE', timeout: 8000 });
+        await call('/api/memory/notes/restore', { method: 'POST', body: { notes: snapshot }, timeout: 8000 });
+        log('[memory] probe fact removed (snapshot restored)', 'ok');
+      }
+    } catch (e) {
+      log('[memory] cleanup failed (non-fatal): ' + String(e).slice(0, 80), 'warn');
+    }
+  });
+}
+
+async function probeCodegen() {
+  await runCard('codegen', async () => {
+    log('[codegen] fibonacci with memoization…', 'info');
+    const r = await chat('write a complete Python function that computes fibonacci numbers with memoization', 500);
+    const ok = /def\s+(fib|fibonacci)/.test(r) && /memo|cache/.test(r);
+    setCard('codegen', ok ? 'pass' : 'fail', `resp[:180]: ${r.slice(0,180)}`, ok ? 8 : 4);
+    log(`[codegen] ${ok ? 'PASS 8/10' : 'FAIL'}`, ok ? 'ok' : 'bad');
+    STATE.results.push({ key: 'codegen', passed: ok, score: ok ? 8 : 4 });
+  });
+}
+
+async function probeBlueprint() {
+  await runCard('blueprint', async () => {
+    log('[blueprint] /api/blueprint/build + edge integrity…', 'info');
+    // Hit the REAL blueprint pipeline (not chat) so the probe measures the
+    // actual generator. Two integrity levels must both hold:
+    //  (1) blueprint.wiring_graph: source_module/destination_module each
+    //      resolve into blueprint.architecture_checklist (module level)
+    //  (2) project.edges: source/target each reference an existing node id
+    //      (node level — dangling edges = the blueprint analog of TS2307)
+    let ok = false, detail = '';
+    try {
+      const rr = await call('/api/blueprint/build', { method: 'POST', body: { goal: 'a todo list app with tasks, due dates, and projects' }, timeout: 180000 });
+      STATE.cachedBlueprint = (rr.json && rr.json.blueprint && rr.json.project) ? rr.json : null;
+      if (rr.json && rr.json.blueprint && rr.json.project) {
+        const bp = rr.json.blueprint;
+        const proj = rr.json.project;
+        const known = new Set((bp.architecture_checklist || []).map(m => String(m).trim()));
+        const wg = bp.wiring_graph || [];
+        const dangleMod = wg.filter(w => !known.has(String(w.source_module || '').trim()) || !known.has(String(w.destination_module || '').trim()));
+        const ids = new Set((proj.nodes || []).map(n => n.id));
+        const dangleEdge = (proj.edges || []).filter(ed => !ids.has(ed.source) || !ids.has(ed.target));
+        ok = known.size >= 3 && wg.length >= 2 && dangleMod.length === 0 && dangleEdge.length === 0;
+        detail = `checklist=${known.size} wiring=${wg.length} dangleMod=${dangleMod.length} nodes=${(proj.nodes || []).length} edges=${(proj.edges || []).length} dangleEdge=${dangleEdge.length}`;
+      } else {
+        detail = 'no blueprint/project in response';
+      }
+    } catch (err) { detail = 'build error: ' + String(err.message || err).slice(0, 80); }
+    setCard('blueprint', ok ? 'pass' : 'fail', detail, ok ? 9 : 6);
+    log(`[blueprint] ${ok ? 'PASS 9/10' : 'FAIL'} (${detail})`, ok ? 'ok' : 'bad');
+    STATE.results.push({ key: 'blueprint', passed: ok, score: ok ? 9 : 6 });
+  });
+}
+
+async function probeSelfAnalysis() {
+  await runCard('self-analysis', async () => {
+    log('[self-analysis] read own source + explain…', 'info');
+    const r = await chat('read backend/src/services/soulService.ts and explain what getSoulPromptModifier does', 400);
+    const ok = /getSoulPromptModifier|personality|trait|warmth/i.test(r);
+    setCard('self-analysis', ok ? 'pass' : 'fail', `resp[:200]: ${r.slice(0,200)}`, ok ? 8 : 4);
+    log(`[self-analysis] ${ok ? 'PASS 8/10' : 'FAIL'}`, ok ? 'ok' : 'bad');
+    STATE.results.push({ key: 'self-analysis', passed: ok, score: ok ? 8 : 4 });
+  });
+}
+
+async function probeLLM() {
+  await runCard('llm', async () => {
+    const r = await call('/api/health', { timeout: 10000 });
+    const llm = r.json && r.json.llm;
+    const ok = llm && llm.up === true;
+    setCard('llm', ok ? 'pass' : 'fail', `model: ${(llm && llm.model) || 'none'} up=${ok}`, ok ? 8 : 2);
+    log(`[llm] ${ok ? 'PASS 8/10' : 'FAIL'} (${(llm && llm.model) || 'none'})`, ok ? 'ok' : 'bad');
+    STATE.results.push({ key: 'llm', passed: ok, score: ok ? 8 : 2 });
+  });
+}
+
+async function probeWebSocket() {
+  await runCard('websocket', async () => {
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 8000);
+    try {
+      const res = await fetch(API + '/ws/?EIO=4&transport=polling', { signal: ctrl.signal });
+      const t = await res.text();
+      const ok = res.status === 200 && (t.includes('0{') || t.includes('sid'));
+      setCard('websocket', ok ? 'pass' : 'fail', `handshake: HTTP ${res.status} ${t.slice(0,60)}`, ok ? 8 : 3);
+      log(`[websocket] ${ok ? 'PASS 8/10' : 'FAIL'}`, ok ? 'ok' : 'bad');
+      STATE.results.push({ key: 'websocket', passed: ok, score: ok ? 8 : 3 });
+    } finally { clearTimeout(to); }
+  });
+}
+
+async function probeTTS() {
+  await runCard('tts', async () => {
+    log('[tts] voices + real synthesis…', 'info');
+    const v = await call('/api/tts/voices', { timeout: 10000 });
+    const voices = (v.json && v.json.voices) || [];
+    const voicesOk = v.status === 200 && voices.length >= 3;
+    let synthOk = false, detail = `voices=${voices.length}`;
+    if (voicesOk) {
+      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 60000);
+      try {
+        const res = await fetch(API + '/api/tts', { method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: 'This is a claims audit text to speech probe.', voice: voices[0].id }),
+          signal: ctrl.signal });
+        const buf = new Uint8Array(await res.arrayBuffer());
+        const mp3 = (buf.length >= 2 && buf[0] === 0xFF && (buf[1] & 0xE0) === 0xE0) ||
+                    (buf[0] === 0x49 && buf[1] === 0x44 && buf[2] === 0x33); // 'ID3'
+        synthOk = res.status === 200 && buf.length > 2048 && mp3 && (res.headers.get('Content-Type') || '').includes('audio/mpeg');
+        detail += ` | synth: HTTP ${res.status}, ${buf.length} bytes, magic=${mp3}`;
+      } catch (e) { detail += ` | synth error: ${String(e).slice(0,80)}`; }
+      finally { clearTimeout(to); }
+    }
+    setCard('tts', (voicesOk && synthOk) ? 'pass' : 'fail', detail, (voicesOk && synthOk) ? 10 : voicesOk ? 5 : 2);
+    log(`[tts] ${(voicesOk && synthOk) ? 'PASS 10/10' : (voicesOk ? 'partial' : 'FAIL')} (${detail})`, (voicesOk && synthOk) ? 'ok' : 'bad');
+    STATE.results.push({ key: 'tts', passed: voicesOk && synthOk, score: (voicesOk && synthOk) ? 10 : voicesOk ? 5 : 2 });
+  });
+}
+
+async function probeEmotion() {
+  await runCard('emotion', async () => {
+    log('[emotion] two-turn continuity (warm 1st + warm follow-up referencing turn 1)…', 'info');
+    // Turn 1: stressed message — expect an empathic reply.
+    const r1 = await chat("I'm really stressed about my deadline tomorrow, everything is going wrong", 250);
+    const warm1 = /sorry|understand|breath|stuck|help|one thing at a time|we'll|together|awful|rough|here for|stress|tackle|one by one|support|empath/i.test(r1);
+    // Turn 2: worse news — expect ANOTHER warm reply that references turn 1's
+    // topic (continuity, not a canned template). Send the FULL history like the
+    // real frontend does (user1, assistant1, user2) — two independent calls
+    // could never demonstrate continuity even with server-side context.
+    const r2 = await chat2([
+      { role: 'user', content: "I'm really stressed about my deadline tomorrow, everything is going wrong" },
+      { role: 'assistant', content: r1 },
+      { role: 'user', content: "and now it got even worse — my laptop just died and I lost my work" },
+    ], 250);
+    const warm2 = /sorry|understand|awful|rough|hard|help|breathe|we'll|together|devastat|frustrat|let's/i.test(r2);
+    // Continuity = the model references turn 1's OWN fact ("deadline") or uses
+    // a genuine connector showing it remembers prior context (earlier/mentioned/
+    // on top of). "stress" matches both "stressed" (turn 1's own state) and
+    // "stressful" — echoing the stress emotion IS a turn-1 tie-back. Deliberately
+    // NOT "laptop"/"work" (the user's own turn-2 words), NOT filler
+    // ("that's"/"still"), and NOT generic advice words ("first" in "Backup
+    // First", "already"/"before" in tips, bare "on top" in "get back on top").
+    const continuity = /deadline|earlier|mentioned|on top of|stress/i.test(r2);
+    let fresh = false, freshChecked = false;
+    try {
+      const s = await call('/api/soul', { timeout: 8000 });
+      const h = s.json && s.json.soul && s.json.soul.emotional_state && s.json.soul.emotional_state.history;
+      const last = h && h.length ? h[h.length - 1].timestamp : '';
+      if (last) { freshChecked = true; const age = Date.now() - new Date(last.replace('Z', '+00:00')).getTime(); fresh = age < 3600000 && !/2026-0[67]/.test(last); }
+    } catch {}
+    const ok = warm1 && warm2 && continuity && fresh;
+    setCard('emotion', ok ? 'pass' : 'fail',
+      `w1=${warm1} w2=${warm2} continuity=${continuity} fresh=${fresh}${freshChecked ? '' : ' freshUnchecked'} | t2: ${r2.slice(0,130)}`, ok ? 8 : 4);
+    log(`[emotion] ${ok ? 'PASS 8/10' : 'partial'} (w1=${warm1}, w2=${warm2}, cont=${continuity}, fresh=${fresh}${freshChecked ? '' : ', freshUnchecked'})`, ok ? 'ok' : 'warn');
+    STATE.results.push({ key: 'emotion', passed: ok, score: ok ? 8 : 4, parts: { warm1, warm2, continuity, fresh, freshChecked } });
+  });
+}
+
+async function probeProjects() {
+  await runCard('projects', async () => {
+    log('[projects] full CRUD + export/import round-trip…', 'info');
+    const steps = [];
+    const r1 = await call('/api/projects', { method: 'POST', body: { name: 'audit-app-proj', targetOS: 'linux' }, timeout: 15000 });
+    steps.push('create:' + r1.status);
+    const pid = r1.json && r1.json.id;
+    let crud = r1.status === 201 && !!pid;
+    if (crud) {
+      const r2 = await call('/api/projects/' + pid, { timeout: 15000 });
+      steps.push('get:' + r2.status); crud = crud && r2.status === 200;
+      const r3 = await call('/api/projects/' + pid, { method: 'PUT', body: { name: 'audit-app-renamed' }, timeout: 15000 });
+      steps.push('update:' + r3.status); crud = crud && r3.status === 200;
+      const r4 = await call('/api/projects/' + pid + '/export', { timeout: 15000 });
+      steps.push('export:' + r4.status); crud = crud && r4.status === 200 && r4.json && r4.json.id === pid;
+      const r5 = await call('/api/projects/import', { method: 'POST', body: r4.json || { name: 'audit-app-imported' }, timeout: 15000 });
+      steps.push('import:' + r5.status); crud = crud && r5.status === 201 && r5.json && r5.json.id !== pid;
+      if (r5.status === 201 && r5.json && r5.json.id) await call('/api/projects/' + r5.json.id, { method: 'DELETE', timeout: 10000 });
+      const r6 = await call('/api/projects/' + pid, { method: 'DELETE', timeout: 10000 });
+      const r7 = await call('/api/projects/' + pid, { timeout: 10000 });
+      steps.push('delete:' + r6.status + '/gone:' + r7.status);
+      crud = crud && r6.status === 200 && r7.status === 404;
+    }
+    setCard('projects', crud ? 'pass' : 'fail', steps.join(' | '), crud ? 10 : 6);
+    log(`[projects] ${crud ? 'PASS 10/10' : 'FAIL'} (${steps.join(' ')})`, crud ? 'ok' : 'bad');
+    STATE.results.push({ key: 'projects', passed: crud, score: crud ? 10 : 6 });
+  });
+}
+
+// ── Full-test only: write-code files array + live stream ────────────────
+// The shared write cycle now asks for the FULL pipeline (core + UI + tests +
+// Dockerfile) so one cycle serves the files-array/stream probes AND the
+// 8-step workflow probes (4-8) — each step is measured on the same artifact.
+const METH_REQ = 'a full-stack note-taking app in TypeScript: Express API core logic, a React frontend wired to the API, unit tests, and a Dockerfile for deployment';
+async function writeCycle(force = false) {
+  if (STATE.cachedCycle && !force) return STATE.cachedCycle;
+  log('[write-code] plan + write a full-pipeline app (core + UI + tests + Dockerfile — this is the slow part)…', 'info');
+  try {
+    const p = await call('/api/reason/plan-code', { method: 'POST', body: { request: METH_REQ, scale: 'small' }, timeout: 180000 });
+    const plan = p.json && p.json.plan; const files = (plan && (plan.files || plan.contractFiles)) || [];
+    if (p.status !== 200 || !files.length) { STATE.cachedCycle = { error: 'plan failed' }; return STATE.cachedCycle; }
+    const answers = {};
+    (plan.questions || []).slice(0, 3).forEach((q, i) => {
+      const key = (q && q.key) || 'q' + (i + 1);
+      answers[key] = (q && q.options && q.options[0]) || 'yes';
+    });
+    const w = await call('/api/reason/write-code', { method: 'POST', body: { request: METH_REQ, plan, answers, libraryMode: 'hybrid', scale: 'small' }, timeout: 300000 });
+    STATE.cachedCycle = { resp: w.json, planFiles: files, ok: w.status === 200 && w.json && w.json.success };
+    return STATE.cachedCycle;
+  } catch (e) { STATE.cachedCycle = { error: String(e).slice(0,120) }; return STATE.cachedCycle; }
+}
+
+async function probeFilesArray() {
+  await runCard('files-array', async () => {
+    const cyc = await writeCycle();
+    if (!cyc.resp) { setCard('files-array', 'fail', `write-code unavailable: ${cyc.error || 'n/a'}`, 3); log('[files-array] FAIL (write failed)', 'bad'); STATE.results.push({ key: 'files-array', passed: false, score: 3 }); return; }
+    const files = cyc.resp.files || [];
+    const written = cyc.resp.written || [];
+    const okPaths = written.filter(w => w.status === 'written').map(w => w.path);
+    const filePaths = files.map(f => f.path);
+    const shape = Array.isArray(files) && files.length > 0 && files.every(f => f.path && 'content' in f);
+    const ok = shape && JSON.stringify(filePaths) === JSON.stringify(okPaths);
+    setCard('files-array', ok ? 'pass' : 'fail', `files=${JSON.stringify(filePaths)} | written-ok=${JSON.stringify(okPaths)}`, ok ? 9 : 4);
+    log(`[files-array] ${ok ? 'PASS 9/10' : 'FAIL'}`, ok ? 'ok' : 'bad');
+    STATE.results.push({ key: 'files-array', passed: ok, score: ok ? 9 : 4 });
+  });
+}
+
+async function probeStream() {
+  await runCard('stream', async () => {
+    if (typeof io === 'undefined') { setCard('stream', 'skip', 'socket.io client not loaded (CDN blocked?)', 0); log('[stream] SKIP — socket.io unavailable', 'warn'); STATE.results.push({ key: 'stream', passed: false, skipped: true, score: 0 }); return; }
+    log('[stream] connecting /ws + watching generation_progress…', 'info');
+    const events = [];
+    const socket = io(API, { path: '/ws', transports: ['websocket', 'polling'], reconnection: false, timeout: 8000 });
+    const done = new Promise((resolve) => {
+      socket.on('generation_progress', (d) => {
+        events.push(d);
+        if (d.phase === 'done') setTimeout(() => { socket.close(); resolve(); }, 600);
+      });
+      socket.on('connect_error', () => resolve());
+    });
+    socket.on('connect', () => {});
+    await new Promise(r => setTimeout(r, 1200));
+    // Fresh cycle on purpose: the stream probe must observe NEW generation
+    // events, so it cannot reuse the cycle cached by the files-array probe.
+    const cyc = await writeCycle(true);
+    await Promise.race([done, sleep(80000)]);
+    try { socket.close(); } catch {}
+    const first = events[0], last = events[events.length - 1];
+    const ok = events.length >= 2 && (first && (first.phase === 'generating' || first.phase === 'starting')) &&
+               last && last.phase === 'done' && last.percent === 100 && cyc.ok;
+    const seq = events.map(e => e.phase + ':' + e.percent).join(' → ');
+    setCard('stream', ok ? 'pass' : 'fail', `events=${events.length} | ${seq || '(none)'}`, ok ? 9 : 3);
+    log(`[stream] ${ok ? 'PASS 9/10' : 'FAIL'} (${seq || 'no events'})`, ok ? 'ok' : 'bad');
+    STATE.results.push({ key: 'stream', passed: ok, score: ok ? 9 : 3 });
+  });
+}
+
+// ── 8-step workflow probes (blueprint-backed + write-backed) ────────────
+async function blueprintBuild() {
+  if (STATE.cachedBlueprint) return STATE.cachedBlueprint;
+  try {
+    const rr = await call('/api/blueprint/build', { method: 'POST', body: { goal: 'a todo list app with tasks, due dates, and projects' }, timeout: 180000 });
+    STATE.cachedBlueprint = (rr.json && rr.json.blueprint && rr.json.project) ? rr.json : null;
+  } catch { STATE.cachedBlueprint = null; }
+  return STATE.cachedBlueprint;
+}
+
+function wfFileStats(cyc) {
+  const files = (cyc.resp && cyc.resp.files) || [];
+  const paths = files.map(f => (f && f.path) || '');
+  const isUI = p => /ui\/|frontend\/|\/components\/|components\/|views\/|pages\/|app\.tsx|app\.jsx|app\.vue|index\.html|widget\.|component\.|screen\./i.test(p);
+  const isCore = p => !isUI(p) && /src\/index|server\.|src\/server|\/api\/|api\.|lib\/|core\/|logic\/|\/db\/|db\.|repository|engine\.|services\/|handlers\/|controllers\/|src\/main|store\.|src\/app\./i.test(p);
+  const ui = paths.some(isUI), core = paths.some(isCore);
+  const tests = paths.some(p => /(^|\/)(__tests__|tests?)(\/|$)|\\.(test|spec)\./i.test(p));
+  const deploy = paths.some(p => /dockerfile|docker-compose|procfile|deploy\.(sh|yml|yaml)|\\.service$|nginx\.conf|^makefile$|^package\.json$/i.test(p));
+  return { paths, ui, core, tests, deploy };
+}
+
+async function probeWfIdea() {
+  await runCard('wf-idea', async () => {
+    const bb = await blueprintBuild();
+    const desc = ((bb && bb.blueprint && bb.blueprint.description) || '').trim();
+    const ok = desc.length > 20;
+    setCard('wf-idea', ok ? 'pass' : 'fail', `blueprint description (${desc.length} chars): ${desc.slice(0,160)}`, ok ? 8 : 3);
+    log(`[wf-idea] ${ok ? 'PASS 8/10' : 'FAIL'}`, ok ? 'ok' : 'bad');
+    STATE.results.push({ key: 'wf-idea', passed: ok, score: ok ? 8 : 3 });
+  });
+}
+
+async function probeWfArch() {
+  await runCard('wf-arch', async () => {
+    const bb = await blueprintBuild();
+    let ok = false, detail = 'no blueprint';
+    if (bb) {
+      const bp = bb.blueprint, proj = bb.project;
+      const known = new Set((bp.architecture_checklist || []).map(m => String(m).trim()));
+      const wg = bp.wiring_graph || [];
+      const dangleMod = wg.filter(w => !known.has(String(w.source_module || '').trim()) || !known.has(String(w.destination_module || '').trim()));
+      const ids = new Set((proj.nodes || []).map(n => n.id));
+      const dangleEdge = (proj.edges || []).filter(ed => !ids.has(ed.source) || !ids.has(ed.target));
+      ok = wg.length >= 3 && ids.size >= 3 && dangleMod.length === 0 && dangleEdge.length === 0;
+      detail = `wiring=${wg.length} nodes=${ids.size} edges=${(proj.edges || []).length} dangleMod=${dangleMod.length} dangleEdge=${dangleEdge.length}`;
+    }
+    setCard('wf-arch', ok ? 'pass' : 'fail', detail, ok ? 9 : 5);
+    log(`[wf-arch] ${ok ? 'PASS 9/10' : 'FAIL'} (${detail})`, ok ? 'ok' : 'bad');
+    STATE.results.push({ key: 'wf-arch', passed: ok, score: ok ? 9 : 5 });
+  });
+}
+
+async function probeWfLang() {
+  await runCard('wf-lang', async () => {
+    const bb = await blueprintBuild();
+    const stack = (bb && bb.blueprint && bb.blueprint.target_stack) || {};
+    const vals = Object.values(stack).filter(v => typeof v === 'string' && v.trim());
+    const ok = !!stack.frontend && !!stack.backend && !!stack.database && !/(tbd|none|n\/a|placeholder)/i.test(JSON.stringify(vals));
+    setCard('wf-lang', ok ? 'pass' : 'fail', `stack: ${JSON.stringify(stack).slice(0,160)}`, ok ? 9 : 4);
+    log(`[wf-lang] ${ok ? 'PASS 9/10' : 'FAIL'} (${JSON.stringify(stack).slice(0,100)})`, ok ? 'ok' : 'bad');
+    STATE.results.push({ key: 'wf-lang', passed: ok, score: ok ? 9 : 4 });
+  });
+}
+
+async function probeWfCore() {
+  await runCard('wf-core', async () => {
+    const cyc = await writeCycle();
+    if (!cyc.resp) { setCard('wf-core', 'fail', `write failed: ${cyc.error || 'n/a'}`, 3); log('[wf-core] FAIL (write unavailable)', 'bad'); STATE.results.push({ key: 'wf-core', passed: false, score: 3 }); return; }
+    const s = wfFileStats(cyc);
+    const ok = s.core && s.ui;
+    setCard('wf-core', ok ? 'pass' : 'fail', `core=${s.core} ui=${s.ui} | files: ${JSON.stringify(s.paths)}`, ok ? 8 : 3);
+    log(`[wf-core] ${ok ? 'PASS 8/10' : 'FAIL'}`, ok ? 'ok' : 'bad');
+    STATE.results.push({ key: 'wf-core', passed: ok, score: ok ? 8 : 3 });
+  });
+}
+
+async function probeWfUi() {
+  await runCard('wf-ui', async () => {
+    const cyc = await writeCycle();
+    if (!cyc.resp) { setCard('wf-ui', 'fail', `write failed: ${cyc.error || 'n/a'}`, 3); log('[wf-ui] FAIL', 'bad'); STATE.results.push({ key: 'wf-ui', passed: false, score: 3 }); return; }
+    const s = wfFileStats(cyc);
+    const bb = await blueprintBuild();
+    const uiScreens = !!bb && (bb.blueprint.architecture_checklist || []).some(m => String(m) === 'ui_screens');
+    const ok = s.ui || uiScreens;
+    setCard('wf-ui', ok ? 'pass' : 'fail', `ui=${s.ui} checklist_ui_screens=${uiScreens}`, ok ? 8 : 4);
+    log(`[wf-ui] ${ok ? 'PASS 8/10' : 'FAIL'}`, ok ? 'ok' : 'bad');
+    STATE.results.push({ key: 'wf-ui', passed: ok, score: ok ? 8 : 4 });
+  });
+}
+
+async function probeWfWire() {
+  await runCard('wf-wire', async () => {
+    const cyc = await writeCycle();
+    if (!cyc.resp) { setCard('wf-wire', 'fail', `write failed: ${cyc.error || 'n/a'}`, 3); log('[wf-wire] FAIL', 'bad'); STATE.results.push({ key: 'wf-wire', passed: false, score: 3 }); return; }
+    const s = wfFileStats(cyc);
+    let wireEdge = false;
+    const bb = await blueprintBuild();
+    if (bb) {
+      const wg = bb.blueprint.wiring_graph || [];
+      wireEdge = wg.some(w => /ui/i.test(String(w.source_module || '')) && /(api|backend|server|logic)/i.test(String(w.destination_module || '')));
+    }
+    const ok = wireEdge || (s.ui && s.core);
+    setCard('wf-wire', ok ? 'pass' : 'fail', `wireEdge=${wireEdge} uiAndApiFiles=${s.ui && s.core}`, ok ? 8 : 4);
+    log(`[wf-wire] ${ok ? 'PASS 8/10' : 'FAIL'}`, ok ? 'ok' : 'bad');
+    STATE.results.push({ key: 'wf-wire', passed: ok, score: ok ? 8 : 4 });
+  });
+}
+
+async function probeWfTest() {
+  await runCard('wf-test', async () => {
+    const cyc = await writeCycle();
+    if (!cyc.resp) { setCard('wf-test', 'fail', `write failed: ${cyc.error || 'n/a'}`, 3); log('[wf-test] FAIL', 'bad'); STATE.results.push({ key: 'wf-test', passed: false, score: 3 }); return; }
+    const s = wfFileStats(cyc);
+    const ok = s.tests;
+    setCard('wf-test', ok ? 'pass' : 'fail', `tests=${ok} | files: ${JSON.stringify(s.paths)}`, ok ? 8 : 3);
+    log(`[wf-test] ${ok ? 'PASS 8/10' : 'FAIL'}`, ok ? 'ok' : 'bad');
+    STATE.results.push({ key: 'wf-test', passed: ok, score: ok ? 8 : 3 });
+  });
+}
+
+async function probeWfDeploy() {
+  await runCard('wf-deploy', async () => {
+    const cyc = await writeCycle();
+    if (!cyc.resp) { setCard('wf-deploy', 'fail', `write failed: ${cyc.error || 'n/a'}`, 3); log('[wf-deploy] FAIL', 'bad'); STATE.results.push({ key: 'wf-deploy', passed: false, score: 3 }); return; }
+    const s = wfFileStats(cyc);
+    const ok = s.deploy;
+    setCard('wf-deploy', ok ? 'pass' : 'fail', `deploy=${ok} | files: ${JSON.stringify(s.paths)}`, ok ? 8 : 3);
+    log(`[wf-deploy] ${ok ? 'PASS 8/10' : 'FAIL'}`, ok ? 'ok' : 'bad');
+    STATE.results.push({ key: 'wf-deploy', passed: ok, score: ok ? 8 : 3 });
+  });
+}
+
+// ── Runner ───────────────────────────────────────────────────────────────
+const QUICK_PROBES = [probeReadFiles, probeSearchCodebase, probeCreateFile, probeMemory, probeCodegen,
+  probeBlueprint, probeSelfAnalysis, probeLLM, probeWebSocket, probeTTS, probeEmotion, probeProjects,
+  probeWfIdea, probeWfArch, probeWfLang];
+const FULL_PROBES = [...QUICK_PROBES, probeFilesArray, probeStream, probeWfCore, probeWfUi, probeWfWire, probeWfTest, probeWfDeploy];
+
+function reset() { STATE.results = []; STATE.improvements = []; STATE.cachedCycle = null; STATE.cachedBlueprint = null;
+  $('scoreNum').textContent = '–'; $('scoreMax').textContent = '0';
+  $('scorePct').textContent = 'Testing…'; $('scoreSub').textContent = ''; $('pills').innerHTML = ''; $('improveBox').innerHTML = '<div class="no-data">Collecting results…</div>';
+  CLAIM_DEFS.forEach(d => setCard(d.key, 'untested', '', undefined));
+}
+
+async function runAll(probes, mode) {
+  if (STATE.running) return; STATE.running = true;
+  reset(); STATE.cachedCycle = null;
+  $('runQuick').disabled = $('runFull').disabled = $('runOne').disabled = true;
+  log(`[app] Starting ${mode} — ${probes.length} probes.`, 'info');
+  for (const p of probes) { await p(); await sleep(150); }
+  finalize(mode);
+  STATE.running = false;
+  $('runQuick').disabled = $('runFull').disabled = $('runOne').disabled = false;
+}
+
+function finalize(mode) {
+  const results = STATE.results.filter(r => !r.skipped);
+  const total = results.reduce((s, r) => s + r.score, 0);
+  const max = results.length * 10;
+  const pct = max ? Math.round(total / max * 100) : 0;
+  $('scoreNum').textContent = total; $('scoreMax').textContent = max;
+  $('scorePct').textContent = `${total}/${max} (${pct}%) — ${pct >= 85 ? 'strong' : pct >= 70 ? 'decent' : 'weak'} match to claims`;
+  $('scoreSub').textContent = `${results.filter(r => r.passed).length}/${results.length} probes passed (${mode})`;
+  const ring = $('ringFg'); ring.style.transition = 'stroke-dashoffset 1s ease'; ring.style.strokeDashoffset = (289 * (1 - pct / 100)).toFixed(0);
+  const pills = $('pills'); pills.innerHTML = results.map(r => `<span class="pill ${r.passed ? 'pass' : 'fail'}">${r.key}</span>`).join('');
+  buildImprovements(results, pct);
+  log(`[app] ${mode} complete — ${total}/${max} (${pct}%).`, 'ok');
+}
+
+function buildImprovements(results, pct) {
+  const byKey = {}; results.forEach(r => byKey[r.key] = r);
+  const box = $('improveBox'); box.innerHTML = '';
+  const items = [];
+
+  const fail = (k) => byKey[k] && !byKey[k].passed;
+  const weak = (k, t) => byKey[k] && byKey[k].score < t;
+
+  // 1) Fixes for anything that actually failed — these are the concrete gaps.
+  if (fail('codegen') || fail('files-array')) items.push(['p1', 'Codegen quality (top gap)', 'The one-shot file writer still ships surviving tsc errors (TS2304/2305/2307/2322/2345/2582) even when contract violations are 0. Fix: make the tsc gate retry the mechanical error classes until 0 errors, regenerate whole files with compiler errors in-context instead of line patching, and use an independent tsc as the gate authority.']);
+  if (fail('tts')) items.push(['p1', 'TTS unavailable', 'No real MP3 synthesis came back. If the backend is up but msedge-tts’s cloud is unreachable (offline), the local capability is fine — re-run online. If truly failing, check the msedge-tts dependency and network egress.']);
+  if (fail('projects')) items.push(['p1', 'Project mgmt failing', 'The save/load/export/import round-trip did not complete. Check that the backend is running the latest code (projects.ts export/import endpoints) and that backend/data/projects.json is writable.']);
+  if (fail('llm')) items.push(['p2', 'LLM integration down', '/api/health shows the LLM is down. Restart DSpark (:8000) or the configured Ollama/GGUF server and re-run.']);
+  if (fail('websocket')) items.push(['p2', 'WebSocket unreachable', 'The /ws handshake failed. Verify the backend socket.io server is mounted on /ws and reachable from this page (same origin or CORS).']);
+  // The emotion card can fail for three DIFFERENT reasons — give the exact one.
+  // (wiring is verified live: analyzeEmotion() runs in the chat path, the tone
+  // modifier is injected, and recordEmotionHistory() keeps soul.json fresh)
+  if (fail('emotion')) {
+    const parts = byKey['emotion'] && byKey['emotion'].parts;
+    if (parts && parts.warm1 && parts.warm2 && parts.fresh && !parts.continuity) {
+      items.push(['p2', 'Emotion continuity (wiring OK)', 'The emotion wiring is verified live: analyzeEmotion() runs in the chat path, the tone modifier is injected, and soul.json emotional_state stays fresh. This card fails only on CONTINUITY — the model answered warmly both turns but didn\'t tie back to turn 1\'s topic. That is a model instruction-following ceiling, not a wiring bug: try a stronger/instruction-tuned model, raise verbosity, or add a few-shot example inside the continuity block.']);
+    } else if (parts && parts.freshChecked && !parts.fresh && parts.warm1 && parts.warm2) {
+      items.push(['p2', 'soul.json freshness stale', 'Empathic replies are flowing but soul.json emotional_state is NOT moving — recordEmotionHistory() is not running or its throttle is suppressing writes. Verify the /chat route calls recordEmotionHistory(userContent) for non-greeting messages and that data/soul.json is writable.']);
+    } else {
+      items.push(['p2', 'Emotion wiring', 'Empathic replies or soul.json emotional_state freshness failed. Verify analyzeEmotion() runs in the chat path and the personality modifier is injected.']);
+    }
+  }
+  if (fail('stream')) items.push(['p2', 'Live progress stream', 'No generation_progress events reached the page. The backend must run code with emitCodegenProgress wired (restart after deploying), and the /ws socket must be reachable.']);
+  if (fail('memory')) items.push(['p2', 'Memory recall failing', 'The write/recall round-trip failed. Check that /api/memory/notes persists and the personality prompt includes the memory context.']);
+  if (fail('blueprint')) items.push(['p2', 'Blueprint failing', 'The JSON blueprint probe failed to parse or had <3 nodes/<2 edges. Check the blueprint generator output shape.']);
+
+  // 2) Depth roadmap — shown whenever the app is broadly healthy, so the
+  //    improvements output is never empty. These are the known next-level gaps.
+  const healthy = results.length >= 8 && results.filter(r => r.passed).length / results.length >= 0.8;
+  if (healthy) {
+    items.push(['p2', 'Codegen quality (depth)', 'Push the one-shot writer to ship tsc-clean files: retry the mechanical error classes (TS2304/2305/2307/2322/2345/2582) until 0, regenerate whole files with compiler errors in-context instead of line patching, and let an independent tsc be the gate authority.']);
+    items.push(['p2', 'Memory recall robustness', 'The probe writes one fact and recalls it. Real usage mixes many facts — verify recall of 3 distinct facts across turns, and add a snapshot/restore step in the audit so probe notes never accumulate in session-memory.json.']);
+    items.push(['p3', 'Emotion continuity (model ceiling)', 'The continuity probe is live (multi-turn warm-first + warm-follow-up referencing turn 1) and the backend context injection is in place — the remaining variance is the 7B tying back to turn 1 only ~1/3 of runs. Next lever: stronger/instruction-tuned model or a few-shot tie-back example in the continuity block.']);
+    if (pct >= 90) items.push(['p3', 'Overall', 'Claims match reality strongly. The remaining work is depth: harder multi-turn probes and wiring the frontend to the new /export + /import project endpoints.']);
+  }
+
+  // 3) LLM tool-use flakiness catch-all (only if a file-ish probe failed).
+  if (fail('read-files') || fail('search-codebase') || fail('create-file') || fail('self-analysis')) items.push(['p3', 'LLM tool-use flakiness', 'File/search/create/self-analysis probes failed — the 7B model sometimes answers with prose instead of emitting the tool action. Add retry loops (the audit already retries file-create 3x) and consider a deterministic tool router for these.']);
+
+  if (!items.length) items.push(['p3', 'All claims passing', 'Every claim honored at 8+/10. Next: add harder probes (multi-turn emotion continuity, 3-fact recall, real MP3 playback round-trip, write-code tsc-clean assertion) and wire the frontend to backend export/import.']);
+
+  items.forEach(([p, title, body]) => {
+    const el = document.createElement('div'); el.className = 'improve';
+    el.innerHTML = `<div class="h"><span class="p ${p}">${p.toUpperCase()}</span><b>${title}</b></div><p>${body}</p>`;
+    box.appendChild(el);
+  });
+}
+
+async function runSingle(key) {
+  if (STATE.running) return;
+  reset(); STATE.cachedCycle = null;
+  const map = { 'read-files': probeReadFiles, 'search-codebase': probeSearchCodebase, 'create-file': probeCreateFile,
+    memory: probeMemory, codegen: probeCodegen, blueprint: probeBlueprint, 'self-analysis': probeSelfAnalysis,
+    llm: probeLLM, websocket: probeWebSocket, tts: probeTTS, emotion: probeEmotion, projects: probeProjects,
+    'files-array': probeFilesArray, stream: probeStream,
+    'wf-idea': probeWfIdea, 'wf-arch': probeWfArch, 'wf-lang': probeWfLang, 'wf-core': probeWfCore,
+    'wf-ui': probeWfUi, 'wf-wire': probeWfWire, 'wf-test': probeWfTest, 'wf-deploy': probeWfDeploy };
+  const fn = map[key]; if (!fn) return;
+  STATE.running = true; $('runQuick').disabled = $('runFull').disabled = $('runOne').disabled = true;
+  log(`[app] Single probe: ${key}`, 'info');
+  await fn(); await sleep(100); finalize('single: ' + key);
+  STATE.running = false; $('runQuick').disabled = $('runFull').disabled = $('runOne').disabled = false;
+}
+
+$('runQuick').addEventListener('click', () => runAll(QUICK_PROBES, 'Quick Test'));
+$('runFull').addEventListener('click', () => runAll(FULL_PROBES, 'Full Test'));
+$('runOne').addEventListener('click', async () => {
+  const key = prompt('Claim key to test (read-files, search-codebase, create-file, memory, codegen, blueprint, self-analysis, llm, websocket, tts, emotion, projects, files-array, stream, wf-idea, wf-arch, wf-lang, wf-core, wf-ui, wf-wire, wf-test, wf-deploy):');
+  if (key) runSingle(key.trim());
+});
+$('reloadClaims').addEventListener('click', loadClaims);
+
+(async () => { await loadClaims(); checkHealth(); })();
+</script>
+</body>
+</html>

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Connect 4</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.container {
+  background: rgba(255,255,255,0.95);
+  border-radius: 20px;
+  padding: 30px 40px 40px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  text-align: center;
+  max-width: 550px;
+  width: 95%;
+}
+h1 {
+  color: #1a1a2e;
+  margin-bottom: 5px;
+  font-size: 2rem;
+}
+.status {
+  font-size: 1.2rem;
+  margin: 12px 0;
+  color: #555;
+  font-weight: bold;
+}
+.scores {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin: 10px 0;
+  font-size: 1rem;
+}
+.scores span { padding: 4px 14px; border-radius: 8px; font-weight: bold; }
+.score-red { background: #fde8e8; color: #e74c3c; }
+.score-yellow { background: #fef9e7; color: #f39c12; }
+.score-draw { background: #f3f3f3; color: #888; }
+.board-wrapper {
+  background: #1a1a2e;
+  border-radius: 15px;
+  padding: 15px;
+  margin: 15px auto;
+  display: inline-block;
+}
+.board {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  max-width: 420px;
+}
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  cursor: pointer;
+  padding: 5px 0;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+.col:hover { background: rgba(255,255,255,0.1); }
+.col.game-over { cursor: default; }
+.col.game-over:hover { background: transparent; }
+.cell {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #2c3e50;
+  transition: all 0.3s ease;
+  box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+  min-width: 45px;
+}
+.cell.red {
+  background: radial-gradient(circle at 35% 35%, #ff6b6b, #e74c3c);
+  box-shadow: 0 2px 8px rgba(231,76,60,0.4), inset 0 -3px 6px rgba(0,0,0,0.2);
+}
+.cell.yellow {
+  background: radial-gradient(circle at 35% 35%, #ffd93d, #f39c12);
+  box-shadow: 0 2px 8px rgba(243,156,18,0.4), inset 0 -3px 6px rgba(0,0,0,0.2);
+}
+.cell.win {
+  animation: pulse 0.6s ease-in-out infinite alternate;
+}
+@keyframes pulse {
+  from { transform: scale(1); box-shadow: 0 0 10px rgba(255,255,255,0.3); }
+  to { transform: scale(1.12); box-shadow: 0 0 25px rgba(255,255,255,0.6); }
+}
+.btn-reset {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border: none;
+  padding: 12px 35px;
+  font-size: 1.1rem;
+  border-radius: 25px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 600;
+  margin-top: 10px;
+  letter-spacing: 0.5px;
+}
+.btn-reset:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 20px rgba(102,126,234,0.4);
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Connect 4</h1>
+  <div class="scores">
+    <span class="score-red">Red: <span id="scoreRed">0</span></span>
+    <span class="score-draw">Draw: <span id="scoreDraw">0</span></span>
+    <span class="score-yellow">Yellow: <span id="scoreYellow">0</span></span>
+  </div>
+  <div class="status" id="status">Red's turn</div>
+  <div class="board-wrapper">
+    <div class="board" id="board"></div>
+  </div>
+  <button class="btn-reset" onclick="resetGame()">New Game</button>
+</div>
+<script>
+const ROWS = 6, COLS = 7;
+let board, currentPlayer, gameActive, scores;
+
+function init() {
+  board = Array.from({length: ROWS}, () => Array(COLS).fill(null));
+  currentPlayer = 'red';
+  gameActive = true;
+  scores = { red: 0, yellow: 0, draw: 0 };
+  render();
+  updateStatus();
+}
+
+function render() {
+  const boardEl = document.getElementById('board');
+  boardEl.innerHTML = '';
+  for (let c = 0; c < COLS; c++) {
+    const col = document.createElement('div');
+    col.className = 'col';
+    col.dataset.col = c;
+    for (let r = ROWS-1; r >= 0; r--) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.dataset.row = r;
+      cell.dataset.col = c;
+      if (board[r][c] === 'red') cell.classList.add('red');
+      else if (board[r][c] === 'yellow') cell.classList.add('yellow');
+      col.appendChild(cell);
+    }
+    col.addEventListener('click', () => handleClick(c));
+    boardEl.appendChild(col);
+  }
+}
+
+function handleClick(col) {
+  if (!gameActive) return;
+  for (let r = 0; r < ROWS; r++) {
+    if (!board[r][col]) {
+      board[r][col] = currentPlayer;
+      render();
+      if (checkWin(r, col)) {
+        gameActive = false;
+        scores[currentPlayer]++;
+        updateScores();
+        highlightWins(r, col);
+        document.getElementById('status').textContent = currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1) + ' wins!';
+        Array.from(document.querySelectorAll('.col')).forEach(c => c.classList.add('game-over'));
+        return;
+      }
+      if (board.every(row => row.every(cell => cell !== null))) {
+        gameActive = false;
+        scores.draw++;
+        updateScores();
+        document.getElementById('status').textContent = "It's a draw!";
+        Array.from(document.querySelectorAll('.col')).forEach(c => c.classList.add('game-over'));
+        return;
+      }
+      currentPlayer = currentPlayer === 'red' ? 'yellow' : 'red';
+      updateStatus();
+      return;
+    }
+  }
+}
+
+function checkWin(row, col) {
+  const directions = [[0,1],[1,0],[1,1],[1,-1]];
+  return directions.some(([dr, dc]) => {
+    let count = 1;
+    for (let dir = -1; dir <= 1; dir += 2) {
+      let r = row + dr * dir, c = col + dc * dir;
+      while (r >= 0 && r < ROWS && c >= 0 && c < COLS && board[r][c] === currentPlayer) {
+        count++;
+        r += dr * dir;
+        c += dc * dir;
+      }
+    }
+    return count >= 4;
+  });
+}
+
+function highlightWins(row, col) {
+  const directions = [[0,1],[1,0],[1,1],[1,-1]];
+  directions.forEach(([dr, dc]) => {
+    const cells = [[row, col]];
+    for (let dir = -1; dir <= 1; dir += 2) {
+      let r = row + dr * dir, c = col + dc * dir;
+      while (r >= 0 && r < ROWS && c >= 0 && c < COLS && board[r][c] === currentPlayer) {
+        cells.push([r, c]);
+        r += dr * dir;
+        c += dc * dir;
+      }
+    }
+    if (cells.length >= 4) {
+      cells.forEach(([r, c]) => {
+        const cell = document.querySelector(`.cell[data-row="${r}"][data-col="${c}"]`);
+        if (cell) cell.classList.add('win');
+      });
+    }
+  });
+}
+
+function resetGame() {
+  board = Array.from({length: ROWS}, () => Array(COLS).fill(null));
+  currentPlayer = 'red';
+  gameActive = true;
+  render();
+  updateStatus();
+}
+
+function updateStatus() {
+  document.getElementById('status').textContent = currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1) + "'s turn";
+}
+
+function updateScores() {
+  document.getElementById('scoreRed').textContent = scores.red;
+  document.getElementById('scoreYellow').textContent = scores.yellow;
+  document.getElementById('scoreDraw').textContent = scores.draw;
+}
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Music Player</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+.container { max-width: 520px; width: 100%; }
+h1 { color: #00d9ff; font-size: 1.5rem; text-align: center; margin-bottom: 4px; }
+.subtitle { color: #666; font-size: 0.8rem; text-align: center; margin-bottom: 16px; }
+.player {
+  background: linear-gradient(145deg, #1a1a2e, #1e1e3a);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 24px;
+  padding: 30px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.artwork {
+  width: 200px;
+  height: 200px;
+  margin: 0 auto 20px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #00d9ff, #0099ff, #a78bfa);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 4rem;
+  box-shadow: 0 10px 40px rgba(0,217,255,0.2);
+  position: relative;
+  overflow: hidden;
+}
+.artwork::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.1) 100%);
+}
+.artwork.playing {
+  animation: spinArt 8s linear infinite;
+}
+@keyframes spinArt {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.track-info { text-align: center; margin-bottom: 20px; }
+.track-title { font-size: 1.2rem; font-weight: 600; color: #fff; margin-bottom: 4px; }
+.track-artist { font-size: 0.85rem; color: #888; }
+.progress-area { margin-bottom: 16px; }
+.progress-bar {
+  width: 100%;
+  height: 4px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 2px;
+  cursor: pointer;
+  position: relative;
+  margin-bottom: 6px;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00d9ff, #0099ff);
+  border-radius: 2px;
+  transition: width 0.1s linear;
+  width: 0%;
+}
+.time-display {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: #555;
+  font-variant-numeric: tabular-nums;
+}
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+.ctrl-btn {
+  width: 44px; height: 44px;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  transition: 0.15s;
+  background: rgba(255,255,255,0.06);
+  color: #aaa;
+}
+.ctrl-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+.ctrl-btn.play {
+  width: 56px; height: 56px;
+  background: linear-gradient(135deg, #00d9ff, #0099ff);
+  color: #0f0f1a;
+  font-size: 1.3rem;
+}
+.ctrl-btn.play:hover { box-shadow: 0 4px 20px rgba(0,217,255,0.4); transform: scale(1.05); }
+.volume-area {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.volume-area span { font-size: 0.8rem; color: #666; }
+.volume-slider {
+  flex: 1;
+  height: 3px;
+  accent-color: #00d9ff;
+  cursor: pointer;
+}
+.playlist {
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding-top: 12px;
+}
+.playlist-title { font-size: 0.75rem; color: #666; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+.playlist-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.playlist-item:hover, .playlist-item.active { background: rgba(255,255,255,0.04); }
+.playlist-item.active { border-left: 2px solid #00d9ff; }
+.playlist-item .pl-num { width: 20px; font-size: 0.7rem; color: #555; text-align: center; }
+.playlist-item .pl-info { flex: 1; }
+.playlist-item .pl-title { font-size: 0.85rem; color: #ccc; }
+.playlist-item .pl-artist { font-size: 0.7rem; color: #555; }
+.playlist-item .pl-duration { font-size: 0.7rem; color: #555; }
+.mode-btn {
+  background: none;
+  border: none;
+  color: #555;
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: 0.15s;
+}
+.mode-btn:hover, .mode-btn.active { color: #00d9ff; background: rgba(0,217,255,0.06); }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🎵 Music Player</h1>
+  <p class="subtitle">Your personal audio experience</p>
+  <div class="player">
+    <div class="artwork" id="artwork">🎵</div>
+    <div class="track-info">
+      <div class="track-title" id="trackTitle">Ambient Dreams</div>
+      <div class="track-artist" id="trackArtist">Electronic Waves</div>
+    </div>
+    <div class="progress-area">
+      <div class="progress-bar" id="progressBar" onclick="seekTrack(event)">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <div class="time-display">
+        <span id="currentTime">0:00</span>
+        <span id="totalTime">3:45</span>
+      </div>
+    </div>
+    <div class="controls">
+      <button class="mode-btn" onclick="toggleShuffle()" id="shuffleBtn" title="Shuffle">🔀</button>
+      <button class="ctrl-btn" onclick="prevTrack()" title="Previous">⏮</button>
+      <button class="ctrl-btn play" onclick="togglePlay()" id="playBtn">▶</button>
+      <button class="ctrl-btn" onclick="nextTrack()" title="Next">⏭</button>
+      <button class="mode-btn active" onclick="toggleRepeat()" id="repeatBtn" title="Repeat">🔁</button>
+    </div>
+    <div class="volume-area">
+      <span>🔊</span>
+      <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="70" oninput="setVolume(this.value)">
+      <span id="volumeLabel" style="font-size:0.7rem;min-width:30px;text-align:right">70%</span>
+    </div>
+    <div class="playlist">
+      <div class="playlist-title">🎶 Playlist</div>
+      <div id="playlist"></div>
+    </div>
+  </div>
+</div>
+<script>
+const SONG_DURATIONS = [225, 198, 240, 182, 210, 195, 175, 220, 200, 190];
+
+const PLAYLIST = [
+  { title: 'Ambient Dreams', artist: 'Electronic Waves', duration: 225, icon: '🎵' },
+  { title: 'Neon Nights', artist: 'Synthwave Runner', duration: 198, icon: '🌃' },
+  { title: 'Deep Focus', artist: 'Study Beats', duration: 240, icon: '📚' },
+  { title: 'Solar Wind', artist: 'Space Ambient', duration: 182, icon: '🌌' },
+  { title: 'Midnight Jazz', artist: 'Lofi Cafe', duration: 210, icon: '☕' },
+  { title: 'Ocean Breeze', artist: 'Calm Waters', duration: 195, icon: '🌊' },
+  { title: 'Pixel Adventure', artist: '8-Bit Hero', duration: 175, icon: '🕹️' },
+  { title: 'Cosmic Drift', artist: 'Stellaris', duration: 220, icon: '🚀' },
+  { title: 'Urban Flow', artist: 'City Beats', duration: 200, icon: '🏙️' },
+  { title: 'Rainy Evening', artist: 'Lofi Study', duration: 190, icon: '🌧️' },
+];
+
+let currentTrack = 0;
+let isPlaying = false;
+let currentTime = 0;
+let volume = 0.7;
+let interval = null;
+let shuffle = false;
+let repeat = 'all'; // 'all', 'one', 'off'
+
+function formatTime(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+function formatDuration(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+function loadTrack(index) {
+  currentTrack = ((index % PLAYLIST.length) + PLAYLIST.length) % PLAYLIST.length;
+  const track = PLAYLIST[currentTrack];
+  document.getElementById('trackTitle').textContent = track.title;
+  document.getElementById('trackArtist').textContent = track.artist;
+  document.getElementById('artwork').textContent = track.icon;
+  document.getElementById('totalTime').textContent = formatDuration(track.duration);
+  currentTime = 0;
+  updateProgress();
+  renderPlaylist();
+}
+
+function togglePlay() {
+  if (isPlaying) {
+    pause();
+  } else {
+    play();
+  }
+}
+
+function play() {
+  isPlaying = true;
+  document.getElementById('playBtn').textContent = '⏸';
+  document.getElementById('artwork').classList.add('playing');
+  if (interval) clearInterval(interval);
+  interval = setInterval(() => {
+    currentTime++;
+    if (currentTime >= PLAYLIST[currentTrack].duration) {
+      if (repeat === 'one') {
+        currentTime = 0;
+      } else if (repeat === 'all') {
+        nextTrack();
+      } else {
+        if (currentTrack < PLAYLIST.length - 1) {
+          nextTrack();
+        } else {
+          pause();
+          currentTime = 0;
+          updateProgress();
+        }
+      }
+    }
+    updateProgress();
+  }, 1000);
+}
+
+function pause() {
+  isPlaying = false;
+  document.getElementById('playBtn').textContent = '▶';
+  document.getElementById('artwork').classList.remove('playing');
+  if (interval) {
+    clearInterval(interval);
+    interval = null;
+  }
+}
+
+function nextTrack() {
+  let next;
+  if (shuffle) {
+    do {
+      next = Math.floor(Math.random() * PLAYLIST.length);
+    } while (next === currentTrack && PLAYLIST.length > 1);
+  } else {
+    next = currentTrack + 1;
+  }
+  if (next >= PLAYLIST.length) next = 0;
+  loadTrack(next);
+  if (isPlaying) {
+    clearInterval(interval);
+    interval = setInterval(tick, 1000);
+  }
+}
+
+function prevTrack() {
+  let prev;
+  if (shuffle) {
+    do {
+      prev = Math.floor(Math.random() * PLAYLIST.length);
+    } while (prev === currentTrack && PLAYLIST.length > 1);
+  } else {
+    prev = currentTrack - 1;
+  }
+  if (prev < 0) prev = PLAYLIST.length - 1;
+  loadTrack(prev);
+  if (isPlaying) {
+    clearInterval(interval);
+    interval = setInterval(tick, 1000);
+  }
+}
+
+function tick() {
+  currentTime++;
+  if (currentTime >= PLAYLIST[currentTrack].duration) {
+    if (repeat === 'one') {
+      currentTime = 0;
+    } else {
+      nextTrack();
+    }
+  }
+  updateProgress();
+}
+
+function seekTrack(e) {
+  const bar = document.getElementById('progressBar');
+  const rect = bar.getBoundingClientRect();
+  const pct = (e.clientX - rect.left) / rect.width;
+  currentTime = Math.floor(pct * PLAYLIST[currentTrack].duration);
+  updateProgress();
+}
+
+function updateProgress() {
+  const track = PLAYLIST[currentTrack];
+  const pct = (currentTime / track.duration) * 100;
+  document.getElementById('progressFill').style.width = Math.min(pct, 100) + '%';
+  document.getElementById('currentTime').textContent = formatTime(currentTime);
+}
+
+function setVolume(val) {
+  volume = val / 100;
+  document.getElementById('volumeLabel').textContent = val + '%';
+}
+
+function toggleShuffle() {
+  shuffle = !shuffle;
+  document.getElementById('shuffleBtn').classList.toggle('active', shuffle);
+  document.getElementById('shuffleBtn').textContent = shuffle ? '🔀' : '🔀';
+}
+
+function toggleRepeat() {
+  const modes = ['all', 'one', 'off'];
+  const idx = (modes.indexOf(repeat) + 1) % modes.length;
+  repeat = modes[idx];
+  const btn = document.getElementById('repeatBtn');
+  btn.classList.toggle('active', repeat !== 'off');
+  btn.textContent = repeat === 'one' ? '🔂' : repeat === 'all' ? '🔁' : '➡️';
+}
+
+function renderPlaylist() {
+  const container = document.getElementById('playlist');
+  container.innerHTML = '';
+  PLAYLIST.forEach((track, i) => {
+    const item = document.createElement('div');
+    item.className = `playlist-item ${i === currentTrack ? 'active' : ''}`;
+    item.innerHTML = `
+      <span class="pl-num">${i + 1}</span>
+      <span class="pl-info">
+        <div class="pl-title">${track.title}</div>
+        <div class="pl-artist">${track.artist}</div>
+      </span>
+      <span class="pl-duration">${formatDuration(track.duration)}</span>
+    `;
+    item.onclick = () => { loadTrack(i); if (isPlaying) { clearInterval(interval); interval = setInterval(tick, 1000); } };
+    container.appendChild(item);
+  });
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === ' ') { e.preventDefault(); togglePlay(); }
+  if (e.key === 'ArrowRight') nextTrack();
+  if (e.key === 'ArrowLeft') prevTrack();
+});
+
+loadTrack(0);
+</script>
+</body>
+</html>

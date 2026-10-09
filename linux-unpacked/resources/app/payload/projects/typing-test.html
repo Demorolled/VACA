@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Typing Speed Test</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+.container { max-width: 700px; width: 100%; }
+h1 { color: #00d9ff; font-size: 1.5rem; text-align: center; margin-bottom: 4px; }
+.subtitle { color: #666; font-size: 0.8rem; text-align: center; margin-bottom: 20px; }
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.stat-card {
+  background: linear-gradient(145deg, #1a1a2e, #1e1e3a);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 12px;
+  text-align: center;
+}
+.stat-card .stat-value { font-size: 1.5rem; font-weight: 700; color: #00d9ff; font-variant-numeric: tabular-nums; }
+.stat-card .stat-label { font-size: 0.65rem; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+.stat-card .stat-value.accuracy-high { color: #4ade80; }
+.stat-card .stat-value.accuracy-mid { color: #fbbf24; }
+.stat-card .stat-value.accuracy-low { color: #f87171; }
+.text-display {
+  background: linear-gradient(145deg, #1a1a2e, #1e1e3a);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 16px;
+  min-height: 120px;
+  font-size: 1.2rem;
+  line-height: 1.8;
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  word-spacing: 4px;
+  user-select: none;
+}
+.char {
+  transition: color 0.05s;
+}
+.char.correct { color: #4ade80; }
+.char.incorrect { color: #f87171; text-decoration: underline; }
+.char.current {
+  color: #00d9ff;
+  border-bottom: 2px solid #00d9ff;
+  animation: blink 0.8s infinite;
+}
+.char.pending { color: #555; }
+@keyframes blink {
+  0%, 100% { border-color: #00d9ff; }
+  50% { border-color: transparent; }
+}
+.input-area {
+  margin-bottom: 16px;
+}
+#hiddenInput {
+  width: 100%;
+  padding: 12px 16px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  color: transparent;
+  caret-color: #00d9ff;
+  font-size: 1rem;
+  font-family: inherit;
+  outline: none;
+  resize: none;
+  height: 50px;
+}
+#hiddenInput:focus { border-color: #00d9ff; }
+#hiddenInput::placeholder { color: transparent; }
+.results {
+  display: none;
+  background: linear-gradient(145deg, #1a1a2e, #1e1e3a);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 24px;
+  text-align: center;
+}
+.results.show { display: block; }
+.results h2 { color: #e0e0f0; font-size: 1.2rem; margin-bottom: 4px; }
+.results p { color: #888; font-size: 0.8rem; margin-bottom: 16px; }
+.result-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.result-item { text-align: center; }
+.result-item .val { font-size: 1.8rem; font-weight: 700; color: #00d9ff; }
+.result-item .lbl { font-size: 0.65rem; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
+.result-item .val.wpm-good { color: #4ade80; }
+.result-item .val.wpm-ok { color: #fbbf24; }
+.result-item .val.wpm-bad { color: #f87171; }
+.btn {
+  padding: 12px 32px;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+  font-family: inherit;
+}
+.btn-primary { background: linear-gradient(135deg, #00d9ff, #0099ff); color: #0f0f1a; }
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0,217,255,0.3); }
+.btn-secondary { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); color: #aaa; margin-top: 8px; }
+.btn-secondary:hover { background: rgba(255,255,255,0.1); }
+.difficulty {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+.diff-btn {
+  padding: 4px 14px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px;
+  background: transparent;
+  color: #666;
+  cursor: pointer;
+  font-size: 0.72rem;
+  transition: 0.15s;
+  font-family: inherit;
+}
+.diff-btn:hover, .diff-btn.active { border-color: #00d9ff; color: #00d9ff; }
+.history-btn {
+  background: none;
+  border: none;
+  color: #555;
+  font-size: 0.75rem;
+  cursor: pointer;
+  float: right;
+  margin-top: -24px;
+}
+.history-btn:hover { color: #00d9ff; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>⌨️ Typing Speed Test</h1>
+  <p class="subtitle">Measure your typing speed and accuracy</p>
+  <div class="difficulty">
+    <button class="diff-btn active" data-text="short" onclick="setDifficulty('short')">Short (15s)</button>
+    <button class="diff-btn" data-text="medium" onclick="setDifficulty('medium')">Medium (30s)</button>
+    <button class="diff-btn" data-text="long" onclick="setDifficulty('long')">Long (60s)</button>
+  </div>
+  <div class="stats">
+    <div class="stat-card"><div class="stat-value" id="wpm">0</div><div class="stat-label">WPM</div></div>
+    <div class="stat-card"><div class="stat-value" id="accuracy">100%</div><div class="stat-label">Accuracy</div></div>
+    <div class="stat-card"><div class="stat-value" id="timer">15s</div><div class="stat-label">Time</div></div>
+    <div class="stat-card"><div class="stat-value" id="charCount">0/0</div><div class="stat-label">Chars</div></div>
+  </div>
+  <div class="text-display" id="textDisplay">
+    <span style="color:#555">Press "Start Test" and begin typing to see the text here...</span>
+  </div>
+  <div class="input-area">
+    <textarea id="hiddenInput" placeholder=" " disabled></textarea>
+  </div>
+  <div style="text-align:center">
+    <button class="btn btn-primary" id="startBtn" onclick="startTest()">🚀 Start Test</button>
+  </div>
+  <div class="results" id="results">
+    <h2>🎉 Test Complete!</h2>
+    <p id="resultMsg">Here's how you performed:</p>
+    <div class="result-grid">
+      <div class="result-item"><div class="val wpm-good" id="resultWpm">0</div><div class="lbl">WPM</div></div>
+      <div class="result-item"><div class="val" id="resultAcc">0%</div><div class="lbl">Accuracy</div></div>
+      <div class="result-item"><div class="val" id="resultChars">0</div><div class="lbl">Chars Typed</div></div>
+    </div>
+    <button class="btn btn-primary" onclick="startTest()">🔄 Try Again</button>
+  </div>
+</div>
+<script>
+const TEXTS = {
+  short: [
+    "The quick brown fox jumps over the lazy dog near the bank of the river.",
+    "A journey of a thousand miles begins with a single step forward.",
+    "To be or not to be that is the question we ask ourselves daily.",
+  ],
+  medium: [
+    "The art of programming requires patience logic and creativity in equal measure. Every great developer started as a beginner who never gave up learning.",
+    "Technology advances rapidly in the modern world. Staying current with new developments is essential for anyone working in the software industry today.",
+    "Practice makes perfect when it comes to typing skills. The more you type the faster and more accurate you will become over time.",
+  ],
+  long: [
+    "The human mind is a remarkable thing capable of incredible feats of creativity and problem solving. When we combine our natural abilities with modern technology we can achieve things that were once thought impossible. The key is to keep learning and growing every single day.",
+    "In the world of software development change is the only constant. New frameworks libraries and tools emerge regularly while older ones fade away. The best developers focus on mastering fundamental concepts that transfer across technologies rather than chasing every new trend that appears.",
+    "Typing is a fundamental skill in the digital age. Whether you are writing code composing emails creating documents or chatting with friends your typing speed and accuracy directly impact your productivity. Regular practice with focused attention on proper technique yields the best improvements over time.",
+  ],
+};
+
+const DIFFICULTY_TIMES = { short: 15, medium: 30, long: 60 };
+
+let currentDifficulty = 'short';
+let currentText = '';
+let typedText = '';
+let timerInterval = null;
+let timeLeft = 15;
+let isRunning = false;
+let charIndex = 0;
+let errors = 0;
+let totalTyped = 0;
+let isTestComplete = false;
+
+function setDifficulty(diff) {
+  if (isRunning) return;
+  currentDifficulty = diff;
+  document.querySelectorAll('.diff-btn').forEach(b => b.classList.toggle('active', b.dataset.text === diff));
+  resetDisplay();
+}
+
+function getRandomText() {
+  const texts = TEXTS[currentDifficulty];
+  let text = texts[Math.floor(Math.random() * texts.length)];
+  // Ensure unique text each time
+  if (text === currentText && texts.length > 1) {
+    text = texts.find(t => t !== currentText) || text;
+  }
+  return text;
+}
+
+function resetDisplay() {
+  currentText = getRandomText();
+  typedText = '';
+  charIndex = 0;
+  errors = 0;
+  totalTyped = 0;
+  timeLeft = DIFFICULTY_TIMES[currentDifficulty];
+  isTestComplete = false;
+  
+  document.getElementById('wpm').textContent = '0';
+  document.getElementById('accuracy').textContent = '100%';
+  document.getElementById('timer').textContent = timeLeft + 's';
+  document.getElementById('charCount').textContent = '0/' + currentText.length;
+  document.getElementById('results').classList.remove('show');
+  document.getElementById('startBtn').textContent = '🚀 Start Test';
+  
+  renderText();
+}
+
+function renderText() {
+  const display = document.getElementById('textDisplay');
+  display.innerHTML = currentText.split('').map((char, i) => {
+    let cls = 'pending';
+    if (i < charIndex) {
+      cls = typedText[i] === char ? 'correct' : 'incorrect';
+    } else if (i === charIndex && isRunning) {
+      cls = 'current';
+    }
+    const displayChar = char === ' ' ? ' ' : char;
+    return `<span class="char ${cls}">${displayChar}</span>`;
+  }).join('');
+  
+  // Scroll to current position
+  const currentEl = display.querySelector('.char.current');
+  if (currentEl) {
+    currentEl.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+}
+
+function startTest() {
+  resetDisplay();
+  isRunning = true;
+  isTestComplete = false;
+  timeLeft = DIFFICULTY_TIMES[currentDifficulty];
+  charIndex = 0;
+  errors = 0;
+  totalTyped = 0;
+  typedText = '';
+  
+  document.getElementById('startBtn').textContent = '⌨️ Typing...';
+  document.getElementById('hiddenInput').disabled = false;
+  document.getElementById('hiddenInput').value = '';
+  document.getElementById('hiddenInput').focus();
+  
+  var startTime = Date.now();
+  var testDuration = DIFFICULTY_TIMES[currentDifficulty] * 1000;
+  timerInterval = setInterval(() => {
+    var elapsed = Date.now() - startTime;
+    var remaining = Math.max(0, Math.ceil((testDuration - elapsed) / 1000));
+    timeLeft = remaining;
+    document.getElementById('timer').textContent = remaining + 's';
+    if (remaining <= 0) {
+      timeLeft = 0;
+      endTest();
+    }
+  }, 200);
+  
+  renderText();
+}
+
+function handleInput(e) {
+  if (!isRunning || isTestComplete) return;
+  
+  const input = document.getElementById('hiddenInput');
+  const value = input.value;
+  
+  // Handle backspace
+  if (value.length < typedText.length) {
+    typedText = typedText.slice(0, -1);
+    charIndex = typedText.length;
+    input.value = typedText;
+    renderText();
+    updateStats();
+    return;
+  }
+  
+  if (charIndex >= currentText.length) {
+    // End of text reached
+    endTest();
+    return;
+  }
+  
+  const newChar = value[value.length - 1];
+  typedText += newChar;
+  totalTyped++;
+  
+  if (newChar !== currentText[charIndex]) {
+    errors++;
+  }
+  
+  charIndex++;
+  input.value = typedText;
+  renderText();
+  updateStats();
+  
+  // Check if we finished the text
+  if (charIndex >= currentText.length) {
+    endTest();
+  }
+}
+
+function updateStats() {
+  const elapsed = DIFFICULTY_TIMES[currentDifficulty] - timeLeft;
+  const minutes = elapsed / 60;
+  const wpm = minutes > 0 ? Math.round((charIndex / 5) / minutes) : 0;
+  const accuracy = totalTyped > 0 ? Math.round(((totalTyped - errors) / totalTyped) * 100) : 100;
+  
+  document.getElementById('wpm').textContent = wpm;
+  document.getElementById('accuracy').textContent = accuracy + '%';
+  document.getElementById('charCount').textContent = `${charIndex}/${currentText.length}`;
+  
+  // Color accuracy
+  const accEl = document.querySelector('.stat-card:nth-child(2) .stat-value');
+  accEl.className = 'stat-value';
+  if (accuracy >= 95) accEl.classList.add('accuracy-high');
+  else if (accuracy >= 80) accEl.classList.add('accuracy-mid');
+  else accEl.classList.add('accuracy-low');
+}
+
+function endTest() {
+  clearInterval(timerInterval);
+  isRunning = false;
+  isTestComplete = true;
+  
+  document.getElementById('hiddenInput').disabled = true;
+  document.getElementById('startBtn').textContent = '🔄 Try Again';
+  
+  const elapsed = DIFFICULTY_TIMES[currentDifficulty] - timeLeft;
+  const minutes = elapsed / 60;
+  
+  // WPM: standard is 5 chars = 1 word
+  const wpm = minutes > 0 ? Math.round((charIndex / 5) / minutes) : 0;
+  const accuracy = totalTyped > 0 ? Math.round(((totalTyped - errors) / totalTyped) * 100) : 0;
+  
+  document.getElementById('wpm').textContent = wpm;
+  document.getElementById('accuracy').textContent = accuracy + '%';
+  
+  // Show results
+  document.getElementById('results').classList.add('show');
+  document.getElementById('resultWpm').textContent = wpm;
+  document.getElementById('resultAcc').textContent = accuracy + '%';
+  document.getElementById('resultChars').textContent = charIndex;
+  
+  // Color WPM
+  const wpmEl = document.getElementById('resultWpm');
+  wpmEl.className = 'val';
+  if (wpm >= 60) wpmEl.classList.add('wpm-good');
+  else if (wpm >= 40) wpmEl.classList.add('wpm-ok');
+  else wpmEl.classList.add('wpm-bad');
+  
+  let msg = '';
+  if (wpm >= 80) msg = '🌟 Outstanding speed! You type faster than most people.';
+  else if (wpm >= 60) msg = '👏 Great speed! You are a proficient typist.';
+  else if (wpm >= 40) msg = '👍 Good progress! Keep practicing to improve.';
+  else msg = '📚 Keep practicing! Speed comes with regular typing practice.';
+  document.getElementById('resultMsg').textContent = msg;
+}
+
+// Handle input events
+document.getElementById('hiddenInput').addEventListener('input', handleInput);
+document.getElementById('hiddenInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Backspace') {
+    // Allow natural backspace handling
+    return;
+  }
+  if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    // Character input - handled by input event
+    return;
+  }
+  if (e.key === ' ') {
+    e.preventDefault(); // Prevent scroll
+    return;
+  }
+});
+
+resetDisplay();
+</script>
+</body>
+</html>

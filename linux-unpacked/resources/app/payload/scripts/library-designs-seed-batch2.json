@@ -1,0 +1,314 @@
+[
+  {
+    "title": "Single-file LRU cache with Map-based recency",
+    "nodeType": "data_structure",
+    "language": "javascript",
+    "description": "Implement a Least-Recently-Used cache with O(1) get and put using a Map for insertion-order recency tracking.",
+    "tags": ["cache", "lru", "data-structure"],
+    "code": "class LRUCache {\n  constructor(cap = 100) { this.cap = cap; this.map = new Map(); }\n  get(k) {\n    if (!this.map.has(k)) return -1;\n    const v = this.map.get(k);\n    this.map.delete(k); this.map.set(k, v);\n    return v;\n  }\n  put(k, v) {\n    if (this.map.has(k)) this.map.delete(k);\n    this.map.set(k, v);\n    if (this.map.size > this.cap) {\n      const oldest = this.map.keys().next().value;\n      this.map.delete(oldest);\n    }\n  }\n}"
+  },
+  {
+    "title": "Single-file debounced Promise queue (serial executor)",
+    "nodeType": "async",
+    "language": "javascript",
+    "description": "Run async tasks one at a time in FIFO order, guaranteeing no overlap with a promise-chain tail.",
+    "tags": ["async", "queue", "promise"],
+    "code": "export function serialQueue() {\n  let tail = Promise.resolve();\n  return function push(task) {\n    const r = tail.then(task);\n    tail = r.catch(() => {});\n    return r;\n  };\n}"
+  },
+  {
+    "title": "Single-file throttle with trailing call",
+    "nodeType": "async",
+    "language": "javascript",
+    "description": "Limit a function to at most once per interval while guaranteeing the last call still runs after the interval.",
+    "tags": ["throttle", "timing", "util"],
+    "code": "function throttle(fn, ms) {\n  let last = 0, timer = null, lastArgs = null;\n  return function (...args) {\n    const now = Date.now();\n    const wait = ms - (now - last);\n    lastArgs = args;\n    if (wait <= 0) {\n      last = now; fn(...args); return;\n    }\n    if (!timer) timer = setTimeout(() => {\n      timer = null; last = Date.now(); fn(...lastArgs);\n    }, wait);\n  };\n}"
+  },
+  {
+    "title": "Single-file Trie for word autocomplete",
+    "nodeType": "data_structure",
+    "language": "javascript",
+    "description": "Build a prefix tree supporting insert, search, startsWith, and collect-all-words-with-prefix for autocomplete.",
+    "tags": ["trie", "autocomplete", "data-structure"],
+    "code": "class Trie {\n  constructor() { this.root = { children: {}, end: false }; }\n  insert(w) {\n    let n = this.root;\n    for (const c of w) { n = (n.children[c] ||= { children: {}, end: false }); }\n    n.end = true;\n  }\n  find(w) {\n    let n = this.root;\n    for (const c of w) { if (!(c in n.children)) return null; n = n.children[c]; }\n    return n;\n  }\n  search(w) { return !!this.find(w)?.end; }\n  startsWith(p) { return !!this.find(p); }\n  collect(p) {\n    const node = this.find(p); const out = [];\n    const walk = (u, acc) => {\n      if (u.end) out.push(acc);\n      for (const [c, ch] of Object.entries(u.children)) walk(ch, acc + c);\n    };\n    if (node) walk(node, p);\n    return out;\n  }\n}"
+  },
+  {
+    "title": "Single-file min-heap (binary heap) priority queue",
+    "nodeType": "data_structure",
+    "language": "javascript",
+    "description": "Implement a binary min-heap with push, pop (smallest), peek and size, used for priority scheduling.",
+    "tags": ["heap", "priority-queue", "data-structure"],
+    "code": "class MinHeap {\n  constructor() { this.a = []; }\n  get size() { return this.a.length; }\n  peek() { return this.a[0]; }\n  push(v) {\n    const a = this.a; a.push(v);\n    let i = a.length - 1;\n    while (i > 0) {\n      const p = (i - 1) >> 1;\n      if (a[p] <= a[i]) break;\n      [a[p], a[i]] = [a[i], a[p]]; i = p;\n    }\n  }\n  pop() {\n    const a = this.a;\n    if (!a.length) return undefined;\n    const top = a[0];\n    const last = a.pop();\n    if (a.length) {\n      a[0] = last;\n      let i = 0;\n      while (true) {\n        let l = i * 2 + 1, r = l + 1, m = i;\n        if (l < a.length && a[l] < a[m]) m = l;\n        if (r < a.length && a[r] < a[m]) m = r;\n        if (m === i) break;\n        [a[m], a[i]] = [a[i], a[m]]; i = m;\n      }\n    }\n    return top;\n  }\n}"
+  },
+  {
+    "title": "Single-file topological sort (Kahn's algorithm)",
+    "nodeType": "algorithm",
+    "language": "javascript",
+    "description": "Return a topologically ordered list of nodes from a dependency graph using in-degree counting, or a cycle error.",
+    "tags": ["graph", "toposort", "algorithm"],
+    "code": "function topSort(edges) {\n  const indeg = {}, adj = {}, nodes = new Set();\n  for (const [a, b] of edges) { nodes.add(a); nodes.add(b); (adj[a] ||= []).push(b); indeg[b] = (indeg[b] || 0) + 1; if (!(a in indeg)) indeg[a] = 0; }\n  for (const n of nodes) if (!(n in indeg)) indeg[n] = 0;\n  const q = [...nodes].filter(n => indeg[n] === 0);\n  const out = [];\n  while (q.length) {\n    const n = q.shift(); out.push(n);\n    for (const m of adj[n] || []) if (--indeg[m] === 0) q.push(m);\n  }\n  if (out.length !== nodes.size) throw new Error('cycle detected');\n  return out;\n}"
+  },
+  {
+    "title": "Single-file merge interval merger",
+    "nodeType": "algorithm",
+    "language": "javascript",
+    "description": "Merge overlapping numeric intervals like [[1,3],[2,6],[8,10]] into non-overlapping spans.",
+    "tags": ["intervals", "merge", "algorithm"],
+    "code": "function mergeIntervals(iv) {\n  if (!iv.length) return [];\n  const s = [...iv].sort((a, b) => a[0] - b[0]);\n  const res = [s[0]];\n  for (let i = 1; i < s.length; i++) {\n    const last = res[res.length - 1];\n    if (s[i][0] <= last[1]) last[1] = Math.max(last[1], s[i][1]);\n    else res.push(s[i]);\n  }\n  return res;\n}"
+  },
+  {
+    "title": "Single-file dead simple rate limiter (token bucket)",
+    "nodeType": "algorithm",
+    "language": "javascript",
+    "description": "A token-bucket limiter that allows burst capacity and refills at a fixed rate, returning allow timestamped tokens.",
+    "tags": ["rate-limit", "token-bucket", "algorithm"],
+    "code": "class TokenBucket {\n  constructor(rate, cap) { this.rate = rate; this.cap = cap; this.tokens = cap; this.t = Date.now(); }\n  take(n = 1) {\n    const now = Date.now();\n    this.tokens = Math.min(this.cap, this.tokens + (now - this.t) / 1000 * this.rate);\n    this.t = now;\n    if (this.tokens >= n) { this.tokens -= n; return true; }\n    return false;\n  }\n}"
+  },
+  {
+    "title": "Single-file circular buffer (ring buffer)",
+    "nodeType": "data_structure",
+    "language": "javascript",
+    "description": "Fixed-capacity ring buffer with push, shift, and overwrite-oldest behavior for streaming windows.",
+    "tags": ["ring-buffer", "stream", "data-structure"],
+    "code": "class RingBuffer {\n  constructor(cap) { this.cap = cap; this.buf = new Array(cap); this.head = 0; this.tail = 0; this.size = 0; }\n  push(v) {\n    if (this.size === this.cap) { this.head = (this.head + 1) % this.cap; this.size--; }\n    this.buf[this.tail] = v; this.tail = (this.tail + 1) % this.cap; this.size++;\n  }\n  toArray() {\n    const out = [];\n    for (let i = 0; i < this.size; i++) out.push(this.buf[(this.head + i) % this.cap]);\n    return out;\n  }\n}"
+  },
+  {
+    "title": "Single-file djb2 + FNV-1a string hash utilities",
+    "nodeType": "algorithm",
+    "language": "javascript",
+    "description": "Two classic non-cryptographic string hash functions returning 32-bit unsigned integers.",
+    "tags": ["hash", "string", "algorithm"],
+    "code": "export function djb2(str) {\n  let h = 5381;\n  for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) >>> 0;\n  return h >>> 0;\n}\nexport function fnv1a(str) {\n  let h = 0x811c9dc5;\n  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = (h * 0x01000193) >>> 0; }\n  return h >>> 0;\n}"
+  },
+  {
+    "title": "Single-file URL query string parser and serializer",
+    "nodeType": "util",
+    "language": "javascript",
+    "description": "Parse a query string into an object (handling arrays and booleans) and serialize an object back into a query string.",
+    "tags": ["url", "query", "util"],
+    "code": "export function parseQs(qs) {\n  const out = {};\n  if (!qs) return out;\n  for (const p of qs.replace(/^\\?/, '').split('&')) {\n    if (!p) continue;\n    const [k, v = ''] = p.split('=');\n    const key = decodeURIComponent(k), val = decodeURIComponent(v);\n    if (key in out) out[key] = Array.isArray(out[key]) ? [...out[key], val] : [out[key], val];\n    else out[key] = val;\n  }\n  return out;\n}\nexport function stringifyQs(obj) {\n  const parts = [];\n  for (const [k, v] of Object.entries(obj)) {\n    const vs = Array.isArray(v) ? v : [v];\n    for (const x of vs) if (x !== undefined && x !== null) parts.push(encodeURIComponent(k) + '=' + encodeURIComponent(x));\n  }\n  return parts.join('&');\n}"
+  },
+  {
+    "title": "Single-file polite natural-language number to words",
+    "nodeType": "util",
+    "language": "javascript",
+    "description": "Convert integers up to billions into English words, e.g. 1234 => one thousand two hundred thirty-four.",
+    "tags": ["number", "words", "util"],
+    "code": "const ONES = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];\nconst TENS = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];\nfunction under1000(n) {\n  let s = '';\n  if (n >= 100) { s += ONES[(n / 100) | 0] + ' hundred'; n %= 100; if (n) s += ' '; }\n  if (n >= 20) { s += TENS[(n / 10) | 0]; if (n % 10) s += '-' + ONES[n % 10]; }\n  else if (n > 0) s += ONES[n];\n  return s;\n}\nexport function toWords(n) {\n  if (n === 0) return 'zero';\n  if (n < 0) return 'negative ' + toWords(-n);\n  const groups = [[1e9, 'billion'], [1e6, 'million'], [1e3, 'thousand']];\n  let s = '';\n  for (const [div, name] of groups) {\n    if (n >= div) {\n      const q = (n / div) | 0;\n      s += (s ? ' ' : '') + under1000(q) + ' ' + name;\n      n %= div;\n    }\n  }\n  if (n) s += (s ? ' ' : '') + under1000(n);\n  return s;\n}"
+  },
+  {
+    "title": "Single-file cron-like time-of-day scheduler (24h)",
+    "nodeType": "util",
+    "language": "javascript",
+    "description": "A tiny scheduler with setTime(action, 'HH:MM') callbacks and 1-second ticker that fires when wall time matches.",
+    "tags": ["scheduler", "cron", "time"],
+    "code": "export function createTimeScheduler() {\n  const jobs = [];\n  return {\n    at(hhmm, fn) { jobs.push({ hhmm, fn }); },\n    tick(now = new Date()) {\n      const hm = now.getHours() * 60 + now.getMinutes();\n      for (const job of jobs) {\n        const [h, m] = job.hhmm.split(':').map(Number);\n        if (h * 60 + m === hm) job.fn(now);\n      }\n    },\n  };\n}"
+  },
+  {
+    "title": "Single-file map/object path getter and setter",
+    "nodeType": "util",
+    "language": "javascript",
+    "description": "Get and set nested values by dot path like 'a.b[2].c', creating missing intermediate objects.",
+    "tags": ["nested", "path", "util"],
+    "code": "function parsePath(p) {\n  return String(p).split('.').flatMap(seg => seg.replace(/\\[(\\d+)\\]/g, '.$1').split('.')).filter(Boolean);\n}\nexport function getPath(obj, path) { return parsePath(path).reduce((o, k) => (o == null ? undefined : o[k]), obj); }\nexport function setPath(obj, path, val) {\n  const keys = parsePath(path);\n  let o = obj;\n  for (let i = 0; i < keys.length - 1; i++) {\n    const k = keys[i];\n    o[k] = o[k] == null || typeof o[k] !== 'object' ? {} : o[k];\n    o = o[k];\n  }\n  o[keys[keys.length - 1]] = val;\n  return obj;\n}"
+  },
+  {
+    "title": "Single-file simple pub/sub event bus",
+    "nodeType": "pattern",
+    "language": "javascript",
+    "description": "A tiny publish-subscribe bus with on/off/emit and wildcard topic support.",
+    "tags": ["events", "pubsub", "pattern"],
+    "code": "class EventBus {\n  constructor() { this.m = new Map(); }\n  on(t, fn) { if (!this.m.has(t)) this.m.set(t, new Set()); this.m.get(t).add(fn); return () => this.off(t, fn); }\n  off(t, fn) { this.m.get(t)?.delete(fn); }\n  emit(t, ...args) { for (const fn of this.m.get(t) || []) fn(...args); }\n  once(t, fn) { const off = this.on(t, (...a) => { off(); fn(...a); }); return off; }\n}"
+  },
+  {
+    "title": "Single-file zero-dependency UUID v4 generator",
+    "nodeType": "util",
+    "language": "javascript",
+    "description": "Generate RFC-4122 version-4 UUIDs from crypto.getRandomValues without any dependency.",
+    "tags": ["uuid", "random", "util"],
+    "code": "export function uuid() {\n  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {\n    return crypto.randomUUID ? crypto.randomUUID() : (() => {\n      const b = crypto.getRandomValues(new Uint8Array(16));\n      b[6] = (b[6] & 0x0f) | 0x40; b[8] = (b[8] & 0x3f) | 0x80;\n      const h = [...b].map(x => x.toString(16).padStart(2, '0')).join('');\n      return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;\n    })();\n  }\n  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = (Math.random() * 16) | 0; const v = c === 'x' ? r : (r & 0x3) | 0x8; return v.toString(16); });\n}"
+  },
+  {
+    "title": "Single-file DOM el helper (hyperscript-style)",
+    "nodeType": "pattern",
+    "language": "javascript",
+    "description": "A compact h(tag, props, children) helper to build DOM nodes programmatically with event and attribute support.",
+    "tags": ["dom", "hyperscript", "pattern"],
+    "code": "export function h(tag, props = {}, ...children) {\n  const el = document.createElement(tag);\n  for (const [k, v] of Object.entries(props)) {\n    if (k === 'class') el.className = v;\n    else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2).toLowerCase(), v);\n    else if (k in el && typeof el[k] !== 'function') el[k] = v;\n    else el.setAttribute(k, v);\n  }\n  for (const c of children.flat()) el.append(c == null ? document.createTextNode('') : (c.nodeType ? c : document.createTextNode(String(c))));\n  return el;\n}"
+  },
+  {
+    "title": "Single-file simple state store with subscribe (external store pattern)",
+    "nodeType": "pattern",
+    "language": "javascript",
+    "description": "A minimal external store: getState/setState/subscribe with immutable updates and snapshot separation.",
+    "tags": ["state", "store", "pattern"],
+    "code": "export function createStore(reducer, init) {\n  let state = init;\n  const subs = new Set();\n  return {\n    getState: () => state,\n    dispatch: (action) => { state = reducer(state, action); for (const fn of subs) fn(state); },\n    subscribe: (fn) => { subs.add(fn); return () => subs.delete(fn); },\n  };\n}"
+  },
+  {
+    "title": "Single-file callback-free promise timeout wrapper",
+    "nodeType": "async",
+    "language": "javascript",
+    "description": "Wrap any promise with a timeout that rejects if it does not settle in ms, or awaits an abort out.",
+    "tags": ["promise", "timeout", "async"],
+    "code": "export function withTimeout(p, ms, msg = 'timed out') {\n  return new Promise((resolve, reject) => {\n    const t = setTimeout(() => reject(new Error(msg)), ms);\n    p.then(v => { clearTimeout(t); resolve(v); }, e => { clearTimeout(t); reject(e); });\n  });\n}"
+  },
+  {
+    "title": "Single-file Fisher-Yates shuffle (in place)",
+    "nodeType": "algorithm",
+    "language": "javascript",
+    "description": "Uniformly shuffle an array in place using the Fisher-Yates algorithm and an optional RNG.",
+    "tags": ["shuffle", "random", "algorithm"],
+    "code": "export function shuffle(arr, rng = Math.random) {\n  for (let i = arr.length - 1; i > 0; i--) {\n    const j = Math.floor(rng() * (i + 1));\n    [arr[i], arr[j]] = [arr[j], arr[i]];\n  }\n  return arr;\n}"
+  },
+  {
+    "title": "Single-file simple object diff",
+    "nodeType": "util",
+    "language": "javascript",
+    "description": "Return the set of changed/added/removed keys between two flat objects with deep-compare on equal.",
+    "tags": ["diff", "object", "util"],
+    "code": "export function diff(a = {}, b = {}) {\n  const out = { added: {}, removed: {}, changed: {} };\n  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);\n  for (const k of keys) {\n    if (!(k in a)) out.added[k] = b[k];\n    else if (!(k in b)) out.removed[k] = a[k];\n    else if (JSON.stringify(a[k]) !== JSON.stringify(b[k])) out.changed[k] = { from: a[k], to: b[k] };\n  }\n  return out;\n}"
+  },
+  {
+    "title": "Single-file natural mergesort (bottom-up)",
+    "nodeType": "algorithm",
+    "language": "javascript",
+    "description": "Stable bottom-up mergesort over arrays with a comparator, using an aux buffer to merge runs.",
+    "tags": ["sort", "merge", "algorithm"],
+    "code": "export function mergesort(arr, cmp = (a, b) => a - b) {\n  const a = arr.slice();\n  const aux = new Array(a.length);\n  const merge = (lo, mid, hi) => {\n    for (let k = lo; k <= hi; k++) aux[k] = a[k];\n    let i = lo, j = mid + 1;\n    for (let k = lo; k <= hi; k++) {\n      if (i > mid) a[k] = aux[j++];\n      else if (j > hi) a[k] = aux[i++];\n      else a[k] = cmp(aux[j], aux[i]) < 0 ? aux[j++] : aux[i++];\n    }\n  };\n  for (let sz = 1; sz < a.length; sz *= 2) {\n    for (let lo = 0; lo < a.length - sz; lo += 2 * sz) merge(lo, lo + sz - 1, Math.min(lo + 2 * sz - 1, a.length - 1));\n  }\n  return a;\n}"
+  },
+  {
+    "title": "Single-file sliding window max",
+    "nodeType": "algorithm",
+    "language": "javascript",
+    "description": "Given an array and window size, return the max of each contiguous window using a monotonic deque (O(n)).",
+    "tags": ["sliding-window", "deque", "algorithm"],
+    "code": "export function slidingMax(arr, k) {\n  const res = [], dq = [];\n  for (let i = 0; i < arr.length; i++) {\n    while (dq.length && arr[dq[dq.length - 1]] <= arr[i]) dq.pop();\n    dq.push(i);\n    if (dq[0] <= i - k) dq.shift();\n    if (i >= k - 1) res.push(arr[dq[0]]);\n  }\n  return res;\n}"
+  },
+  {
+    "title": "Single-file longest common prefix of strings",
+    "nodeType": "algorithm",
+    "language": "javascript",
+    "description": "Return the longest common prefix across an array of strings, or an empty string if none share a prefix.",
+    "tags": ["string", "prefix", "algorithm"],
+    "code": "export function longestCommonPrefix(strs) {\n  if (!strs.length) return '';\n  let p = strs[0];\n  for (let i = 1; i < strs.length; i++) {\n    while (!strs[i].startsWith(p)) {\n      p = p.slice(0, -1);\n      if (!p) return '';\n    }\n  }\n  return p;\n}"
+  },
+  {
+    "title": "Single-file parse human size strings to/from bytes",
+    "nodeType": "util",
+    "language": "javascript",
+    "description": "Convert '1.5 MB', '300KB', '2GB' to bytes and bytes to a compact human-readable string.",
+    "tags": ["bytes", "size", "util"],
+    "code": "const UNITS = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];\nexport function parseSize(s) {\n  const m = String(s).trim().match(/^([\\d.]+)\\s*([A-Za-z]+)?$/);\n  if (!m) return NaN;\n  const n = parseFloat(m[1]);\n  if (!m[2]) return n;\n  const i = UNITS.indexOf(m[2].toUpperCase());\n  return isNaN(i) || i < 0 ? NaN : n * Math.pow(1024, i);\n}\nexport function formatSize(bytes) {\n  let v = bytes, i = 0;\n  while (v >= 1024 && i < UNITS.length - 1) { v /= 1024; i++; }\n  return (v % 1 === 0 ? v : v.toFixed(1)) + ' ' + UNITS[i];\n}"
+  },
+  {
+    "title": "Single-file retainEventLoop-safe sleep with abort",
+    "nodeType": "async",
+    "language": "javascript",
+    "description": "Sleep ms that resolves early via an AbortSignal and never leaks timers.",
+    "tags": ["sleep", "abort", "async"],
+    "code": "export function sleep(ms, signal) {\n  return new Promise((resolve, reject) => {\n    if (signal?.aborted) return reject(new Error('aborted'));\n    const t = setTimeout(done, ms);\n    function done() { signal?.removeEventListener('abort', onA); resolve(); }\n    function onA() { clearTimeout(t); reject(new Error('aborted')); }\n    signal?.addEventListener('abort', onA, { once: true });\n  });\n}"
+  },
+  {
+    "title": "Single-file count words with frequency map and ordering",
+    "nodeType": "algorithm",
+    "language": "javascript",
+    "description": "Count word frequencies in a string, normalizing case, and return an array sorted by count descending.",
+    "tags": ["words", "frequency", "algorithm"],
+    "code": "export function wordFreq(text, top) {\n  const map = new Map();\n  for (const w of text.toLowerCase().match(/[a-z0-9']+/g) || []) map.set(w, (map.get(w) || 0) + 1);\n  const arr = [...map.entries()].sort((a, b) => b[1] - a[1]);\n  return top ? arr.slice(0, top) : arr;\n}"
+  },
+  {
+    "title": "Single-file light template engine (mustache-lite)",
+    "nodeType": "util",
+    "language": "javascript",
+    "description": "Render a tiny template with {{var}} interpolation and {{#each list}}...{{/each}} loops from a context object.",
+    "tags": ["template", "render", "util"],
+    "code": "export function render(tpl, ctx) {\n  return tpl.replace(/\\{\\{#each\\s+([a-zA-Z0-9_.]+)\\}\\}([\\s\\S]*?)\\{\\{\\/each\\}\\}/g, (_, key, body) => {\n    const list = key.split('.').reduce((o, k) => (o == null ? undefined : o[k]), ctx) || [];\n    return list.map(item => render(body, { ...ctx, this: item })).join('');\n  }).replace(/\\{\\{(\\s*)([a-zA-Z0-9_.]+)(\\s*)\\}\\}/g, (_, p, key) => {\n    const v = key.split('.').reduce((o, k) => (o == null ? undefined : o[k]), ctx);\n    return v == null ? '' : String(v);\n  });\n}"
+  },
+  {
+    "title": "Single-file wildcard glob matcher",
+    "nodeType": "algorithm",
+    "language": "javascript",
+    "description": "Match a string against a pattern with * (any) and ? (single char) wildcards using dynamic programming.",
+    "tags": ["glob", "wildcard", "algorithm"],
+    "code": "export function globMatch(s, p) {\n  const dp = Array.from({ length: s.length + 1 }, () => new Array(p.length + 1).fill(false));\n  dp[0][0] = true;\n  for (let j = 1; j <= p.length; j++) if (p[j - 1] === '*') dp[0][j] = dp[0][j - 1];\n  for (let i = 1; i <= s.length; i++) {\n    for (let j = 1; j <= p.length; j++) {\n      if (p[j - 1] === '*') dp[i][j] = dp[i - 1][j] || dp[i][j - 1];\n      else if (p[j - 1] === '?' || p[j - 1] === s[i - 1]) dp[i][j] = dp[i - 1][j - 1];\n    }\n  }\n  return dp[s.length][p.length];\n}"
+  },
+  {
+    "title": "Single-file JSON pretty print with indentation",
+    "nodeType": "util",
+    "language": "javascript",
+    "description": "Serialize any JSON-safe value into an indented, readable string with custom indent width.",
+    "tags": ["json", "format", "util"],
+    "code": "export function pretty(obj, indent = 2) {\n  return JSON.stringify(obj, (k, v) => v === undefined ? undefined : v, indent);\n}"
+  },
+  {
+    "title": "Single-file rolling average / EMA stream stats",
+    "nodeType": "algorithm",
+    "language": "javascript",
+    "description": "Maintain a running exponential moving average and simple windowed average over streaming values.",
+    "tags": ["statistics", "ema", "stream"],
+    "code": "export class EMA {\n  constructor(alpha) { this.alpha = alpha; this.v = null; }\n  push(x) { this.v = this.v == null ? x : this.alpha * x + (1 - this.alpha) * this.v; return this.v; }\n  get() { return this.v; }\n}\nexport class RollingAvg {\n  constructor(n) { this.n = n; this.buf = []; this.sum = 0; }\n  push(x) { this.buf.push(x); this.sum += x; if (this.buf.length > this.n) this.sum -= this.buf.shift(); return this.sum / this.buf.length; }\n}"
+  },
+  {
+    "title": "Single-file Pascal/Param/camel/snake case converter",
+    "nodeType": "util",
+    "language": "javascript",
+    "description": "Convert any input to camelCase, snake_case, kebab-case, PascalCase, or CONSTANT_CASE via one tokenizer.",
+    "tags": ["case", "string", "util"],
+    "code": "function tokenize(s) { return String(s).match(/[A-Z]?[a-z0-9]+|[A-Z]+(?![a-z])|[a-zA-Z0-9]+/g) || []; }\nexport function toCamel(s) { return tokenize(s).map((w, i) => i ? w[0].toUpperCase() + w.slice(1).toLowerCase() : w.toLowerCase()).join(''); }\nexport function toSnake(s) { return tokenize(s).map(w => w.toLowerCase()).join('_'); }\nexport function toKebab(s) { return tokenize(s).map(w => w.toLowerCase()).join('-'); }\nexport function toPascal(s) { return tokenize(s).map(w => w[0].toUpperCase() + w.slice(1).toLowerCase()).join(''); }\nexport function toConst(s) { return tokenize(s).map(w => w.toUpperCase()).join('_'); }"
+  },
+  {
+    "title": "Single-file two-pointer subsequence check",
+    "nodeType": "algorithm",
+    "language": "javascript",
+    "description": "Return true if s is a subsequence of t (characters in order) using a single two-pointer scan.",
+    "tags": ["subsequence", "two-pointer", "algorithm"],
+    "code": "export function isSubsequence(s, t) {\n  let i = 0;\n  for (let j = 0; j < t.length && i < s.length; j++) if (s[i] === t[j]) i++;\n  return i === s.length;\n}"
+  },
+  {
+    "title": "Single-file pixelate data-URI uppercase base64 checksum",
+    "nodeType": "util",
+    "language": "javascript",
+    "description": "Compute a stable FNV-style checksum over a string and render it as a short uppercase hex tag for fingerprinting.",
+    "tags": ["checksum", "fingerprint", "util"],
+    "code": "export function fingerprint(str) {\n  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;\n  for (let i = 0; i < str.length; i++) {\n    const ch = str.charCodeAt(i);\n    h1 = Math.imul(h1 ^ ch, 2654435761);\n    h2 = Math.imul(h2 ^ ch, 1597334677);\n  }\n  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);\n  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);\n  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16).toUpperCase().slice(-8);\n}"
+  },
+  {
+    "title": "Single-file priority-based event loop microtask debounce",
+    "nodeType": "async",
+    "language": "javascript",
+    "description": "Batch synchronous writes into a single microtask flush with a clean copy of the buffer each cycle.",
+    "tags": ["debounce", "microtask", "batch"],
+    "code": "export function microtaskBatch(flush) {\n  let pending = [];\n  let scheduled = false;\n  function pump() {\n    scheduled = false;\n    const batch = pending; pending = [];\n    flush(batch);\n  }\n  return {\n    add(item) { pending.push(item); if (!scheduled) { scheduled = true; Promise.resolve().then(pump); } },\n    flush() { if (scheduled) { pump(); } },\n  };\n}"
+  },
+  {
+    "title": "Single-file run-length encoding / decoding",
+    "nodeType": "algorithm",
+    "language": "javascript",
+    "description": "Compress runs of repeated characters like aaabbc => a3b2c1 and decode back, handling digits in input.",
+    "tags": ["compress", "rle", "algorithm"],
+    "code": "export function rleEncode(s) {\n  let out = '', count = 1;\n  for (let i = 0; i < s.length; i++) {\n    if (s[i] === s[i + 1]) count++;\n    else { out += s[i] + count; count = 1; }\n  }\n  return out;\n}\nexport function rleDecode(s) {\n  let out = '';\n  const re = /([^0-9])(\\d+)/g, chunks = [];\n  let m; while ((m = re.exec(s))) chunks.push([m[1], +m[2]]);\n  for (const [ch, n] of chunks) out += ch.repeat(n);\n  return out;\n}"
+  },
+  {
+    "title": "Single-file circular depend check between modules",
+    "nodeType": "algorithm",
+    "language": "javascript",
+    "description": "Detect whether an import graph (map of module -> deps) contains a cycle using colored DFS.",
+    "tags": ["graph", "cycle", "algorithm"],
+    "code": "export function detectCycle(graph) {\n  const WHITE = 0, GRAY = 1, BLACK = 2;\n  const color = {};\n  function visit(node, path) {\n    color[node] = GRAY; path.push(node);\n    for (const dep of graph[node] || []) {\n      if (color[dep] === GRAY) return path.slice(path.indexOf(dep)).concat(dep);\n      if (color[dep] === WHITE) { const c = visit(dep, path); if (c) return c; }\n    }\n    color[node] = BLACK; path.pop();\n    return null;\n  }\n  for (const n of Object.keys(graph)) if (color[n] === WHITE) { const c = visit(n, []); if (c) return c; }\n  return null;\n}"
+  },
+  {
+    "title": "Single-file HTML entity escape helper",
+    "nodeType": "util",
+    "language": "javascript",
+    "description": "Escape user input for safe insertion into HTML and reverse-escape back to raw text.",
+    "tags": ["html", "escape", "security"],
+    "code": "const MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', \"'\": '&#39;' };\nexport function escapeHtml(s) { return String(s).replace(/[&<>\"']/g, c => MAP[c]); }\nexport function unescapeHtml(s) { return String(s).replace(/&(amp|lt|gt|quot|#39);/g, (_, k) => ({ amp: '&', lt: '<', gt: '>', quot: '\"', '#39': \"'\" }[k])); }"
+  },
+  {
+    "title": "Single-file chunk array into fixed-size groups",
+    "nodeType": "util",
+    "language": "javascript",
+    "description": "Split an array into an array of chunks of the given size, keeping the remainder as the last chunk.",
+    "tags": ["chunk", "array", "util"],
+    "code": "export function chunk(arr, size) {\n  const out = [];\n  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));\n  return out;\n}"
+  }
+]

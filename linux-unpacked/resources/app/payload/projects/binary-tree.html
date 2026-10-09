@@ -1,0 +1,83 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>BST Visualizer</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#ccc;min-height:100vh;padding:20px;display:flex;justify-content:center}.container{max-width:800px;width:100%;text-align:center}h1{color:#00d9ff;font-size:1.1rem;margin-bottom:4px}p.sub{color:#555;font-size:0.65rem;margin-bottom:12px}.controls{display:flex;gap:6px;justify-content:center;margin-bottom:12px;flex-wrap:wrap}.controls button,.controls input{padding:5px 10px;border:1px solid rgba(255,255,255,0.06);border-radius:4px;background:transparent;color:#888;cursor:pointer;font-size:0.55rem;font-family:inherit;transition:0.1s}.controls button:hover{border-color:#00d9ff;color:#ccc}.controls button.primary{background:rgba(0,217,255,0.1);color:#00d9ff}.controls input{width:60px;color:#ccc;text-align:center;outline:none}.controls input:focus{border-color:#00d9ff}#treeCanvas{border:1px solid rgba(255,255,255,0.06);border-radius:8px;margin:0 auto;display:block;background:#0e0e1a}.stats{display:flex;gap:16px;justify-content:center;margin-top:8px;font-size:0.55rem;color:#555}.stats .val{color:#00d9ff}</style></head><body>
+<div class="container">
+<h1>🌳 BST Visualizer</h1><p class="sub">Binary Search Tree — Insert, Delete, Search, Traverse</p>
+<div class="controls">
+<input id="nodeInput" value="50" placeholder="Value" onkeydown="if(event.key==='Enter')insertNode()">
+<button onclick="insertNode()" class="primary">➕ Insert</button>
+<button onclick="deleteNode()">🗑️ Delete</button>
+<button onclick="searchNode()">🔍 Search</button>
+<button onclick="traverse('inorder')">📋 Inorder</button>
+<button onclick="traverse('preorder')">Preorder</button>
+<button onclick="traverse('postorder')">Postorder</button>
+<button onclick="resetTree()">🔄 Reset</button>
+<button onclick="generateRandom()">🎲 Random</button>
+</div>
+<canvas id="treeCanvas" width="750" height="450"></canvas>
+<div class="stats"><span>Nodes: <span class="val" id="nodeCount">0</span></span><span>Height: <span class="val" id="treeHeight">0</span></span><span id="traversalResult" style="color:#555">Ready</span></div>
+</div>
+<script>
+const canvas=document.getElementById('treeCanvas'),ctx=canvas.getContext('2d');
+let root=null,highlightNode=null,traversalPath=[];
+
+class Node{constructor(v){this.val=v;this.left=null;this.right=null}}
+
+function insert(val){if(!root){root=new Node(val);return}let cur=root;while(cur){if(val<cur.val){if(!cur.left){cur.left=new Node(val);return}cur=cur.left}else if(val>cur.val){if(!cur.right){cur.right=new Node(val);return}cur=cur.right}else return}}
+
+function deleteVal(val){function del(node,v){if(!node)return null;if(v<node.val)node.left=del(node.left,v);else if(v>node.val)node.right=del(node.right,v);else{if(!node.left)return node.right;if(!node.right)return node.left;let min=node.right;while(min.left)min=min.left;node.val=min.val;node.right=del(node.right,min.val)}return node}
+  root=del(root,val)}
+
+function search(val){let cur=root,path=[];while(cur){path.push(cur);if(val===cur.val){return path}cur=val<cur.val?cur.left:cur.right}return null}
+
+function getHeight(n){return n?1+Math.max(getHeight(n.left),getHeight(n.right)):0}
+
+function insertNode(){const v=parseInt(document.getElementById('nodeInput').value);if(isNaN(v))return;insert(v);highlightNode=v;draw();updateStats();saveToStorage()}
+function deleteNode(){const v=parseInt(document.getElementById('nodeInput').value);if(isNaN(v))return;deleteVal(v);highlightNode=null;draw();updateStats();saveToStorage()}
+function searchNode(){const v=parseInt(document.getElementById('nodeInput').value);if(isNaN(v))return;const result=search(v);highlightNode=v;draw();document.getElementById('traversalResult').textContent=result?`✅ Found ${v} (${result.length} steps)`:`❌ ${v} not found`}
+function resetTree(){root=null;highlightNode=null;traversalPath=[];draw();updateStats();saveToStorage()}
+function generateRandom(){resetTree();const vals=new Set();while(vals.size<10)vals.add(Math.floor(Math.random()*90)+5);for(const v of vals)insert(v);draw();updateStats();saveToStorage()}
+
+function traverse(type){
+  traversalPath=[];let idx=0;
+  function trav(node){if(!node)return;if(type==='preorder')traversalPath.push(node.val);trav(node.left);if(type==='inorder')traversalPath.push(node.val);trav(node.right);if(type==='postorder')traversalPath.push(node.val)}
+  trav(root);
+  document.getElementById('traversalResult').textContent=`${type}: ${traversalPath.join(' → ')}`;
+  // Animate
+  function anim(){if(idx>=traversalPath.length){draw();return}highlightNode=traversalPath[idx];idx++;draw();setTimeout(anim,400)}
+  if(traversalPath.length>0)anim();
+}
+
+function draw(){
+  ctx.clearRect(0,0,750,450);ctx.fillStyle='#0e0e1a';ctx.fillRect(0,0,750,450);
+  if(!root){ctx.fillStyle='#555';ctx.font='14px Arial';ctx.textAlign='center';ctx.fillText('Insert nodes to build the tree',375,225);return}
+  
+  function drawNode(node,x,y,level){
+    if(!node)return;const offset=Math.max(40,200/(level+1));
+    // Lines
+    if(node.left){ctx.strokeStyle='rgba(255,255,255,0.08)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,y+20);ctx.lineTo(x-offset,y+60);ctx.stroke();drawNode(node.left,x-offset,y+60,level+1)}
+    if(node.right){ctx.strokeStyle='rgba(255,255,255,0.08)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,y+20);ctx.lineTo(x+offset,y+60);ctx.stroke();drawNode(node.right,x+offset,y+60,level+1)}
+    
+    // Node circle
+    const isHighlight=node.val===highlightNode;
+    const isInPath=traversalPath.includes(node.val);
+    ctx.beginPath();ctx.arc(x,y,20,0,Math.PI*2);
+    ctx.fillStyle=isHighlight?'rgba(0,217,255,0.2)':isInPath?'rgba(74,222,128,0.1)':'rgba(255,255,255,0.03)';
+    ctx.fill();
+    ctx.strokeStyle=isHighlight?'#00d9ff':isInPath?'#4ade80':'rgba(255,255,255,0.1)';
+    ctx.lineWidth=isHighlight?2.5:1;ctx.stroke();
+    
+    ctx.fillStyle=isHighlight?'#00d9ff':'#ccc';
+    ctx.font='bold 13px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(node.val,x,y);
+  }
+  drawNode(root,375,40,0);
+}
+
+function updateStats(){document.getElementById('nodeCount').textContent=countNodes(root);document.getElementById('treeHeight').textContent=getHeight(root)}
+function countNodes(n){return n?1+countNodes(n.left)+countNodes(n.right):0}
+function saveToStorage(){try{const arr=[];function collect(n){if(!n)return;arr.push(n.val);collect(n.left);collect(n.right)}collect(root);localStorage.setItem('bst_data',JSON.stringify(arr))}catch(e){}}
+function loadFromStorage(){try{const arr=JSON.parse(localStorage.getItem('bst_data'));if(arr&&arr.length){for(const v of arr)insert(v);return true}}catch(e){}return false}
+
+if(!loadFromStorage()){insert(50);insert(30);insert(70);insert(20);insert(40);insert(60);insert(80)}
+draw();updateStats();
+</script>
+</body></html>

@@ -1,0 +1,527 @@
+[
+  {
+    "title": "Single-file password strength checker (pure function, no DOM)",
+    "nodeType": "logic",
+    "language": "javascript",
+    "description": "A dependency-free password strength scorer: length, case, digits, symbols.",
+    "tags": [
+      "password",
+      "validation",
+      "scoring",
+      "security",
+      "pure-function"
+    ],
+    "code": "function passwordStrength(pw) {\n  let score = 0;\n  if (pw.length >= 8) score += 1;\n  if (pw.length >= 12) score += 1;\n  if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score += 1;\n  if (/[0-9]/.test(pw)) score += 1;\n  if (/[^A-Za-z0-9]/.test(pw)) score += 1;\n  if (pw.length >= 16 && /[^A-Za-z0-9]/.test(pw) && /[0-9]/.test(pw)) score += 1;\n  return Math.min(5, score);\n}\nmodule.exports = { passwordStrength };\n"
+  },
+  {
+    "title": "Single-file byte counting CLI from stdin",
+    "nodeType": "cli",
+    "language": "javascript",
+    "description": "Read bytes from stdin and print the count (wordcount style).",
+    "tags": [
+      "cli",
+      "stdin",
+      "stream",
+      "byte-count",
+      "node"
+    ],
+    "code": "const chunks = [];\nprocess.stdin.on('data', (c) => chunks.push(c));\nprocess.stdin.on('end', () => {\n  const bytes = Buffer.concat(chunks).length;\n  process.stdout.write(String(bytes) + '\\n');\n});\n"
+  },
+  {
+    "title": "Two-file HTTP static file server (no framework)",
+    "nodeType": "server",
+    "language": "javascript",
+    "description": "Serve files from a directory with a whitelist guard and clean 404s.",
+    "tags": [
+      "http",
+      "server",
+      "static",
+      "node",
+      "filesystem"
+    ],
+    "code": "const http = require('http');\nconst fs = require('fs');\nconst path = require('path');\nconst ROOT = process.argv[2] || process.cwd();\nconst server = http.createServer((req, res) => {\n  const urlPath = decodeURIComponent(new URL(req.url, 'http://x').pathname);\n  const safe = path.normalize(path.join(ROOT, urlPath)).startsWith(path.normalize(ROOT));\n  if (!safe) { res.writeHead(403).end('forbidden'); return; }\n  fs.readFile(path.join(ROOT, urlPath), (err, data) => {\n    if (err) { res.writeHead(404).end('not found'); return; }\n    res.writeHead(200).end(data);\n  });\n});\nserver.listen(8080, () => console.log('serving ' + ROOT + ' on :8080'));\n"
+  },
+  {
+    "title": "Single-file media player (HTML+CSS+JS, no deps)",
+    "nodeType": "media",
+    "language": "html",
+    "description": "Play a local media file with play/pause/seek in one HTML file.",
+    "tags": [
+      "media",
+      "audio",
+      "player",
+      "html",
+      "browser"
+    ],
+    "code": "<!DOCTYPE html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><title>Player</title><style>\nbody{font-family:system-ui;max-width:420px;margin:40px auto;padding:0 16px}\nvideo,audio{width:100%}\n</style></head><body>\n<audio id=\"a\" controls></audio>\n<input id=\"f\" type=\"file\" accept=\"audio/*,video/*\">\n<script>\nconst a = document.getElementById('a');\ndocument.getElementById('f').onchange = (e) => {\n  const f = e.target.files[0];\n  if (f) a.src = URL.createObjectURL(f);\n};\n</script>\n</body></html>\n"
+  },
+  {
+    "title": "Single-file todo list (localStorage, no deps)",
+    "nodeType": "app",
+    "language": "html",
+    "description": "Add, toggle, and delete todos persisted to localStorage.",
+    "tags": [
+      "todo",
+      "localStorage",
+      "crud",
+      "browser",
+      "state"
+    ],
+    "code": "<!DOCTYPE html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><title>Todo</title><style>\nbody{font-family:system-ui;max-width:480px;margin:40px auto}\nli.done{text-decoration:line-through;opacity:.5}\n</style></head><body>\n<input id=\"i\" placeholder=\"Add todo\"><button id=\"add\">Add</button>\n<ul id=\"u\"></ul>\n<script>\nlet todos = JSON.parse(localStorage.getItem('todos') || '[]');\nconst u = document.getElementById('u');\nfunction render() {\n  u.innerHTML = '';\n  todos.forEach((t, i) => {\n    const li = document.createElement('li');\n    li.className = t.done ? 'done' : '';\n    li.textContent = t.text;\n    li.onclick = () => { todos[i].done = !todos[i].done; persist(); };\n    const del = document.createElement('button');\n    del.textContent = 'x';\n    del.onclick = (e) => { e.stopPropagation(); todos.splice(i, 1); persist(); };\n    li.appendChild(del);\n    u.appendChild(li);\n  });\n}\nfunction persist() { localStorage.setItem('todos', JSON.stringify(todos)); render(); }\ndocument.getElementById('add').onclick = () => {\n  const v = document.getElementById('i').value.trim();\n  if (v) { todos.push({ text: v, done: false }); persist(); document.getElementById('i').value = ''; }\n};\nrender();\n</script>\n</body></html>\n"
+  },
+  {
+    "title": "Single-file stopwatch (requestAnimationFrame)",
+    "nodeType": "app",
+    "language": "html",
+    "description": "Minimal stopwatch using performance.now and requestAnimationFrame.",
+    "tags": [
+      "stopwatch",
+      "timer",
+      "browser",
+      "raf"
+    ],
+    "code": "<!DOCTYPE html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><title>Stopwatch</title></head><body>\n<div id=\"t\" style=\"font:700 3rem monospace\">00:00.00</div>\n<button id=\"b\">Start</button>\n<script>\nlet start = 0, acc = 0, raf = 0, on = false;\nconst t = document.getElementById('t');\nfunction tick() {\n  const ms = acc + (performance.now() - start);\n  t.textContent = new Date(ms).toISOString().slice(14, 22);\n  raf = requestAnimationFrame(tick);\n}\ndocument.getElementById('b').onclick = () => {\n  on = !on;\n  if (on) { start = performance.now(); tick(); document.getElementById('b').textContent = 'Stop'; }\n  else { cancelAnimationFrame(raf); acc += performance.now() - start; document.getElementById('b').textContent = 'Start'; }\n};\n</script>\n</body></html>\n"
+  },
+  {
+    "title": "Single-file word counter (split on whitespace)",
+    "nodeType": "cli",
+    "language": "javascript",
+    "description": "Count words, lines, characters from stdin.",
+    "tags": [
+      "cli",
+      "word-count",
+      "stdin",
+      "text"
+    ],
+    "code": "let data = '';\nprocess.stdin.resume();\nprocess.stdin.on('data', (c) => (data += c));\nprocess.stdin.on('end', () => {\n  const lines = data.split(/\\r?\\n/).filter((l) => l.length > 0).length;\n  const words = data.trim().split(/\\s+/).filter(Boolean).length;\n  const chars = data.length;\n  process.stdout.write(`${lines} ${words} ${chars}\\n`);\n});\n"
+  },
+  {
+    "title": "Markdown to HTML converter (bold, italic, headers, links)",
+    "nodeType": "logic",
+    "language": "javascript",
+    "description": "A tiny, dependency-free markdown parser covering common inline and block syntax.",
+    "tags": [
+      "markdown",
+      "parser",
+      "html",
+      "converter"
+    ],
+    "code": "function bold(s){return '<strong>' + s + '</strong>';}\nfunction italic(s){return '<em>' + s + '</em>';}\nfunction link(href,text){return '<a href=\"' + href + '\">' + text + '</a>';}\nmodule.exports = { bold, italic, link };\n"
+  },
+  {
+    "title": "Single-file notes app with search",
+    "nodeType": "app",
+    "language": "html",
+    "description": "Create, list, delete, and search notes stored in localStorage.",
+    "tags": [
+      "notes",
+      "search",
+      "localStorage",
+      "crud",
+      "browser"
+    ],
+    "code": "<!DOCTYPE html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><title>Notes</title><style>\nbody{font-family:system-ui;margin:40px auto;max-width:520px;padding:0 16px}\n</style></head><body>\n<input id=\"q\" placeholder=\"Search\"><button id=\"n\">New</button><ul id=\"u\"></ul>\n<script>\nlet notes = JSON.parse(localStorage.getItem('notes') || '[]');\nconst u = document.getElementById('u');\nfunction render() {\n  const q = document.getElementById('q').value.toLowerCase();\n  u.innerHTML = '';\n  notes.filter((n) => n.text.toLowerCase().includes(q)).forEach((n, i) => {\n    const li = document.createElement('li');\n    li.textContent = n.text;\n    u.appendChild(li);\n  });\n  localStorage.setItem('notes', JSON.stringify(notes));\n}\ndocument.getElementById('n').onclick = () => {\n  const v = prompt('Note:').trim();\n  if (v) { notes.push({ text: v }); render(); }\n};\ndocument.getElementById('q').oninput = render;\nrender();\n</script>\n</body></html>\n"
+  },
+  {
+    "title": "Single-file quiz (questions array, score tracker)",
+    "nodeType": "app",
+    "language": "html",
+    "description": "Multiple choice quiz with immediate scoring.",
+    "tags": [
+      "quiz",
+      "assessment",
+      "browser",
+      "state"
+    ],
+    "code": "<!DOCTYPE html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><title>Quiz</title></head><body>\n<div id=\"a\"></div>\n<script>\nconst qs = [\n  { q: '2+2?', o: ['3','4','5'], a: 1 },\n  { q: 'Capital of France?', o: ['London','Paris','Rome'], a: 1 },\n];\nlet i = 0, score = 0;\nconst a = document.getElementById('a');\nfunction show() {\n  if (i >= qs.length) { a.textContent = `Done: ${score}/${qs.length}`; return; }\n  const q = qs[i];\n  a.innerHTML = `<h3>${q.q}</h3>` + q.o.map((o, j) =>\n    `<button onclick=\"pick(${j})\">${o}</button>`).join('');\n}\nfunction pick(j) { if (j === qs[i].a) score++; i++; show(); }\nshow();\n</script>\n</body></html>\n"
+  },
+  {
+    "title": "Two-file contact form backend (validate + store JSON file)",
+    "nodeType": "server",
+    "language": "javascript",
+    "description": "POST form endpoint that validates and appends to a JSON file.",
+    "tags": [
+      "http",
+      "form",
+      "validation",
+      "json",
+      "server"
+    ],
+    "code": "const http = require('http');\nconst fs = require('fs');\nconst DB = 'messages.json';\nif (!fs.existsSync(DB)) fs.writeFileSync(DB, '[]');\nconst server = http.createServer((req, res) => {\n  if (req.method !== 'POST' || req.url !== '/contact') {\n    res.writeHead(404).end('not found'); return;\n  }\n  let body = '';\n  req.on('data', (c) => (body += c));\n  req.on('end', () => {\n    let m;\n    try { m = JSON.parse(body); } catch { res.writeHead(400).end('bad json'); return; }\n    if (!/\\S+@\\S+\\.\\S+/.test(m.email || '')) { res.writeHead(400).end('bad email'); return; }\n    const all = JSON.parse(fs.readFileSync(DB, 'utf-8'));\n    all.push({ email: m.email, message: String(m.message || ''), at: Date.now() });\n    fs.writeFileSync(DB, JSON.stringify(all));\n    res.writeHead(201).end('ok');\n  });\n});\nserver.listen(8080);\n"
+  },
+  {
+    "title": "Single-file temperature converter (C/F/K)",
+    "nodeType": "logic",
+    "language": "javascript",
+    "description": "Pure conversion functions for celsius, fahrenheit, kelvin.",
+    "tags": [
+      "converter",
+      "temperature",
+      "pure-function",
+      "math"
+    ],
+    "code": "function cToF(c) { return c * 9 / 5 + 32; }\nfunction fToC(f) { return (f - 32) * 5 / 9; }\nfunction cToK(c) { return c + 273.15; }\nfunction kToC(k) { return k - 273.15; }\nfunction fToK(f) { return cToK(fToC(f)); }\nfunction kToF(k) { return cToF(kToC(k)); }\nmodule.exports = { cToF, fToC, cToK, kToC, fToK, kToF };\n"
+  },
+  {
+    "title": "Two-file URL shortener (in-memory store)",
+    "nodeType": "server",
+    "language": "javascript",
+    "description": "POST /shorten and GET /:code with in-memory mapping.",
+    "tags": [
+      "url",
+      "server",
+      "shorten",
+      "route",
+      "node"
+    ],
+    "code": "const http = require('http');\nconst store = new Map();\nlet seq = 1;\nconst server = http.createServer((req, res) => {\n  if (req.url === '/shorten' && req.method === 'POST') {\n    let b = '';\n    req.on('data', (c) => (b += c));\n    req.on('end', () => {\n      const u = new URL(b, 'http://x');\n      const code = (seq++).toString(36);\n      store.set(code, u.href);\n      res.writeHead(201).end(code);\n    });\n    return;\n  }\n  const code = (req.url || '').replace(/^\\//, '');\n  const target = store.get(code);\n  if (target) { res.writeHead(302, { Location: target }).end(); return; }\n  res.writeHead(404).end('missing');\n});\nserver.listen(8080);\n"
+  },
+  {
+    "title": "Single-file in-memory key-value cache (expiring)",
+    "nodeType": "logic",
+    "language": "javascript",
+    "description": "A cache with TTL eviction, dependency-free.",
+    "tags": [
+      "cache",
+      "ttl",
+      "data-structure",
+      "performance"
+    ],
+    "code": "class Cache {\n  constructor(ttlMs = 60000) { this.ttl = ttlMs; this.map = new Map(); }\n  set(k, v) { this.map.set(k, { v, at: Date.now() }); }\n  get(k) {\n    const e = this.map.get(k);\n    if (!e) return undefined;\n    if (Date.now() - e.at > this.ttl) { this.map.delete(k); return undefined; }\n    return e.v;\n  }\n  get size() { return this.map.size; }\n}\nmodule.exports = { Cache };\n"
+  },
+  {
+    "title": "Single-file debounce throttle utilities",
+    "nodeType": "logic",
+    "language": "javascript",
+    "description": "Debounce and throttle higher-order functions.",
+    "tags": [
+      "debounce",
+      "throttle",
+      "utility",
+      "events"
+    ],
+    "code": "function debounce(fn, ms = 200) {\n  let t;\n  return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };\n}\nfunction throttle(fn, ms = 200) {\n  let last = 0;\n  return (...a) => {\n    const now = Date.now();\n    if (now - last >= ms) { last = now; fn(...a); }\n  };\n}\nmodule.exports = { debounce, throttle };\n"
+  },
+  {
+    "title": "Single-file CSV to JSON parser",
+    "nodeType": "logic",
+    "language": "javascript",
+    "description": "Parse CSV text into an array of objects using the first row as headers.",
+    "tags": [
+      "csv",
+      "parser",
+      "data",
+      "converter"
+    ],
+    "code": "function csvToJson(csv) {\n  const [headerLine, ...rows] = csv.split(/\\r?\\n/).filter((l) => l.trim());\n  const headers = headerLine.split(',').map((h) => h.trim());\n  return rows.map((line) => {\n    const cells = line.split(',').map((c) => c.trim());\n    const row = {};\n    headers.forEach((h, i) => { row[h] = cells[i] !== undefined ? cells[i] : ''; });\n    return row;\n  });\n}\nmodule.exports = { csvToJson };\n"
+  },
+  {
+    "title": "Single-file event emitter",
+    "nodeType": "logic",
+    "language": "javascript",
+    "description": "A tiny typed event emitter with on/off/emit.",
+    "tags": [
+      "events",
+      "emitter",
+      "utility",
+      "observer"
+    ],
+    "code": "class Emitter {\n  constructor() { this.handlers = new Map(); }\n  on(e, fn) { if (!this.handlers.has(e)) this.handlers.set(e, []); this.handlers.get(e).push(fn); return this; }\n  off(e, fn) { const h = this.handlers.get(e); if (h) this.handlers.set(e, h.filter((f) => f !== fn)); return this; }\n  emit(e, payload) { (this.handlers.get(e) || []).slice().forEach((fn) => fn(payload)); return this; }\n}\nmodule.exports = { Emitter };\n"
+  },
+  {
+    "title": "Single-file roman numeral converter",
+    "nodeType": "logic",
+    "language": "javascript",
+    "description": "Convert between integers and roman numerals.",
+    "tags": [
+      "converter",
+      "roman-numerals",
+      "math",
+      "pure-function"
+    ],
+    "code": "const VALS = [[1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'], [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'], [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']];\nfunction toRoman(n) {\n  if (n <= 0 || n >= 4000) return '';\n  let out = '';\n  for (const [v, s] of VALS) { while (n >= v) { out += s; n -= v; } }\n  return out;\n}\nfunction fromRoman(s) {\n  let out = 0;\n  for (const [v, r] of VALS) {\n    while (s.startsWith(r)) { out += v; s = s.slice(r.length); }\n  }\n  return out || NaN;\n}\nmodule.exports = { toRoman, fromRoman };\n"
+  },
+  {
+    "title": "Single-file fizzbuzz with custom map",
+    "nodeType": "logic",
+    "language": "javascript",
+    "description": "Configurable FizzBuzz rules generator returning an array.",
+    "tags": [
+      "fizzbuzz",
+      "loop",
+      "pure-function",
+      "logic"
+    ],
+    "code": "function fizzBuzz(n, rules = { 3: 'Fizz', 5: 'Buzz' }) {\n  const out = [];\n  for (let i = 1; i <= n; i++) {\n    let s = '';\n    for (const [k, word] of Object.entries(rules)) if (i % Number(k) === 0) s += word;\n    out.push(s || String(i));\n  }\n  return out;\n}\nmodule.exports = { fizzBuzz };\n"
+  },
+  {
+    "title": "Single-file JSON query filter",
+    "nodeType": "logic",
+    "language": "javascript",
+    "description": "Filter an array of objects by a predicate string key/value.",
+    "tags": [
+      "filter",
+      "json",
+      "query",
+      "data"
+    ],
+    "code": "function filterByKey(arr, key, val){return arr.filter(o => o[key] === val);}\nfunction filterByPredicate(arr, fn){return arr.filter(fn);}\nmodule.exports={filterByKey,filterByPredicate};\n"
+  },
+  {
+    "title": "Single-file slugify utility",
+    "nodeType": "logic",
+    "language": "javascript",
+    "description": "Turn a string into a URL-friendly slug.",
+    "tags": [
+      "slug",
+      "url",
+      "string",
+      "utility"
+    ],
+    "code": "function slugify(s){return s.toLowerCase().trim().replace(/[^a-z0-9\\s-]/g,'').replace(/[\\s_]+/g,'-').replace(/-+/g,'-');}\nmodule.exports={slugify};\n"
+  },
+  {
+    "title": "Single-file deep clone (structuredClone fallback)",
+    "nodeType": "logic",
+    "language": "javascript",
+    "description": "Deep-copy nested objects with structuredClone or JSON walk",
+    "tags": [
+      "clone",
+      "copy",
+      "utility",
+      "object"
+    ],
+    "code": "function deepClone(o){if(typeof structuredClone!=='undefined')return structuredClone(o);return JSON.parse(JSON.stringify(o));}\nmodule.exports={deepClone};\n"
+  },
+  {
+    "title": "Single-file sleep and retry helpers",
+    "nodeType": "logic",
+    "language": "javascript",
+    "description": "sleep() and retry() with exponential backoff",
+    "tags": [
+      "sleep",
+      "retry",
+      "async",
+      "utility"
+    ],
+    "code": "const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));\nasync function retry(fn,{tries=3,base=100}={}){let i=0;while(true){try{return await fn();}catch(e){i++;if(i>=tries)throw e;await sleep(base*Math.pow(2,i-1));}}}\nmodule.exports={sleep,retry};\n"
+  },
+  {
+    "title": "Single-file string truncation helpers",
+    "nodeType": "logic",
+    "language": "javascript",
+    "description": "Truncate text at word boundary with ellipsis",
+    "tags": [
+      "string",
+      "truncate",
+      "utility",
+      "text"
+    ],
+    "code": "function truncate(s,max=80){if(s.length<=max)return s;let cut=s.slice(0,max);const i=cut.lastIndexOf(' ');return (i>0?cut.slice(0,i):cut)+'\u2026';}\nmodule.exports={truncate};\n"
+  },
+  {
+    "title": "Single-file array groupBy helper",
+    "nodeType": "logic",
+    "language": "javascript",
+    "description": "Group array items by a key function",
+    "tags": [
+      "array",
+      "group",
+      "utility",
+      "data"
+    ],
+    "code": "function groupBy(arr,keyFn){const m=new Map();for(const it of arr){const k=keyFn(it);if(!m.has(k))m.set(k,[]);m.get(k).push(it);}return Object.fromEntries(m);}\nmodule.exports={groupBy};\n"
+  },
+  {
+    "title": "Single-file unique dedupe helper",
+    "nodeType": "logic",
+    "language": "javascript",
+    "description": "Deduplicate an array by a key function",
+    "tags": [
+      "array",
+      "dedupe",
+      "unique",
+      "utility"
+    ],
+    "code": "function uniqBy(arr,keyFn){const seen=new Set();return arr.filter(it=>{const k=keyFn(it);if(seen.has(k))return false;seen.add(k);return true;});}\nmodule.exports={uniqBy};\n"
+  },
+  {
+    "title": "Single-file hex/rgb color converter",
+    "nodeType": "logic",
+    "language": "javascript",
+    "description": "Convert hex color strings to rgb components and back",
+    "tags": [
+      "color",
+      "converter",
+      "hex",
+      "rgb"
+    ],
+    "code": "function hexToRgb(h){const s=h.replace('#','');if(s.length===3)return {r:parseInt(s[0]+s[0],16),g:parseInt(s[1]+s[1],16),b:parseInt(s[2]+s[2],16)};return {r:parseInt(s.slice(0,2),16),g:parseInt(s.slice(2,4),16),b:parseInt(s.slice(4,6),16)};}\nfunction rgbToHex({r,g,b}){return '#'+[r,g,b].map(x=>x.toString(16).padStart(2,'0')).join('');}\nmodule.exports={hexToRgb,rgbToHex};\n"
+  },
+  {
+    "title": "Single-file uuid-style id generator",
+    "nodeType": "logic",
+    "language": "javascript",
+    "description": "Generate a random hex id string without dependencies",
+    "tags": [
+      "id",
+      "uuid",
+      "random",
+      "utility"
+    ],
+    "code": "function genId(len=10){const c='abcdef0123456789';let s='';for(let i=0;i<len;i++)s+=c[Math.floor(Math.random()*c.length)];return s;}\nmodule.exports={genId};\n"
+  },
+  {
+    "title": "Single-file sum/avg statistics helpers",
+    "nodeType": "logic",
+    "language": "javascript",
+    "description": "Mean, median, and standard deviation over a numeric array",
+    "tags": [
+      "stats",
+      "math",
+      "mean",
+      "median"
+    ],
+    "code": "const sum=(a)=>a.reduce((s,x)=>s+x,0);\nconst mean=(a)=>a.length?sum(a)/a.length:NaN;\nconst median=(a)=>{const s=[...a].sort((x,y)=>x-y),m=Math.floor(s.length/2);return s.length%2?s[m]:(s[m-1]+s[m])/2;};\nconst std=(a)=>{const m=mean(a);return Math.sqrt(mean(a.map(x=>(x-m)**2)));};\nmodule.exports={sum,mean,median,std};\n"
+  },
+  {
+    "title": "Single-file palindrome/contains-free string checks",
+    "nodeType": "logic",
+    "language": "javascript",
+    "description": "Return booleans for string properties",
+    "tags": [
+      "string",
+      "check",
+      "pure-function",
+      "logic"
+    ],
+    "code": "function isPalindrome(s){const c=s.replace(/[^a-z0-9]/gi,'').toLowerCase();return c===c.split('').reverse().join('');}\nconst hasUpper=(s)=>/[A-Z]/.test(s);\nconst hasLower=(s)=>/[a-z]/.test(s);\nmodule.exports={isPalindrome,hasUpper,hasLower};\n"
+  },
+  {
+    "title": "Single-file number formatting helpers",
+    "nodeType": "logic",
+    "language": "javascript",
+    "description": "Format numbers as currency and with commas",
+    "tags": [
+      "number",
+      "format",
+      "currency",
+      "math"
+    ],
+    "code": "const toLocale=(n)=>Number(n||0).toLocaleString();\nconst toCurrency=(n,sym='$')=>sym+Number(n||0).toFixed(2);\nmodule.exports={toLocale,toCurrency};\n"
+  },
+  {
+    "title": "Single-file levenshtein distance",
+    "nodeType": "logic",
+    "language": "javascript",
+    "description": "Edit distance between two strings (DP)",
+    "tags": [
+      "string",
+      "distance",
+      "levenshtein",
+      "algorithm"
+    ],
+    "code": "function levenshtein(a,b){const m=a.length,n=b.length;const dp=Array.from({length:m+1},()=>new Array(n+1).fill(0));for(let i=0;i<=m;i++)dp[i][0]=i;for(let j=0;j<=n;j++)dp[0][j]=j;for(let i=1;i<=m;i++)for(let j=1;j<=n;j++)dp[i][j]=Math.min(dp[i-1][j]+1,dp[i][j-1]+1,dp[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return dp[m][n];}\nmodule.exports={levenshtein};\n"
+  },
+  {
+    "title": "Single-file binary search",
+    "nodeType": "logic",
+    "language": "javascript",
+    "description": "Standard binary search over sorted array",
+    "tags": [
+      "search",
+      "binary",
+      "algorithm",
+      "array"
+    ],
+    "code": "function binarySearch(arr,target){let lo=0,hi=arr.length-1;while(lo<=hi){const mid=(lo+hi)>>1;if(arr[mid]===target)return mid;if(arr[mid]<target)lo=mid+1;else hi=mid-1;}return -1;}\nmodule.exports={binarySearch};\n"
+  },
+  {
+    "title": "Single-file queue (FIFO via two stacks or array)",
+    "nodeType": "logic",
+    "language": "javascript",
+    "description": "A queue with enqueue/dequeue and size",
+    "tags": [
+      "queue",
+      "data-structure",
+      "fifo"
+    ],
+    "code": "class Queue{constructor(){this.items=[];}enqueue(x){this.items.push(x);}dequeue(){return this.items.shift();}get size(){return this.items.length;}}\nmodule.exports={Queue};\n"
+  },
+  {
+    "title": "Single-file stack (LIFO)",
+    "nodeType": "logic",
+    "language": "javascript",
+    "description": "A stack with push/pop/peek",
+    "tags": [
+      "stack",
+      "data-structure",
+      "lifo"
+    ],
+    "code": "class Stack{constructor(){this.items=[];}push(x){this.items.push(x);}pop(){return this.items.pop();}peek(){return this.items[this.items.length-1];}get size(){return this.items.length;}}\nmodule.exports={Stack};\n"
+  },
+  {
+    "title": "Single-file linked list",
+    "nodeType": "logic",
+    "language": "javascript",
+    "description": "Simple singly linked list with insert/remove/has",
+    "tags": [
+      "linked-list",
+      "data-structure",
+      "algorithm"
+    ],
+    "code": "class Node{constructor(v){this.value=v;this.next=null;}}\nclass LinkedList{constructor(){this.head=null;this.length=0;}add(v){const n=new Node(v);if(!this.head){this.head=n;}else{let c=this.head;while(c.next)c=c.next;c.next=n;}this.length++;}has(v){let c=this.head;while(c){if(c.value===v)return true;c=c.next;}return false;}}\nmodule.exports={LinkedList};\n"
+  },
+  {
+    "title": "Single-file anagram detector",
+    "nodeType": "logic",
+    "language": "javascript",
+    "description": "Test whether two strings are anagrams",
+    "tags": [
+      "anagram",
+      "string",
+      "logic",
+      "sort"
+    ],
+    "code": "function isAnagram(a,b){const norm=s=>s.toLowerCase().replace(/[^a-z]/g,'').split('').sort().join('');return norm(a)===norm(b)&&norm(a).length>0;}\nmodule.exports={isAnagram};\n"
+  },
+  {
+    "title": "Single-file progress bar formatter (CLI)",
+    "nodeType": "cli",
+    "language": "javascript",
+    "description": "Render a text progress bar string",
+    "tags": [
+      "cli",
+      "progress",
+      "format",
+      "text"
+    ],
+    "code": "function progressBar(percent,width=20){const done=Math.round(width*Math.min(1,percent/100));return '['+'#'.repeat(done)+'-'.repeat(width-done)+'] '+Math.round(percent)+'%';}\nmodule.exports={progressBar};\n"
+  },
+  {
+    "title": "Single-file memoize helper",
+    "nodeType": "logic",
+    "language": "javascript",
+    "description": "Cache pure function results by argument",
+    "tags": [
+      "memoize",
+      "cache",
+      "performance",
+      "utility"
+    ],
+    "code": "function memoize(fn){const cache=new Map();return function(...a){const k=JSON.stringify(a);if(cache.has(k))return cache.get(k);const r=fn.apply(this,a);cache.set(k,r);return r;};}\nmodule.exports={memoize};\n"
+  },
+  {
+    "title": "Single-file flatten nested array",
+    "nodeType": "logic",
+    "language": "javascript",
+    "description": "Flatten deep arrays recursively",
+    "tags": [
+      "array",
+      "flatten",
+      "recursion",
+      "utility"
+    ],
+    "code": "function flatten(arr){return arr.reduce((acc,v)=>acc.concat(Array.isArray(v)?flatten(v):v),[]);}\nmodule.exports={flatten};\n"
+  }
+]

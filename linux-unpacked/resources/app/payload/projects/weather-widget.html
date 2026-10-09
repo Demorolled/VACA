@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html><head><title>Weather Widget</title><style>
+body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#1a1a2e;color:#fff}
+.weather{width:320px;text-align:center}
+h1{color:#00d9ff;margin-bottom:16px}
+.search{display:flex;gap:4px;margin-bottom:16px}
+.search input{flex:1;padding:8px;background:#252542;border:1px solid #4a4a6a;color:#fff;font-size:14px}
+.search button{padding:8px 16px;background:#00d9ff;border:none;color:#0f0f1a;cursor:pointer;font-weight:600}
+.card{background:#252542;border:1px solid #4a4a6a;padding:20px}
+.city{font-size:20px;font-weight:600;margin-bottom:4px}
+.temp{font-size:48px;color:#00d9ff;font-family:monospace}
+.desc{font-size:14px;color:#aaa;margin:8px 0}
+.details{display:flex;justify-content:space-around;font-size:12px;color:#888;margin-top:12px}
+.hint{font-size:12px;color:#555;margin-top:12px}
+</style></head><body>
+<div class="weather"><h1>⎔ Weather</h1>
+<div class="search"><input id="city" placeholder="City name..." value="London"/><button onclick="fetchWeather()">Search</button></div>
+<div class="card" id="card">
+<div class="city" id="cityName">London</div>
+<div class="temp" id="temp">--°C</div>
+<div class="desc" id="desc">Loading...</div>
+<div class="details"><span>💧 <span id="humidity">--</span>%</span><span>💨 <span id="wind">--</span> km/h</span></div>
+</div>
+<div class="hint">Uses a simulated weather API</div>
+</div>
+<script>
+const weatherData={london:{temp:14,humidity:72,wind:18,desc:'Partly cloudy',icon:'⛅'},
+paris:{temp:18,humidity:65,wind:12,desc:'Sunny',icon:'☀️'},
+tokyo:{temp:22,humidity:80,wind:8,desc:'Light rain',icon:'🌦️'},
+'new york':{temp:20,humidity:60,wind:15,desc:'Clear',icon:'☀️'},
+sydney:{temp:26,humidity:55,wind:22,desc:'Sunny',icon:'☀️'},
+moscow:{temp:8,humidity:78,wind:14,desc:'Overcast',icon:'☁️'}}
+function fetchWeather(){const c=document.getElementById('city').value.trim().toLowerCase();if(!c)return
+const d=weatherData[c];if(!d){document.getElementById('cityName').textContent=document.getElementById('city').value
+document.getElementById('temp').textContent='--°C';document.getElementById('desc').textContent='City not found'
+document.getElementById('humidity').textContent='--';document.getElementById('wind').textContent='--';return}
+document.getElementById('cityName').textContent=document.getElementById('city').value
+document.getElementById('temp').textContent=d.temp+'°C';document.getElementById('desc').textContent=d.desc
+document.getElementById('humidity').textContent=d.humidity;document.getElementById('wind').textContent=d.wind}
+fetchWeather()
+</script></body></html>

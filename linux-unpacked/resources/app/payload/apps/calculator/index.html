@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Calculator</title>
+  <style>
+    :root {
+      --bg: #0d1117; --surface: #161b22; --border: #30363d;
+      --text: #e6edf3; --dim: #8b949e; --accent: #58a6ff;
+      --danger: #f85149;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      background: radial-gradient(1200px 800px at 70% -10%, #1a2332 0%, var(--bg) 55%);
+      font-family: "Segoe UI", system-ui, sans-serif; color: var(--text);
+    }
+    .card {
+      width: 340px; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 18px; box-shadow: 0 18px 50px rgba(0,0,0,.45);
+    }
+    .display {
+      background: #0b0f14; border: 1px solid var(--border); border-radius: 10px;
+      padding: 14px 16px; margin-bottom: 14px; text-align: right; min-height: 84px;
+      display: flex; flex-direction: column; justify-content: flex-end;
+    }
+    #expr { font-size: 18px; color: var(--dim); word-break: break-all; min-height: 24px; }
+    #result { font-size: 30px; font-weight: 600; color: var(--text); word-break: break-all; }
+    #keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    button {
+      padding: 14px 0; font-size: 18px; border: 1px solid var(--border); border-radius: 9px;
+      background: #1c2333; color: var(--text); cursor: pointer; transition: background .12s;
+    }
+    button:hover { background: #273149; }
+    button:active { transform: translateY(1px); }
+    button.digit { background: #212a3d; }
+    button.op { color: var(--accent); }
+    button.danger { color: var(--danger); }
+    button.equals { grid-column: span 2; background: #1f6feb; border-color: #1f6feb; color: #fff; }
+    button.equals:hover { background: #388bfd; }
+    .hint { margin-top: 12px; text-align: center; font-size: 12px; color: var(--dim); }
+    kbd { background: #212a3d; border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; font-size: 11px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="display">
+      <div id="expr">0</div>
+      <div id="result">&nbsp;</div>
+    </div>
+    <div id="keys"></div>
+    <div class="hint">Keyboard: digits, <kbd>+</kbd> <kbd>-</kbd> <kbd>*</kbd> <kbd>/</kbd> <kbd>%</kbd>, <kbd>Enter</kbd> =, <kbd>Esc</kbd> clear</div>
+  </div>
+  <script src="calculator.js"></script>
+</body>
+</html>

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Truth Table Generator</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#ccc;min-height:100vh;padding:20px;display:flex;justify-content:center}
+.container{max-width:800px;width:100%}
+h1{color:#00d9ff;font-size:1.1rem;text-align:center;margin-bottom:4px}p.sub{color:#555;font-size:0.65rem;text-align:center;margin-bottom:14px}
+.controls{display:flex;gap:6px;justify-content:center;margin-bottom:12px;flex-wrap:wrap}
+.controls button{padding:6px 14px;border:1px solid rgba(255,255,255,0.06);border-radius:4px;background:transparent;color:#888;cursor:pointer;font-size:0.6rem;font-family:inherit;transition:0.1s}
+.controls button:hover{border-color:#00d9ff;color:#ccc}.controls button.primary{background:rgba(0,217,255,0.1);border-color:rgba(0,217,255,0.25);color:#00d9ff}
+.expression-bar{display:flex;gap:6px;margin-bottom:12px;align-items:center}
+.expression-bar input{flex:1;padding:8px 12px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.06);border-radius:6px;color:#ccc;font-family:'Consolas',monospace;font-size:0.75rem;outline:none}
+.expression-bar input:focus{border-color:#00d9ff}
+.expression-bar .vars{font-size:0.6rem;color:#555}
+.presets{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap;justify-content:center}
+.presets button{padding:4px 10px;border:1px solid rgba(255,255,255,0.06);border-radius:3px;background:transparent;color:#888;cursor:pointer;font-size:0.5rem;font-family:inherit;transition:0.1s}
+.presets button:hover{border-color:#00d9ff;color:#ccc}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:0.7rem}
+th{padding:6px 10px;border:1px solid rgba(255,255,255,0.06);color:#555;font-weight:400;background:#0e0e1a;text-align:center}
+td{padding:6px 10px;border:1px solid rgba(255,255,255,0.03);text-align:center;color:#aaa;font-family:'Consolas',monospace}
+td.high{color:#4ade80;font-weight:600;background:rgba(74,222,128,0.03)}
+td.low{color:#f87171}
+td.result-col{background:rgba(0,217,255,0.03);font-weight:600}
+.steps{font-size:0.55rem;color:#555;margin-top:8px;line-height:1.6}
+.error{color:#f87171;text-align:center;padding:12px}</style>
+</head>
+<body>
+<div class="container">
+  <h1>📊 Truth Table Generator</h1>
+  <p class="sub">Enter boolean expressions with AND (&amp;), OR (|), NOT (!), XOR (^), IMPLIES (→)</p>
+  <div class="expression-bar">
+    <input id="exprInput" value="(A & B) | C" placeholder="Expression (e.g., (A & B) | !C)" oninput="generate()">
+    <span class="vars" id="varDisplay">Variables: A, B, C</span>
+  </div>
+  <div class="presets">
+    <button onclick="loadPreset('A & B')">A AND B</button>
+    <button onclick="loadPreset('A | B')">A OR B</button>
+    <button onclick="loadPreset('!(A & B)')">NAND</button>
+    <button onclick="loadPreset('!(A | B)')">NOR</button>
+    <button onclick="loadPreset('A ^ B')">A XOR B</button>
+    <button onclick="loadPreset('(A & B) | (!A & !B)')">XNOR</button>
+    <button onclick="loadPreset('(A | B) & !(A & B)')">XOR (2)</button>
+    <button onclick="loadPreset('(A → B) & (B → A)')">A↔B</button>
+    <button onclick="loadPreset('(A & B) | C')">(A&amp;B)|C</button>
+  </div>
+  <div class="table-wrap" id="tableContainer"></div>
+  <div class="steps" id="stepsDisplay"></div>
+</div>
+<script>
+function parseExpression(expr){
+  // Convert word forms to symbols — NOT to JS operators
+  let s=expr
+    .replace(/\s+/g,' ').trim()
+    .replace(/AND\b/gi,' & ')
+    .replace(/OR\b/gi,' | ')
+    .replace(/NOT\b/gi,' ! ')
+    .replace(/XOR\b/gi,' ^ ')
+    .replace(/XNOR\b/gi,' ↔ ')
+    .replace(/IMPLIES\b/gi,' → ')
+    .replace(/(\w+)\s+NAND\s+(\w+)/gi,'!($1 & $2)')
+    .replace(/(\w+)\s+NOR\s+(\w+)/gi,'!($1 | $2)')
+    .replace(/\s+/g,' ').trim();
+  const vars=[...new Set(s.match(/[A-Z]/g)||[])].sort();
+  return{expr:s,vars};
+}
+
+// Safe recursive descent boolean expression parser (no eval/Function)
+function evaluate(expr,vals){
+  let pos=0;
+  function peek(){while(pos<expr.length&&expr[pos]===' ')pos++;return pos<expr.length?expr[pos]:''}
+  function eat(ch){if(peek()===ch){pos++;return true}return false}
+  
+  // Precedence (lowest to highest): ↔ → | ^ & !
+  function parseEquiv(){
+    let left=parseImplies();
+    while(peek()==='↔'){pos++;left=left===parseImplies()}
+    return left;
+  }
+  function parseImplies(){
+    let left=parseOr();
+    if(peek()==='→'){pos++;const right=parseImplies();left=!left||right}
+    return left;
+  }
+  function parseOr(){
+    let left=parseXor();
+    while(peek()==='|'){pos++;left=left||parseXor()}
+    return left;
+  }
+  function parseXor(){
+    let left=parseAnd();
+    while(peek()==='^'){pos++;left=left!==parseAnd()}
+    return left;
+  }
+  function parseAnd(){
+    let left=parseNot();
+    while(peek()==='&'){pos++;left=left&&parseNot()}
+    return left;
+  }
+  function parseNot(){
+    if(eat('!'))return !parseNot();
+    if(eat('(')){const val=parseEquiv();if(!eat(')'))return null;return val}
+    const ch=peek();
+    if(ch>='A'&&ch<='Z'){pos++;return!!vals[ch]}
+    if(ch==='0'){pos++;return false}
+    if(ch==='1'){pos++;return true}
+    return null;
+  }
+  
+  try{
+    const result=parseEquiv();
+    if(peek())return null;
+    return result;
+  }catch(e){return null}
+}
+
+function generate(){
+  const input=document.getElementById('exprInput').value;
+  const{expr,vars}=parseExpression(input);
+  document.getElementById('varDisplay').textContent=`Variables: ${vars.join(', ')||'none'}`;
+  
+  if(vars.length===0){document.getElementById('tableContainer').innerHTML='<div class="error">No variables found. Use A, B, C, etc.</div>';document.getElementById('stepsDisplay').textContent='';return}
+  if(vars.length>6){document.getElementById('tableContainer').innerHTML=`<div class="error">Too many variables (${vars.length}). Max 6.</div>`;return}
+  
+  const rows=1<<vars.length;
+  let html='<table><tr>';
+  vars.forEach(v=>html+=`<th>${v}</th>`);
+  html+=`<th style="background:rgba(0,217,255,0.05);color:#00d9ff">Result</th></tr>`;
+  let trueCount=0;
+  
+  for(let i=0;i<rows;i++){
+    const vals={};
+    vars.forEach((v,j)=>{vals[v]=!!((i>>(vars.length-1-j))&1)});
+    const result=evaluate(expr,vals);
+    if(result===null){html=`<div class="error">❌ Invalid expression: ${input}</div>`;break}
+    if(result)trueCount++;
+    html+='<tr>';
+    vars.forEach(v=>{html+=`<td class="${vals[v]?'high':'low'}">${vals[v]?1:0}</td>`});
+    html+=`<td class="${result?'high':'low'} result-col">${result?1:0}</td></tr>`;
+  }
+  html+='</table>';
+  document.getElementById('tableContainer').innerHTML=html;
+  document.getElementById('stepsDisplay').innerHTML=
+    `Rows: ${rows} · True: ${trueCount} · False: ${rows-trueCount} · Expression: <code>${expr}</code> · Variables: ${vars.join(', ')}`;
+  saveToStorage();
+}
+
+function loadPreset(expr){document.getElementById('exprInput').value=expr;generate()}
+
+function saveToStorage(){try{localStorage.setItem('truth_table_expr',document.getElementById('exprInput').value)}catch(e){}}
+function loadFromStorage(){try{const v=localStorage.getItem('truth_table_expr');if(v){document.getElementById('exprInput').value=v;return true}}catch(e){}return false}
+
+if(!loadFromStorage())generate();
+</script>
+</body>
+</html>

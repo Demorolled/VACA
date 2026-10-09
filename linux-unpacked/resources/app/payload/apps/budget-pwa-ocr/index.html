@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Budget PWA</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .receipt-scanner {
+            margin-bottom: 20px;
+        }
+        .category-budgets {
+            margin-bottom: 20px;
+        }
+        .sync-option {
+            margin-bottom: 20px;
+        }
+        .receipt-list {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Budget PWA</h1>
+        <div class="receipt-scanner">
+            <h2>Scan Receipt</h2>
+            <input type="file" id="receiptImage" accept="image/*">
+            <button id="scanButton">Scan</button>
+            <p id="scanResult"></p>
+        </div>
+        <div class="category-budgets">
+            <h2>Category Budgets</h2>
+            <ul id="budgetList"></ul>
+            <button id="addBudgetButton">Add Budget</button>
+        </div>
+        <div class="sync-option">
+            <h2>Sync Option</h2>
+            <label>
+                <input type="checkbox" id="syncCheckbox">
+                Sync with no server
+            </label>
+        </div>
+        <div class="receipt-list">
+            <h2>Receipt List</h2>
+            <ul id="receiptsList"></ul>
+        </div>
+    </div>
+
+    <script>
+        // JavaScript code for the Budget PWA
+        const receiptImage = document.getElementById('receiptImage');
+        const scanButton = document.getElementById('scanButton');
+        const scanResult = document.getElementById('scanResult');
+        const budgetList = document.getElementById('budgetList');
+        const addBudgetButton = document.getElementById('addBudgetButton');
+        const syncCheckbox = document.getElementById('syncCheckbox');
+        const receiptsList = document.getElementById('receiptsList');
+
+        // Sample data
+        let receipts = [];
+        let budgets = [];
+
+        // Load data from local storage
+        function loadData() {
+            receipts = JSON.parse(localStorage.getItem('receipts')) || [];
+            budgets = JSON.parse(localStorage.getItem('budgets')) || [];
+            renderReceipts();
+            renderBudgets();
+        }
+
+        // Save data to local storage
+        function saveData() {
+            localStorage.setItem('receipts', JSON.stringify(receipts));
+            localStorage.setItem('budgets', JSON.stringify(budgets));
+        }
+
+        // Render receipts list
+        function renderReceipts() {
+            receiptsList.innerHTML = '';
+            receipts.forEach((receipt, index) => {
+                const li = document.createElement('li');
+                li.textContent = `Receipt ${index + 1}: ${receipt}`;
+                receiptsList.appendChild(li);
+            });
+        }
+
+        // Render budgets list
+        function renderBudgets() {
+            budgetList.innerHTML = '';
+            budgets.forEach((budget, index) => {
+                const li = document.createElement('li');
+                li.textContent = `Category ${index + 1}: ${budget}`;
+                budgetList.appendChild(li);
+            });
+        }
+
+        // Scan receipt
+        scanButton.addEventListener('click', () => {
+            const file = receiptImage.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.src = e.target.result;
+                    img.onload = () => {
+                        // Perform OCR on the image
+                        const ocrResult = 'Sample OCR result'; // Replace with actual OCR result
+                        scanResult.textContent = `OCR Result: ${ocrResult}`;
+                        receipts.push(ocrResult);
+                        saveData();
+                        renderReceipts();
+                    };
+                };
+                reader.readAsDataURL(file);
+            } else {
+                scanResult.textContent = 'Please select an image file.';
+            }
+        });
+
+        // Add budget
+        addBudgetButton.addEventListener('click', () => {
+            const budget = prompt('Enter category and budget (e.g., Food: $50):');
+            if (budget) {
+                budgets.push(budget);
+                saveData();
+                renderBudgets();
+            }
+        });
+
+        // Load data on page load
+        window.addEventListener('load', loadData);
+    </script>
+</body>
+</html>

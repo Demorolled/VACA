@@ -1,0 +1,131 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Card Builder</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0a14;color:#ccc;min-height:100vh;padding:12px;display:flex;justify-content:center}.container{max-width:960px;width:100%}h1{color:#00d9ff;font-size:1rem;margin-bottom:2px;text-align:center}p.sub{color:#555;font-size:0.6rem;margin-bottom:8px;text-align:center}.flex{display:flex;gap:10px}.sidebar{width:240px;flex-shrink:0}.preview-area{flex:1}.panel{background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:8px;margin-bottom:6px}.panel-title{color:#888;font-size:0.5rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px}.prop-row{display:flex;align-items:center;gap:6px;margin:3px 0;flex-wrap:wrap}.prop-row label{font-size:0.45rem;color:#555;min-width:60px}.prop-row input[type=color]{width:28px;height:22px;border:none;border-radius:3px;cursor:pointer;padding:0;background:none}.prop-row input[type=color]::-webkit-color-swatch{border:1px solid rgba(255,255,255,0.1);border-radius:3px}.prop-row input[type=number]{width:46px;padding:3px 4px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem;text-align:center;font-family:inherit}.prop-row input[type=text]{flex:1;padding:3px 6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem;font-family:inherit}.prop-row textarea{flex:1;padding:3px 6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem;font-family:inherit;resize:vertical;min-height:40px}.prop-row select{flex:1;padding:3px 4px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;color:#888;font-size:0.45rem;font-family:inherit}.prop-row input[type=range]{flex:1;-webkit-appearance:none;height:3px;background:rgba(255,255,255,0.08);border-radius:2px;outline:none}.prop-row input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:#00d9ff;cursor:pointer}.btn{padding:4px 10px;border:1px solid rgba(255,255,255,0.06);border-radius:4px;background:transparent;color:#888;cursor:pointer;font-size:0.5rem;font-family:inherit;transition:0.1s}.btn:hover{border-color:#00d9ff;color:#ccc}.btn.primary{background:rgba(0,217,255,0.08);border-color:rgba(0,217,255,0.2);color:#00d9ff}.btn.accent{background:rgba(74,222,128,0.08);border-color:rgba(74,222,128,0.2);color:#4ade80}.card-preview{background:var(--card-bg,#1a1a2e);border:1px solid var(--card-border,rgba(255,255,255,0.08));border-radius:var(--card-radius,8px);padding:var(--card-padding,20px);max-width:320px;margin:8px auto;transition:all 0.2s;overflow:hidden}.card-preview h3{font-size:0.75rem;margin-bottom:6px;color:var(--card-title,#e0e0e0)}.card-preview .card-body{font-size:0.5rem;color:var(--card-text,#888);line-height:1.5;margin-bottom:10px}.card-preview .card-footer{display:flex;gap:6px;justify-content:flex-end;border-top:1px solid var(--card-border,rgba(255,255,255,0.06));padding-top:8px}.card-preview .card-img{width:100%;height:80px;border-radius:4px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;font-size:0.5rem;color:#555;overflow:hidden}.preset-btn{padding:3px 8px;border:1px solid rgba(255,255,255,0.04);border-radius:3px;background:transparent;color:#666;cursor:pointer;font-size:0.45rem;font-family:inherit;margin:1px}.preset-btn:hover{border-color:#00d9ff;color:#ccc}.css-out{font-family:'Courier New',monospace;font-size:0.45rem;color:#666;padding:6px;background:rgba(255,255,255,0.02);border-radius:4px;max-height:100px;overflow:auto;white-space:pre-wrap}</style></head><body><div class="container">
+<h1>🃏 Card Builder</h1><p class="sub">Design card UI components with live preview and CSS export</p>
+<div class="flex">
+<div class="sidebar">
+<div class="panel"><div class="panel-title">Presets</div>
+<button class="preset-btn" onclick="loadPreset('default')">Default</button>
+<button class="preset-btn" onclick="loadPreset('elevated')">Elevated</button>
+<button class="preset-btn" onclick="loadPreset('glass')">Glassmorphism</button>
+<button class="preset-btn" onclick="loadPreset('outlined')">Outlined</button>
+<button class="preset-btn" onclick="loadPreset('gradient')">Gradient</button>
+</div>
+<div class="panel"><div class="panel-title">Content</div>
+<div class="prop-row"><label>Title</label><input type="text" id="cardTitle" value="Card Title" onchange="renderCard()"></div>
+<div class="prop-row"><label style="align-self:flex-start">Body</label><textarea id="cardBody" onchange="renderCard()" rows="3">This is a sample card description. Edit the text and properties to customize your card component.</textarea></div>
+<div class="prop-row"><label>Show Image</label><input type="checkbox" id="showImage" checked onchange="renderCard()" style="accent-color:#00d9ff"></div>
+</div>
+<div class="panel"><div class="panel-title">Layout</div>
+<div class="prop-row"><label>Padding</label><input type="number" id="cardPadding" value="20" onchange="renderCard()">px</div>
+<div class="prop-row"><label>Radius</label><input type="number" id="cardRadius" value="8" onchange="renderCard()">px</div>
+<div class="prop-row"><label>Width</label><input type="text" id="cardWidth" value="320px" onchange="renderCard()" style="flex:1"></div>
+</div>
+<div class="panel"><div class="panel-title">Style</div>
+<div class="prop-row"><label>Background</label><input type="color" id="cardBg" value="#1a1a2e" onchange="renderCard()"></div>
+<div class="prop-row"><label>Border Color</label><input type="color" id="cardBorder" value="rgba(255,255,255,0.08)" onchange="renderCard()"></div>
+<div class="prop-row"><label>Title Color</label><input type="color" id="cardTitleColor" value="#e0e0e0" onchange="renderCard()"></div>
+<div class="prop-row"><label>Text Color</label><input type="color" id="cardTextColor" value="#888" onchange="renderCard()"></div>
+<div class="prop-row"><label>Shadow</label><input type="range" id="cardShadow" min="0" max="30" value="10" oninput="renderCard()"><span id="shadowVal" style="font-size:0.45rem;color:#555;min-width:18px">10</span></div>
+</div>
+<div class="panel"><div class="panel-title">Actions</div>
+<button class="btn primary" onclick="copyCSS()" style="width:100%;margin-bottom:2px">📋 Copy CSS</button>
+<button class="btn" onclick="copyHTML()" style="width:100%">📋 Copy HTML</button>
+</div>
+</div>
+<div class="preview-area">
+<div class="panel"><div class="panel-title">Preview</div>
+<div class="card-preview" id="cardPreview">
+<div id="cardImgSlot" class="card-img" style="background:linear-gradient(135deg,rgba(0,217,255,0.1),rgba(0,217,255,0.02))">🎴 Image Placeholder</div>
+<h3 id="previewTitle">Card Title</h3>
+<div class="card-body" id="previewBody">This is a sample card description.</div>
+<div class="card-footer"><button class="btn primary" style="font-size:0.5rem">Action</button><button class="btn" style="font-size:0.5rem">Cancel</button></div>
+</div>
+</div>
+<div class="panel"><div class="panel-title">Generated CSS</div>
+<pre class="css-out" id="cssOutput">/* Card CSS */</pre>
+</div>
+<div class="panel"><div class="panel-title">Variations</div>
+<div style="display:flex;gap:6px;padding:4px 0">${[1.5,2,2.5,3].map(i=>`<div style="flex:1;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:4px;padding:6px;text-align:center;font-size:0.4rem;color:#555"><div style="font-size:0.6rem;margin-bottom:2px;color:#888">✕${i}</div>Scale</div>`).join('')}</div>
+</div>
+</div></div></div>
+<script>
+function renderCard(){
+  const preview=document.getElementById('cardPreview');
+  const bg=document.getElementById('cardBg').value;
+  const border=document.getElementById('cardBorder').value;
+  const radius=parseInt(document.getElementById('cardRadius').value);
+  const padding=parseInt(document.getElementById('cardPadding').value);
+  const shadow=parseInt(document.getElementById('cardShadow').value);
+  const width=document.getElementById('cardWidth').value;
+  const title=document.getElementById('cardTitle').value;
+  const body=document.getElementById('cardBody').value;
+  const titleColor=document.getElementById('cardTitleColor').value;
+  const textColor=document.getElementById('cardTextColor').value;
+  const showImg=document.getElementById('showImage').checked;
+
+  document.getElementById('cardImgSlot').style.display=showImg?'flex':'none';
+  document.getElementById('previewTitle').textContent=title;
+  document.getElementById('previewTitle').style.color=titleColor;
+  document.getElementById('previewBody').textContent=body;
+  document.getElementById('previewBody').style.color=textColor;
+  document.getElementById('shadowVal').textContent=shadow;
+
+  preview.style.setProperty('--card-bg',bg);
+  preview.style.setProperty('--card-border',border);
+  preview.style.setProperty('--card-radius',radius+'px');
+  preview.style.setProperty('--card-padding',padding+'px');
+  preview.style.setProperty('--card-title',titleColor);
+  preview.style.setProperty('--card-text',textColor);
+  preview.style.width=width;
+  preview.style.boxShadow=`0 ${Math.round(shadow*0.4)}px ${shadow}px rgba(0,0,0,${(shadow*0.04).toFixed(2)})`;
+  preview.style.borderColor=border;
+  updateCSS();
+  saveToStorage();
+}
+
+function updateCSS(){
+  const bg=document.getElementById('cardBg').value;
+  const border=document.getElementById('cardBorder').value;
+  const radius=document.getElementById('cardRadius').value;
+  const padding=document.getElementById('cardPadding').value;
+  const shadow=parseInt(document.getElementById('cardShadow').value);
+  const titleColor=document.getElementById('cardTitleColor').value;
+  const textColor=document.getElementById('cardTextColor').value;
+  document.getElementById('cssOutput').textContent=
+`.card {\n  background: ${bg};\n  border: 1px solid ${border};\n  border-radius: ${radius}px;\n  padding: ${padding}px;\n  box-shadow: 0 ${Math.round(shadow*0.4)}px ${shadow}px rgba(0,0,0,${(shadow*0.04).toFixed(2)});\n  transition: all 0.2s ease;\n}\n\n.card:hover {\n  box-shadow: 0 ${Math.round(shadow*0.6)}px ${Math.round(shadow*1.5)}px rgba(0,0,0,${(shadow*0.06).toFixed(2)});\n  transform: translateY(-2px);\n}\n\n.card-title {\n  font-size: 1.125rem;\n  font-weight: 600;\n  color: ${titleColor};\n  margin-bottom: 8px;\n}\n\n.card-text {\n  font-size: 0.875rem;\n  color: ${textColor};\n  line-height: 1.6;\n}`;
+}
+
+function copyCSS(){navigator.clipboard.writeText(document.getElementById('cssOutput').textContent).then(()=>showToast('CSS copied!'))}
+function copyHTML(){const html=document.getElementById('cardPreview').outerHTML;navigator.clipboard.writeText(html).then(()=>showToast('HTML copied!'))}
+function showToast(m){const t=document.createElement('div');t.textContent=m;Object.assign(t.style,{position:'fixed',bottom:20,left:'50%',transform:'translateX(-50%)',background:'rgba(0,217,255,0.15)',color:'#00d9ff',padding:'6px 16px',borderRadius:'4px',fontSize:'0.55rem',zIndex:999,transition:'opacity 0.2s',border:'1px solid rgba(0,217,255,0.2)'});document.body.appendChild(t);setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),300)},2000)}
+
+function loadPreset(name){
+  const presets={
+    default:{bg:'#1a1a2e',border:'rgba(255,255,255,0.08)',radius:8,padding:20,shadow:10,titleColor:'#e0e0e0',textColor:'#888'},
+    elevated:{bg:'#1e1e32',border:'rgba(255,255,255,0.03)',radius:12,padding:24,shadow:24,titleColor:'#fff',textColor:'#aaa'},
+    glass:{bg:'rgba(255,255,255,0.04)',border:'rgba(255,255,255,0.08)',radius:16,padding:24,shadow:8,titleColor:'#fff',textColor:'#999'},
+    outlined:{bg:'transparent',border:'rgba(0,217,255,0.3)',radius:8,padding:20,shadow:0,titleColor:'#00d9ff',textColor:'#888'},
+    gradient:{bg:'linear-gradient(135deg,rgba(0,217,255,0.08),rgba(192,132,252,0.08))',border:'rgba(255,255,255,0.04)',radius:10,padding:22,shadow:12,titleColor:'#fff',textColor:'#999'}
+  };
+  const p=presets[name];if(!p)return;
+  document.getElementById('cardBg').value=p.bg;
+  document.getElementById('cardBorder').value=p.border;
+  document.getElementById('cardRadius').value=p.radius;
+  document.getElementById('cardPadding').value=p.padding;
+  document.getElementById('cardShadow').value=p.shadow;
+  document.getElementById('cardTitleColor').value=p.titleColor;
+  document.getElementById('cardTextColor').value=p.textColor;
+  renderCard();
+  saveToStorage();
+}
+
+function saveToStorage(){try{localStorage.setItem('cardbuilder_data',JSON.stringify({
+  bg:document.getElementById('cardBg').value,border:document.getElementById('cardBorder').value,
+  radius:document.getElementById('cardRadius').value,padding:document.getElementById('cardPadding').value,
+  shadow:document.getElementById('cardShadow').value,titleColor:document.getElementById('cardTitleColor').value,
+  textColor:document.getElementById('cardTextColor').value,title:document.getElementById('cardTitle').value,
+  body:document.getElementById('cardBody').value,width:document.getElementById('cardWidth').value,
+  showImage:document.getElementById('showImage').checked
+}))}catch(e){}}
+function loadFromStorage(){try{const d=JSON.parse(localStorage.getItem('cardbuilder_data'));if(d&&d.bg){Object.entries(d).forEach(([k,v])=>{const el=document.getElementById({'bg':'cardBg',border:'cardBorder',radius:'cardRadius',padding:'cardPadding',shadow:'cardShadow',titleColor:'cardTitleColor',textColor:'cardTextColor',title:'cardTitle',body:'cardBody',width:'cardWidth',showImage:'showImage'}[k]);if(el){if(el.type==='checkbox')el.checked=v;else el.value=v}});return true}}catch(e){}return false}
+if(!loadFromStorage())renderCard();else renderCard()
+</script></body></html>
