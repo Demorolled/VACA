@@ -260,7 +260,10 @@ if [ "$GOT_SUMS" = 1 ]; then
   step "verify checksums"
   # Verify only what we just fetched; a partial download set must not fail on
   # assets that were deliberately not requested.
-  ( cd "$OUT" && grep -E "  ($(printf '%s|' "${SELECTED[@]}" | sed 's/|$//'))\$" SHA256SUMS > .want.sums || true )
+  # (\\./)? because other tools write "<hash>  ./file" after a cd'd glob. Ours
+  # does not, but a maintainer regenerating the sums by hand should not be able
+  # to silently defeat verification.
+  ( cd "$OUT" && grep -E "  (\\./)?($(printf '%s|' "${SELECTED[@]}" | sed 's/|$//'))\$" SHA256SUMS > .want.sums || true )
   if [ -s "$OUT/.want.sums" ]; then
     if sha_check .want.sums >/dev/null 2>&1; then
       say "  ✓ all checksums match"

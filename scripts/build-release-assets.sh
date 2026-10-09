@@ -95,7 +95,11 @@ if [ "$SKIP_TARBALL" = 0 ]; then
 fi
 
 step "checksums"
-( cd "$OUT" && $(sha_tool) ./*.AppImage ./*.deb ./*.tar.gz 2>/dev/null > SHA256SUMS || true )
+# Bare filenames, no leading ./ — that is the conventional SHA256SUMS layout and
+# what fetch-release-assets.sh's lookup expects. Globs that match nothing are
+# passed through literally and error out; stderr is dropped, the matches still
+# get hashed, and a wholly empty result is caught below.
+( cd "$OUT" && $(sha_tool) *.AppImage *.deb *.tar.gz 2>/dev/null > SHA256SUMS || true )
 if [ -s "$OUT/SHA256SUMS" ]; then
   sed 's/^/  /' "$OUT/SHA256SUMS"
 else
