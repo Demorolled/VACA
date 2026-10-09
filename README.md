@@ -155,14 +155,14 @@ It is hosted on **Hugging Face**, not here — a GitHub Release caps at 2 GB per
 asset, so a 9 GB GGUF cannot be one, and shipping weights inside a git repo is
 not a thing anyone should do:
 
-**<https://huggingface.co/demorolled/veronica-r20-q4-GGUF>**
+**<https://huggingface.co/StevenWoods/veronica-r20-q4-GGUF>**
 
 That repository carries the `template` and `params` files alongside the weights,
 so Ollama can pull it directly — no download step first, and no Modelfile to
 write:
 
 ```bash
-ollama run hf.co/demorolled/veronica-r20-q4-GGUF
+ollama run hf.co/StevenWoods/veronica-r20-q4-GGUF
 ```
 
 If you would rather not use Ollama's Hugging Face integration, the scripted path

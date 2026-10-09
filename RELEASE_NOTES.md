@@ -35,10 +35,10 @@ See the README section “The model — downloaded separately”. Briefly:
 - **This build was developed against a tuned Qwen2.5-Coder-14B-Instruct-Uncensored
   Q4_K_M**, created in Ollama as `vaca-r20-q4`. It is hosted on Hugging Face, not
   attached here — see **The tuned model** in the README:
-  <https://huggingface.co/demorolled/veronica-r20-q4-GGUF>
+  <https://huggingface.co/StevenWoods/veronica-r20-q4-GGUF>
 
   ```bash
-  ollama run hf.co/demorolled/veronica-r20-q4-GGUF
+  ollama run hf.co/StevenWoods/veronica-r20-q4-GGUF
   ```
 
   That repository carries the `template` and `params` files, so the one command

@@ -28,7 +28,7 @@ uncensored Qwen2.5-Coder-14B with the VACA LoRA rounds merged in, quantised to
 ## Run it with Ollama
 
 ```bash
-ollama run hf.co/demorolled/veronica-r20-q4-GGUF
+ollama run hf.co/StevenWoods/veronica-r20-q4-GGUF
 ```
 
 That is the whole install. No account, no manual download, no Modelfile step.

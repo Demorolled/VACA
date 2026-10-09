@@ -24,17 +24,17 @@ through Ollama's Hugging Face integration.
 ```bash
 hf auth login                                  # write token, from hf.co/settings/tokens
 
-hf repo create demorolled/veronica-r20-q4-GGUF --repo-type model   # first time only
+hf repo create StevenWoods/veronica-r20-q4-GGUF --repo-type model   # first time only
 
 # the weights (~9 GB; resumable, it is an upload of an existing file)
-hf upload demorolled/veronica-r20-q4-GGUF \
+hf upload StevenWoods/veronica-r20-q4-GGUF \
   models/Qwen2.5-Coder-14B-Instruct-Uncensored.R20.Q4_K_M.gguf \
   Qwen2.5-Coder-14B-Instruct-Uncensored.R20.Q4_K_M.gguf
 
 # the three recipe files
-hf upload demorolled/veronica-r20-q4-GGUF scripts/hf-hub/template  template
-hf upload demorolled/veronica-r20-q4-GGUF scripts/hf-hub/params    params
-hf upload demorolled/veronica-r20-q4-GGUF scripts/hf-hub/README.md README.md
+hf upload StevenWoods/veronica-r20-q4-GGUF scripts/hf-hub/template  template
+hf upload StevenWoods/veronica-r20-q4-GGUF scripts/hf-hub/params    params
+hf upload StevenWoods/veronica-r20-q4-GGUF scripts/hf-hub/README.md README.md
 ```
 
 The repository must be **public**. `hf.co` pulls and the `curl` in
@@ -43,17 +43,17 @@ install path fail with a 401.
 
 The URLs are already wired up: `TUNED_GGUF_URL` in `scripts/install-model.sh`,
 the model section in `README.md`, and the link in `RELEASE_NOTES.md` all point
-at `demorolled/veronica-r20-q4-GGUF`. Nothing else needs editing — but until the
+at `StevenWoods/veronica-r20-q4-GGUF`. Nothing else needs editing — but until the
 upload actually happens, those three files point at nothing.
 
 Verify before announcing anything:
 
 ```bash
 # must be HTTP 200 with no token in the environment
-curl -sSI https://huggingface.co/demorolled/veronica-r20-q4-GGUF/resolve/main/Qwen2.5-Coder-14B-Instruct-Uncensored.R20.Q4_K_M.gguf \
+curl -sSI https://huggingface.co/StevenWoods/veronica-r20-q4-GGUF/resolve/main/Qwen2.5-Coder-14B-Instruct-Uncensored.R20.Q4_K_M.gguf \
   | head -1
 
-ollama run hf.co/demorolled/veronica-r20-q4-GGUF        # the one-command path
+ollama run hf.co/StevenWoods/veronica-r20-q4-GGUF        # the one-command path
 ./scripts/install-model.sh --tuned --dry-run            # the scripted path
 ```
 
