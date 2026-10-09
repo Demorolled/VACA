@@ -21,7 +21,8 @@ uncensored Qwen2.5-Coder-14B with the VACA LoRA rounds merged in, quantised to
 - **Base:** [`BlossomsAI/Qwen2.5-Coder-14B-Instruct-Uncensored`](https://huggingface.co/BlossomsAI/Qwen2.5-Coder-14B-Instruct-Uncensored)
   (itself a fine-tune of `Qwen/Qwen2.5-Coder-14B-Instruct`)
 - **Tuning:** VACA LoRA rounds, merged to 16-bit, then quantised to `Q4_K_M`
-- **File:** `Qwen2.5-Coder-14B-Instruct-Uncensored.R20.Q4_K_M.gguf`
+- **File:** `Qwen2.5-Coder-14B-Instruct-Uncensored.R20.Q4_K_M.gguf` —
+  8,988,110,688 bytes (8.4 GiB)
 - **App:** <https://github.com/Demorolled/VACA>
 
 ## Run it with Ollama
@@ -35,6 +36,25 @@ That is the whole install. No account, no manual download, no Modelfile step.
 ## Run it with llama.cpp, LM Studio, or anything else
 
 The repository is a plain GGUF. Download the `.gguf` and load it directly.
+
+## Verify the download
+
+8.4 GiB is worth checking before you trust it. Hugging Face computes a SHA-256
+for every large file and shows it on the file's page; it must read:
+
+```
+27b12082b0ec01e31ec0161d75131ed32278fbbda643c433ab5f12bc3dcac4fc
+```
+
+Locally:
+
+```bash
+sha256sum Qwen2.5-Coder-14B-Instruct-Uncensored.R20.Q4_K_M.gguf
+# 27b12082b0ec01e31ec0161d75131ed32278fbbda643c433ab5f12bc3dcac4fc
+```
+
+A correct file starts with the ASCII magic `GGUF` and is 8,988,110,688 bytes
+long. Anything else is a truncated or substituted download.
 
 ## The template matters — do not "fix" it
 
