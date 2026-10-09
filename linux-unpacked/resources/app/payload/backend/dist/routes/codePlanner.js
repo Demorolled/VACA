@@ -29,6 +29,7 @@ import { broadcastGenerationProgress } from '../socket/socketManager.js';
 import { isGuiRequest, ensureGuiEntryFile, ensureDeploymentArtifacts, ensureDockerfileArtifact, ensureTestFiles, ensureTestArtifact, GUI_WIDGET_SECTION, APP_QUALITY_RULES, inlineExternalScriptRefs } from '../ai/guiShared.js';
 import { languageGuidanceBlock } from '../ai/languageGuidance.js';
 import { sanitizeGoModuleName } from '../sandbox/nonTsCompileGate.js';
+import { repairAndParseJSON } from './architect.js';
 export { isGuiRequest, ensureGuiEntryFile, GUI_WIDGET_SECTION, APP_QUALITY_RULES, inlineExternalScriptRefs, stripTypeScript, stripTypeScriptKeepExports } from '../ai/guiShared.js';
 import fs from 'fs';
 import pathModule from 'path';
@@ -619,6 +620,29 @@ function normalizeContractPath(p) {
  * without a path (can't be planned/written), keeps only string exports and
  * well-formed uses. Never throws on malformed JSON shapes.
  */
+/**
+ * Is this a member name the contract can actually be verified against?
+ *
+ * The plan prompt asks for SYMBOL names, but the model sometimes emits a
+ * placeholder SENTENCE instead — measured live, a Python temperature converter
+ * was rejected with "planned export '<optional error handling functions or
+ * constants>' is not implemented in the generated code" while its code was
+ * perfectly correct. The contract gate builds a regex from the name and looks
+ * for a declaration with that literal name (see memberImplementationState), so
+ * a non-identifier can NEVER be satisfied — the build is failed by a phantom
+ * requirement. Every supported language requires identifiers, so drop such
+ * names at plan-normalization time rather than failing on them later.
+ *
+ * Dotted / `::`-qualified names (Foo.bar, Class::method) are kept: the verifier
+ * escapes and matches those literally.
+ */
+export function isValidContractMemberName(name) {
+    return /^[A-Za-z_$][A-Za-z0-9_$]*(?:(?:\.|::)[A-Za-z_$][A-Za-z0-9_$]*)*$/.test(name);
+}
+/** A module specifier a real import could name (rejects placeholder prose). */
+function isPlausibleModuleSpecifier(from) {
+    return from.length > 0 && !/[<>\s"'`|]/.test(from);
+}
 function normalizeFileContracts(files) {
     if (!Array.isArray(files))
         return [];
@@ -633,7 +657,10 @@ function normalizeFileContracts(files) {
         const summary = typeof obj.summary === 'string' ? obj.summary : '';
         const language = typeof obj.language === 'string' ? obj.language : '';
         const exportsArr = Array.isArray(obj.exports)
-            ? [...new Set(obj.exports.filter((m) => typeof m === 'string' && m.trim().length > 0).map(m => m.trim()))]
+            ? [...new Set(obj.exports
+                    .filter((m) => typeof m === 'string' && m.trim().length > 0)
+                    .map(m => m.trim())
+                    .filter(isValidContractMemberName))]
             : [];
         const usesArr = Array.isArray(obj.uses)
             ? obj.uses
@@ -641,9 +668,12 @@ function normalizeFileContracts(files) {
                 .map(u => {
                 const from = typeof u.from === 'string' ? u.from.trim() : '';
                 const members = Array.isArray(u.members)
-                    ? u.members.filter((m) => typeof m === 'string' && m.trim().length > 0).map(m => m.trim())
+                    ? [...new Set(u.members
+                            .filter((m) => typeof m === 'string' && m.trim().length > 0)
+                            .map(m => m.trim())
+                            .filter(isValidContractMemberName))]
                     : [];
-                return from && members.length ? { from, members } : null;
+                return from && isPlausibleModuleSpecifier(from) && members.length ? { from, members } : null;
             })
                 .filter((u) => u !== null)
             : [];
@@ -3293,6 +3323,13 @@ async function finalizeGeneratedFiles(request, files, contractFiles, intentSecti
         verdictMsg = `Generated ${working.length} file(s) — ${failingLangs.join('/')} compile FAILED`;
     }
     console.log(`[codePlanner] finalize: ${working.length} file(s), ${repairRounds} tsc repair round(s), ${remainingErrors} remaining tsc error(s) [gate: ${tscVerdict.status}], ${contractViolations} contract violation(s)${nonTsRounds ? `, ${nonTsRounds} non-TS repair round(s)` : ''}${failingLangs.length ? `, non-TS gate FAILED: ${failingLangs.join('/')}` : ''}${Object.keys(tscClasses).length ? ` — classes: ${JSON.stringify(tscClasses)}` : ''}`);
+    // The non-TS repair loop above is a REAL repair (it re-prompts the model with
+    // the compiler errors, up to MAX_NONTS_REPAIR_ROUNDS). Its rounds were only
+    // ever printed in the line above and then dropped from the return value, so
+    // every non-TS-only build reported `repairRounds: 0` no matter how much
+    // repair it did — which reads as "no repair was attempted" when diagnosing a
+    // failed row. Fold them in; the log line above keeps the tsc/non-TS split.
+    repairRounds += nonTsRounds;
     emitCodegenProgress({ phase: 'validating', percent: 95, message: verdictMsg });
     return { files: working, exportDir, repairRounds, tscErrors: remainingErrors, tscClasses, contractViolations, languageGates, stubFailures, tscGateRan: tscVerdict.status === 'clean' || tscVerdict.status === 'errors', compileStatus: tscVerdict.status, renderSmoke, cliSmoke };
 }
@@ -4982,6 +5019,9 @@ async function generateChunkedFiles(request, intentSection, fileList, contractsS
     const { languageGates, stubFailures } = postSmokeGate;
     const tscClasses = bucketTscClasses(finalVerdict.errors);
     console.log(`[codePlanner] chunked: ${files.length} file(s) in ${total} chunk(s), ${repairRounds} repair round(s), ${tscErrorsFinal} remaining tsc error(s) [gate: ${finalVerdict.status}]${Object.keys(tscClasses).length ? ` — classes: ${JSON.stringify(tscClasses)}` : ''}`);
+    // Count the non-TS compile-repair rounds too (same reason as the finalize
+    // path): a non-TS-only chunked build otherwise reports 0 repair rounds.
+    repairRounds += nonTsGate.rounds + postSmokeGate.rounds;
     // CONDUCTOR INTEGRATION REVIEW: after the whole build (incl. whole-project
     // repair + smoke passes), the conductor does the final look across every
     // file — cross-file wiring, contract drift, missing glue. Surfaced in the
@@ -5180,6 +5220,30 @@ export function learnFromWrite(exportDir, request, written, opts) {
 // HTTP port. Mirrors the /plan-code route: structured intent, one truncation-
 // repair retry, GUI-entry enforcement + contract normalization.
 // Returns { plan, intent } or null when the model produced no usable plan.
+/**
+ * Last-resort parse for PLAN JSON.
+ *
+ * `extractJSON` only repairs raw newlines and unbalanced/truncated structure — it
+ * is strict about single-quoted strings, unquoted keys and trailing commas, which
+ * is exactly the shape the R20 14B emits (e.g. `"uses": [{ from: 'x.py',
+ * members: ['f'] }]` followed by a trailing comma). The architect path already
+ * owns a tolerant repair for this (`repairAndParseJSON`), so reuse it here as a
+ * FALLBACK only — after `extractJSON`, before the LLM retry.
+ *
+ * Safe to apply here because the plan wrapper holds no code bodies (paths,
+ * summaries, member names, question text), so the looser rewrites cannot
+ * corrupt generated source. A parse that keeps the `files` array intact wins;
+ * anything else returns null so the caller falls through to its retry.
+ */
+function repairPlanJSON(text) {
+    if (!text)
+        return null;
+    const repaired = repairAndParseJSON(text);
+    if (repaired && typeof repaired === 'object' && Array.isArray(repaired.files)) {
+        return repaired;
+    }
+    return null;
+}
 export async function planProject(request, scale) {
     const scaleN = normalizeScale(scale);
     const preference = loadPreference().preference;
@@ -5187,10 +5251,23 @@ export async function planProject(request, scale) {
     const spec = await resolveIntent(request);
     const planPrompt = `User request: ${request}\n\n${formatIntentSection(spec)}\n\nPlan the files needed and ask any clarifying questions.`;
     const response = await translator.reason(planPrompt, planSystemPrompt, { maxTokens: 4096, timeoutMs: PLAN_TIMEOUT_MS });
-    let parsed = extractJSON(cleanLLMResponse(response));
-    if (!parsed && cleanLLMResponse(response).trim().startsWith('{')) {
-        const retry = await translator.reason(`${planPrompt}\n\nYour previous plan JSON was truncated. Return the COMPLETE plan JSON object — every field closed, valid JSON, no markdown, no commentary.`, planSystemPrompt, { maxTokens: 4096, timeoutMs: PLAN_TIMEOUT_MS });
-        parsed = extractJSON(cleanLLMResponse(retry));
+    const first = cleanLLMResponse(response);
+    let parsed = extractJSON(first) ?? repairPlanJSON(first);
+    if (!parsed) {
+        // One retry, ALWAYS — the failure has two distinct shapes and only the first
+        // used to be retried:
+        //   • JSON-shaped but malformed/truncated (the common 14B case)
+        //   • plain prose answering the question instead of the schema (vanilla
+        //     instruct models do this; the prompt's "ask any clarifying questions"
+        //     reads as an invitation to chat)
+        // Naming the actual failure in the retry is what makes the second attempt
+        // land; a prose reply told "your JSON was truncated" just tries again in prose.
+        const lookedLikeJson = first.trim().startsWith('{');
+        const retry = await translator.reason(`${planPrompt}\n\n${lookedLikeJson
+            ? 'Your previous plan JSON was malformed or truncated. Return the COMPLETE plan JSON object — every field closed, valid JSON, no markdown, no code fences, no commentary.'
+            : 'You replied with prose. Return ONLY the plan JSON object described in the system prompt — valid JSON, no markdown, no code fences, no commentary.'}`, planSystemPrompt, { maxTokens: 4096, timeoutMs: PLAN_TIMEOUT_MS });
+        const retryClean = cleanLLMResponse(retry);
+        parsed = extractJSON(retryClean) ?? repairPlanJSON(retryClean);
     }
     if (!parsed || !parsed.files || !Array.isArray(parsed.files))
         return null;
@@ -5486,8 +5563,15 @@ codePlannerRoutes.post('/interactive', async (req, res) => {
         let parsedPlan = extractJSON(planCleaned);
         // Truncation repair: re-ask once for the COMPLETE plan JSON at a larger
         // budget when the first reply was cut off mid-JSON.
-        if (!parsedPlan && planCleaned.trim().startsWith('{')) {
-            const retryRaw = await translator.reason(`${planPrompt}\n\nYour previous plan JSON was truncated before it finished. Return the COMPLETE plan JSON object — every field closed, valid JSON, no markdown, no commentary.`, planSystemPrompt, { maxTokens: 4096, timeoutMs: PLAN_TIMEOUT_MS });
+        // The guard must NOT require the reply to START with `{`: the plan prompt
+        // asks for fenced JSON, so the most common truncated shape begins with
+        // ```json — the fence made this retry unreachable. Measured live: a Go plan
+        // came back as a fenced, unterminated JSON object and the request failed
+        // with "Could not create a structured plan" without ever asking the model
+        // for a complete plan. `extractJSON` already tries a brace-balancing repair
+        // first, so reaching here means that failed too.
+        if (!parsedPlan && planCleaned.includes('{')) {
+            const retryRaw = await translator.reason(`${planPrompt}\n\nYour previous plan JSON was truncated before it finished. Return the COMPLETE plan JSON object — every field closed, valid JSON, no markdown, no commentary. Keep it SHORT: at most 6 files, and at most one short clarifying question.`, planSystemPrompt, { maxTokens: 8192, timeoutMs: PLAN_TIMEOUT_MS });
             const retryCleaned = cleanLLMResponse(retryRaw);
             const retried = extractJSON(retryCleaned);
             if (retried) {
@@ -5698,12 +5782,35 @@ export function repairLLMJson(text) {
             out += ch;
             continue;
         }
-        if (ch === '{')
+        if (ch === '{') {
             stack.push('}');
-        else if (ch === '[')
+            out += ch;
+            continue;
+        }
+        if (ch === '[') {
             stack.push(']');
-        else if ((ch === '}' || ch === ']') && stack.length && stack[stack.length - 1] === ch)
-            stack.pop();
+            out += ch;
+            continue;
+        }
+        if (ch === '}' || ch === ']') {
+            if (stack.length && stack[stack.length - 1] === ch) {
+                stack.pop();
+                out += ch;
+                continue;
+            }
+            if (stack.length) {
+                // MISMATCHED closer. The open container's type is authoritative: a model
+                // writing `"members": ["X"} }]` swapped `]` for `}` — a typo, not a
+                // different structure. Emit the closer the structure actually needs so
+                // the payload parses instead of being discarded. Measured live: a
+                // complete Go plan was rejected as "Could not create a structured plan"
+                // because of one `}` where a `]` belonged, even after the truncation
+                // retry produced a second, equally-complete reply.
+                out += stack.pop();
+                continue;
+            }
+            // Stray closer with nothing open — leave it; JSON.parse stays the arbiter.
+        }
         out += ch;
     }
     // Close an unterminated trailing string, then the unclosed structure (LIFO).

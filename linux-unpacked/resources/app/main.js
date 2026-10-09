@@ -36,7 +36,7 @@ const BACKEND_LOG = path.join(LOG_DIR, 'backend.log');
  * change to the STAGING LOGIC would never trigger a re-stage — an existing
  * runtime copy would keep whatever the old logic produced, forever.
  */
-const STAGING_VERSION = 2;
+const STAGING_VERSION = 3;
 
 const DEFAULTS = {
   mode: 'local',                              // 'local' | 'remote'
@@ -102,11 +102,37 @@ function stageRuntime() {
 
   fs.mkdirSync(RUNTIME_DIR, { recursive: true });
 
+  // `backend/users/` (per-user roadmaps, code-exports, projects) and
+  // `backend/data/` (projects.json) hold state the RUNNING backend writes, but
+  // they live under `backend/`, which is wiped and re-copied on every re-stage.
+  // A payload or staging-version bump therefore silently destroyed a user's
+  // project state on upgrade. Stash them across the copy, then merge them back.
+  const stashed = [];
+  const stashDir = path.join(RUNTIME_DIR, '.stash-preserved');
+  fs.rmSync(stashDir, { recursive: true, force: true });
+  fs.mkdirSync(stashDir, { recursive: true });
+  for (const rel of ['users', 'data']) {
+    const src = path.join(RUNTIME_DIR, 'backend', rel);
+    if (!fs.existsSync(src)) continue;
+    try {
+      fs.renameSync(src, path.join(stashDir, rel));
+      stashed.push(rel);
+    } catch { /* locked/cross-device — leave it, it is reseeded below */ }
+  }
+
   for (const rel of ['backend', 'frontend']) {
     const dst = path.join(RUNTIME_DIR, rel);
     fs.rmSync(dst, { recursive: true, force: true });
     fs.cpSync(path.join(PAYLOAD_DIR, rel), dst, { recursive: true });
   }
+
+  // Merge (not replace) so freshly-shipped seed files survive while the user's
+  // own files win on name collisions.
+  for (const rel of stashed) {
+    fs.cpSync(path.join(stashDir, rel), path.join(RUNTIME_DIR, 'backend', rel), { recursive: true });
+    log('preserved user data across re-stage ->', path.join('backend', rel));
+  }
+  fs.rmSync(stashDir, { recursive: true, force: true });
 
   for (const rel of ['node_modules']) {
     const src = path.join(PAYLOAD_DIR, rel);
@@ -396,6 +422,8 @@ function buildMenu() {
                 '',
                 `Runtime: ${RUNTIME_DIR}`,
                 `Logs: ${LOG_DIR}`,
+                '',
+                demoSummary(),
               ].join('\n'),
             });
           },
@@ -430,11 +458,52 @@ function registerIpc() {
       runtimeDir: RUNTIME_DIR,
       logDir: LOG_DIR,
       version: app.getVersion(),
+      demo: DEMO,
+      demoExpires: DEMO_EXPIRES,
+      demoDaysLeft: DEMO ? demoDaysLeft() : null,
     };
   });
   ipcMain.handle('runtime:open', () => { shell.openPath(RUNTIME_DIR); });
   ipcMain.handle('logs:open', () => { shell.openPath(LOG_DIR); });
   ipcMain.handle('app:relaunch', () => { app.relaunch(); app.exit(0); });
+}
+
+// ── demo build ──────────────────────────────────────────────────────────────
+/**
+ * This is a time-limited DEMO. It behaves exactly like a normal build until
+ * DEMO_EXPIRES (inclusive), then refuses to start.
+ *
+ * The deadline is a fixed calendar date on purpose: there is no stored start
+ * date, no activation, no server, and nothing written outside the app's own log
+ * — so a copy behaves identically wherever it is installed and whenever it is
+ * first run. The trade for that simplicity is that the check trusts the local
+ * clock: winding the machine's date back will keep the demo alive. Making that
+ * harder needs state (a stored "highest date ever seen"), which is a deliberate
+ * decision to make later, not a bug.
+ */
+const DEMO = true;
+const DEMO_EXPIRES = '2026-12-09';
+
+/**
+ * Local end-of-day on the last day the demo runs, so 2026-12-09 itself is still
+ * a working day. Parsed without a timezone suffix, which makes it local time.
+ */
+const DEMO_DEADLINE = new Date(`${DEMO_EXPIRES}T23:59:59.999`);
+
+function demoExpired(now = new Date()) {
+  return DEMO && now.getTime() > DEMO_DEADLINE.getTime();
+}
+
+/** Whole days remaining; 0 on the final day, clamped at 0 once past. */
+function demoDaysLeft(now = new Date()) {
+  const ms = DEMO_DEADLINE.getTime() - now.getTime();
+  return ms <= 0 ? 0 : Math.ceil(ms / 86400000);
+}
+
+/** One line for the status dialogs. */
+function demoSummary() {
+  if (!DEMO) return 'Licensed build';
+  return `Demo — runs until ${DEMO_EXPIRES} (${demoDaysLeft()} day(s) left)`;
 }
 
 // ── boot ────────────────────────────────────────────────────────────────────
@@ -447,8 +516,31 @@ if (!gotLock) {
   });
 
   app.whenReady().then(async () => {
+    // Before anything else: no runtime staging, no backend, no window. An
+    // expired demo does not get a working app behind the dialog.
+    if (demoExpired()) {
+      log('demo expired on', DEMO_EXPIRES, '— refusing to start');
+      dialog.showMessageBoxSync({
+        type: 'info',
+        title: 'Veronica — demo period ended',
+        message: 'This demo copy of Veronica has expired.',
+        detail: [
+          `This was a two-month demo, and it stopped running after ${DEMO_EXPIRES}.`,
+          '',
+          'Nothing was deleted. Your saved projects are still on this machine in:',
+          `  ${RUNTIME_DIR}`,
+          '',
+          'A licensed build is required to carry on using it.',
+        ].join('\n'),
+        buttons: ['Close'],
+        noLink: true,
+      });
+      app.exit(0);
+      return;
+    }
+
     const settings = readSettings();
-    log('app start', app.getVersion(), 'mode=' + settings.mode);
+    log('app start', app.getVersion(), 'mode=' + settings.mode, '|', demoSummary());
 
     try {
       stageRuntime();

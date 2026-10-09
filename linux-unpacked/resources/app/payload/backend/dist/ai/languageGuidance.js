@@ -49,11 +49,40 @@ const GUIDANCE = {
     go: {
         name: 'Go 1.21',
         lines: [
-            'Standard library ONLY — no external modules (no gin, cobra, etc.).',
-            '`package main` + `func main()`. Every file in the set shares one package (or the declared import path).',
+            'Standard library ONLY. No third-party modules and no guessed import paths: NEVER write `github.com/...`, `gopkg.in/...`, `example.com/...`, or a `yourusername` placeholder — nothing is downloadable (`go get` fails offline), so any such import makes `go build` fail.',
+            'There is NO YAML package anywhere in the Go standard library. `gopkg.in/yaml.v2`, `gopkg.in/yaml.v3`, `yaml`, `encoding/yaml`, `os/yaml` and `io/yaml` ALL do not exist — importing any of them fails with `package ... is not in std`. When YAML output is requested, WRITE a minimal YAML emitter by hand with `fmt.Fprintf`/`strings.Builder` (2-space indent, `key: value`, `- item`), or emit JSON instead.',
+            'The file that declares `func main()` MUST be `package main`, and it is the ONLY file allowed to be `package main`. Every other file in the project is a SEPARATE package named after the DIRECTORY it lives in (e.g. `conversion/converter.go` → `package conversion`). Never give a non-entry file `package main` and never give the entry file the directory name.',
+            'PREFER keeping everything in ONE `package main` spread over several files (same package, no imports between them). Only split into a sibling package when the plan explicitly asks for it.',
+            'A file the plan places at the project ROOT (e.g. `hasher.go`, `utils.go`) is part of `package main`: declare NO package of its own and NEVER import it — call its functions directly. Only a file inside a SUBDIRECTORY (e.g. `fileutil/file.go`) may have its own package, named after that subdirectory, and it is imported as `<module>/fileutil`.',
+            'If (and only if) the plan splits code into a sibling package, import it via the go.mod module path (`module <name>` is declared in your guidance) — e.g. `import "<module>/conversion"`. NEVER import a bare relative path such as `app/conversion`, `conversion`, `./conversion`, or `src/foo`: `go build` treats those as standard-library paths and fails with `package app/conversion is not in std`.',
             'Imports in parentheses: `import ("fmt"; "os"; "bufio"; "strings")`. EVERY import must be used or `go build` fails.',
-            'Input: `bufio.NewScanner(os.Stdin)`. Output: `fmt.Println` / `fmt.Printf`.',
-            'Handle errors explicitly (`if err != nil { ... }`) — no ignored returns.',
+            'Input: `bufio.NewScanner(os.Stdin)`. Output: `fmt.Println` / `fmt.Printf`. Command-line args: `os.Args` (>= 2) or the `flag` package.',
+            'Handle errors explicitly (`if err != nil { ... }`) — no ignored returns. `ioutil` is deprecated; use `os.ReadFile` / `os.WriteFile`.',
+        ],
+    },
+    swift: {
+        name: 'Swift 5 (single module, swiftc)',
+        lines: [
+            'Standard library ONLY — no SPM dependencies (no Vapor, Alamofire, swift-argument-parser). The whole set is type-checked by `swiftc` alone.',
+            'Entry point: put TOP-LEVEL statements in a file named `main.swift`. The `@main` attribute is FORBIDDEN in `main.swift` — the compiler rejects it with "\'main\' attribute cannot be used in a module that contains top-level code". Use `@main` ONLY in a file NOT named `main.swift`, and at most once in the whole set.',
+            'NEVER mix the two: if you wrote `@main`, the file must not be `main.swift` and must contain no top-level statements; if the file is `main.swift`, use plain top-level code and no `@main`.',
+            'All files in the set compile as ONE module: every type, function and global must be declared EXACTLY ONCE across all files. Do not repeat a declaration that a sibling file already makes.',
+            '`String.characters` was REMOVED from Swift — `input.characters` fails with "\'characters\' is unavailable". Iterate the String directly (`for ch in input.lowercased()`) or use `input.count` / `input.filter { ... }.count`.',
+            '`CommandLine.arguments` is `[String]`; `CommandLine.argc` is `Int32`. Convert before arithmetic/comparison (`Int(CommandLine.argc)`) — mixing `Int32` and `Int` is a compile error.',
+            'Input: `CommandLine.arguments` or `readLine()`. Output: `print(...)`.',
+            'Indent with 4 spaces; no markdown fences, no explanatory prose in the file.',
+        ],
+    },
+    kotlin: {
+        name: 'Kotlin/JVM (kotlinc)',
+        lines: [
+            'Standard library ONLY — no external dependencies (no kotlinx.*, ktor, Gradle-only artifacts). The set is compiled by `kotlinc` alone.',
+            'Entry point: `fun main(args: Array<String>)` (or `fun main()`) declared EXACTLY ONCE in the WHOLE project. A second `fun main` in another file is a compile error.',
+            'All files compile as ONE module: every top-level function, class and property is a single global. Declare each name EXACTLY ONCE across every file — re-declaring a function with the same signature (e.g. two `fun factorial(n: Int): Long`) fails with `conflicting overloads`. Put a shared helper in ONE file and CALL it from the others.',
+            'The file named `main.kt` contains ONLY `fun main(args: Array<String>)` plus the code it calls — do NOT copy a helper into `main.kt` that the plan already assigns to another file. If a helper is planned in BOTH the entry file and a sibling, implement it in the sibling and call it; a second identical definition in `main.kt` is the `conflicting overloads` error above.',
+            'Kotlin has NO `isDigitsOnly`/`isNumeric` helper: use `s.all { it.isDigit() }` or `s.matches(Regex("\\d+"))`.',
+            'Input: `args` (check `args.isNotEmpty()`) or `readln()`. Output: `println(...)`. Use `explicit` integer types — prefer `Long` for factorial/fibonacci-style accumulation and convert with `.toLong()`.',
+            'Return ONLY the raw `.kt` source: no ``` fences, no trailing "Note:"/explanation text after the code — any non-code text is a syntax error.',
         ],
     },
     java: {
@@ -146,6 +175,7 @@ const ALIASES = {
     'c#': 'csharp', cs: 'csharp', dotnet: 'csharp',
     ts: 'typescript', js: 'javascript',
     py: 'python', golang: 'go', rs: 'rust', rb: 'ruby',
+    kt: 'kotlin', kts: 'kotlin',
 };
 function resolveKey(language) {
     if (!language)

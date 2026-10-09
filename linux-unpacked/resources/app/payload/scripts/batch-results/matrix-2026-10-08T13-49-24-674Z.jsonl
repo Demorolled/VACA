@@ -1,0 +1,3 @@
+{"lang":"go","name":"file-hasher","request":"a Go CLI tool that computes the SHA-256 hash of a file","verdict":"FAIL","reason":"network: fetch failed","httpStatus":0,"ms":26}
+{"lang":"go","name":"dir-sizes","request":"a Go command-line utility that prints the size of every file in a directory","verdict":"FAIL","reason":"network: fetch failed","httpStatus":0,"ms":1}
+{"lang":"go","name":"json-to-yaml","request":"a Go CLI tool that converts a JSON file to YAML","verdict":"FAIL","reason":"network: fetch failed","httpStatus":0,"ms":1}

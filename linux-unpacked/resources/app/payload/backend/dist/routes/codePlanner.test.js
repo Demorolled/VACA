@@ -3,7 +3,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { learningEngine } from '../knowledge/learningEngine.js';
-import { isGuiRequest, ensureGuiEntryFile, GUI_WIDGET_SECTION, APP_QUALITY_RULES, inlineExternalScriptRefs, stripTypeScriptKeepExports, verifyGeneratedContracts, findMissingPlannedFiles, buildMissingImportRepairPrompt, buildRegenerateWithErrorsPrompt, runTscCheck, normalizeTscError, isSafeNonRelativeImport, stripPhantomPackageImports, tscErrorCode, isMechanicalTscClass, applyDeterministicMissingReturnFix, applyDeterministicVoidReturnFix, selectWholeProjectRepairFiles, buildWholeProjectRepairPrompt, shouldRunNextWholeProjectRound, extractExportedFunctionArity, countCallArgumentCounts, estimateFileOutputTokens, estimatePlanOutputTokens, estimateAutoChunkSize, computeRequiredImportLines, applyDeterministicImportPatch, groupGateErrorsByFile, sanitizeNonTsSource, braceBalance, findUnimplementedPlannedExports, groupStubFailuresByFile, pathFromGateFailure, applyDeterministicNameDriftFix, applyContentDrivenImportFix, applyDeterministicLocalCollisionFix, applyDeterministicSiblingPathFix, applyDeterministicMissingExportFix, normalizeImportExtensions, applyDeterministicPartialObjectFix, applyDeterministicHtmlRuntimeFixes, detectHtmlTruncation, repairLLMJson, bucketTscClasses, snapshotFirstDrafts, applyImportPatch, buildImportPatchPrompt, emitCodegenProgress, buildErrorFocusedNumberedSource, buildRenderSmokeRepairPrompt, buildTruncationCompletionPrompt, pickCliEntryFile, fixUninvokedEntryMain, addDeterministicHelpHandler, buildCliSmokeRepairPrompt, runBehavioralSmokeGates, getInternalKnowledgeBlock, buildWriteSummary, learnFromWrite } from './codePlanner.js';
+import { isGuiRequest, ensureGuiEntryFile, GUI_WIDGET_SECTION, APP_QUALITY_RULES, inlineExternalScriptRefs, stripTypeScriptKeepExports, verifyGeneratedContracts, findMissingPlannedFiles, buildMissingImportRepairPrompt, buildRegenerateWithErrorsPrompt, runTscCheck, normalizeTscError, isSafeNonRelativeImport, stripPhantomPackageImports, tscErrorCode, isMechanicalTscClass, applyDeterministicMissingReturnFix, applyDeterministicVoidReturnFix, selectWholeProjectRepairFiles, buildWholeProjectRepairPrompt, shouldRunNextWholeProjectRound, extractExportedFunctionArity, countCallArgumentCounts, estimateFileOutputTokens, estimatePlanOutputTokens, estimateAutoChunkSize, computeRequiredImportLines, applyDeterministicImportPatch, groupGateErrorsByFile, sanitizeNonTsSource, braceBalance, findUnimplementedPlannedExports, groupStubFailuresByFile, pathFromGateFailure, applyDeterministicNameDriftFix, applyContentDrivenImportFix, applyDeterministicLocalCollisionFix, applyDeterministicSiblingPathFix, applyDeterministicMissingExportFix, normalizeImportExtensions, applyDeterministicPartialObjectFix, applyDeterministicHtmlRuntimeFixes, detectHtmlTruncation, repairLLMJson, bucketTscClasses, snapshotFirstDrafts, applyImportPatch, buildImportPatchPrompt, emitCodegenProgress, buildErrorFocusedNumberedSource, buildRenderSmokeRepairPrompt, buildTruncationCompletionPrompt, pickCliEntryFile, fixUninvokedEntryMain, addDeterministicHelpHandler, buildCliSmokeRepairPrompt, runBehavioralSmokeGates, getInternalKnowledgeBlock, buildWriteSummary, learnFromWrite, isValidContractMemberName } from './codePlanner.js';
 // ═══════════════════════════════════════════════════════════════════════════
 // codePlanner — Interactive CLI Code Planning & Writing
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1143,6 +1143,20 @@ describe('repairLLMJson (raw-newline + truncation repair — the whole-project J
         const parsed = JSON.parse(out);
         expect(parsed.files['src/a.ts']).toBe('export const x = 1;');
     });
+    it('repairs a MISMATCHED closing bracket (a `}` where a `]` belongs)', () => {
+        // Measured live: a complete Go plan came back as
+        //   "uses": [{ "from": "./dirutil", "members": ["ListFilesWithSize"} }]
+        // and was rejected as "Could not create a structured plan" — the closing
+        // `}` after the member list terminates the OBJECT instead of the ARRAY, so
+        // JSON.parse throws and JSON.stringify-level repair could not help.
+        const raw = '{"files": [{"path": "main.go", "uses": [{"from": "./dirutil", "members": ["ListFilesWithSize"} }]}]}';
+        const out = repairLLMJson(raw);
+        const parsed = JSON.parse(out);
+        expect(parsed.files[0].uses[0].members).toEqual(['ListFilesWithSize']);
+    });
+    it('leaves a stray closer with nothing open for JSON.parse to judge', () => {
+        expect(repairLLMJson('{"a": 1}}')).toBe('{"a": 1}}');
+    });
     it('closes an unterminated structure with the right LIFO order (braces inside strings ignored)', () => {
         const raw = '{"files": {"src/a.ts": "export function f() {\n  return 1;\n}"';
         const out = repairLLMJson(raw);
@@ -1510,7 +1524,7 @@ function normalizeFileContracts(files) {
         const summary = typeof obj.summary === 'string' ? obj.summary : '';
         const language = typeof obj.language === 'string' ? obj.language : '';
         const exportsArr = Array.isArray(obj.exports)
-            ? [...new Set(obj.exports.filter((m) => typeof m === 'string' && m.trim().length > 0).map((m) => m.trim()))]
+            ? [...new Set(obj.exports.filter((m) => typeof m === 'string' && m.trim().length > 0).map((m) => m.trim()).filter(isValidContractMemberName))]
             : [];
         const usesArr = Array.isArray(obj.uses)
             ? obj.uses
@@ -1518,9 +1532,9 @@ function normalizeFileContracts(files) {
                 .map((u) => {
                 const from = typeof u.from === 'string' ? u.from.trim() : '';
                 const members = Array.isArray(u.members)
-                    ? u.members.filter((m) => typeof m === 'string' && m.trim().length > 0).map((m) => m.trim())
+                    ? [...new Set(u.members.filter((m) => typeof m === 'string' && m.trim().length > 0).map((m) => m.trim()).filter(isValidContractMemberName))]
                     : [];
-                return from && members.length ? { from, members } : null;
+                return from && !/[<>\s"'`|]/.test(from) && members.length ? { from, members } : null;
             })
                 .filter((u) => u !== null)
             : [];
@@ -1597,6 +1611,47 @@ function checkContractConsistency(files) {
     return violations;
 }
 describe('Phase 1 per-file contracts', () => {
+    it('drops placeholder PROSE posed as an export name', () => {
+        // Live regression: a working Python temperature converter was failed with
+        // "planned export '<optional error handling functions or constants>' is not
+        // implemented in the generated code". The gate looks for a declaration with
+        // that literal name, so a non-identifier can never be satisfied.
+        const files = normalizeFileContracts([
+            {
+                path: 'conversion_service.py',
+                summary: 'Temperature conversion',
+                language: 'python',
+                exports: ['convert_temperature', '<optional error handling functions or constants>'],
+            },
+        ]);
+        expect(files[0].exports).toEqual(['convert_temperature']);
+    });
+    it('keeps real identifiers, including dotted and ::-qualified members', () => {
+        expect(isValidContractMemberName('main')).toBe(true);
+        expect(isValidContractMemberName('$scope')).toBe(true);
+        expect(isValidContractMemberName('_private')).toBe(true);
+        expect(isValidContractMemberName('default')).toBe(true);
+        expect(isValidContractMemberName('Foo.bar')).toBe(true);
+        expect(isValidContractMemberName('Counter::increment')).toBe(true);
+        expect(isValidContractMemberName('<optional error handling>')).toBe(false);
+        expect(isValidContractMemberName('error handling functions')).toBe(false);
+        expect(isValidContractMemberName('(none)')).toBe(false);
+        expect(isValidContractMemberName('a-b')).toBe(false);
+        expect(isValidContractMemberName('')).toBe(false);
+    });
+    it('drops placeholder prose in uses members and module specifiers', () => {
+        const files = normalizeFileContracts([
+            {
+                path: 'main.py',
+                language: 'python',
+                uses: [
+                    { from: 'conversion_service', members: ['convert_temperature', '<helper>'] },
+                    { from: '<the utils module>', members: ['helper'] },
+                ],
+            },
+        ]);
+        expect(files[0].uses).toEqual([{ from: 'conversion_service', members: ['convert_temperature'] }]);
+    });
     it('normalizes exports/uses and drops pathless entries', () => {
         const files = normalizeFileContracts([
             { path: 'src/game.ts', summary: 'Engine', language: 'typescript', exports: ['ChessGame', 'Move'], uses: [] },

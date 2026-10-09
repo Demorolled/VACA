@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isStubBody } from './qualityGate.js';
+import { isStubBody, memberImplementationState } from './qualityGate.js';
 describe('isStubBody — the F5 gate: stub/TODO bodies never ship as validated', () => {
     it('rejects markdown fences smuggled into code', () => {
         expect(isStubBody('```typescript\nexport const x = 1;\n```')).toBe(true);
@@ -41,5 +41,23 @@ describe('isStubBody — the F5 gate: stub/TODO bodies never ship as validated',
         expect(isStubBody('function add(a, b) { return a + b; }')).toBe(false);
         // ...but a genuinely empty body is still a stub.
         expect(isStubBody('func main() {}')).toBe(true);
+    });
+});
+describe('memberImplementationState — object/actor/protocol declarations close an export', () => {
+    // Measured live: a generated Kotlin sort CLI shipped
+    // `object Sorter { fun sort(words: List<String>) ... }` and the contract gate
+    // rejected it with "src/sorter.kt: planned export 'Sorter' is not
+    // implemented" — the type regex knew class/interface/enum but not `object`.
+    it('accepts a Kotlin `object` as a non-callable type export', () => {
+        const code = ['object Sorter {', '    fun sort(words: List<String>): List<String> {', '        return words.sorted()', '    }', '}', ''].join('\n');
+        expect(memberImplementationState(code, 'Sorter', 'kotlin')).toBe('non-callable');
+    });
+    it('accepts Swift actor/protocol/typealias declarations', () => {
+        expect(memberImplementationState('protocol Counter { }\n', 'Counter', 'swift')).toBe('non-callable');
+        expect(memberImplementationState('actor Bank { }\n', 'Bank', 'swift')).toBe('non-callable');
+        expect(memberImplementationState('typealias Celsius = Double\n', 'Celsius', 'swift')).toBe('non-callable');
+    });
+    it('still reports a genuinely absent export', () => {
+        expect(memberImplementationState('object Other { }\n', 'Sorter', 'kotlin')).toBe('absent');
     });
 });

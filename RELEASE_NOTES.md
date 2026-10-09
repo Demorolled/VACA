@@ -3,6 +3,11 @@
 First public build of Veronica (VACA), the AI code architect: describe an app in
 plain English and it builds it.
 
+> **This is a time-limited demo.** It runs normally until **9 December 2026**,
+> then refuses to launch. The date is fixed rather than counted per machine, so
+> every copy stops on the same day. Nothing is deleted when it expires — see
+> "Demo builds" in the README for exactly what it does and does not do.
+
 ## Downloads
 
 | File | Use |

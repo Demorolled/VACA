@@ -163,7 +163,7 @@ const INDENTED_LANGS = new Set(['python', 'ruby']);
 export function indentedMemberImplementationState(content, name) {
     const lines = (content || '').split('\n');
     const esc = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const headerRe = new RegExp(`^(\\s*)(?:async\\s+)?(?:def|function)\\s+${esc}\\b`);
+    const headerRe = new RegExp(`^(\\s*)(?:async\\s+)?(?:def|function)\\s+(?:[A-Za-z_][\\w:.]*\\.)?${esc}\\b`);
     for (let i = 0; i < lines.length; i++) {
         const m = headerRe.exec(lines[i]);
         if (!m)
@@ -186,6 +186,15 @@ export function indentedMemberImplementationState(content, name) {
         const real = body.filter((b) => !b.startsWith('#') && !/^(?:pass|\.\.\.)$/.test(b));
         return real.length === 0 ? 'trivial' : 'ok';
     }
+    // A class/module declaration satisfies a planned export of the same name, the
+    // same way the brace-based path treats class/interface/struct: there is no
+    // callable body to judge. Ruby exports idiomatically as `class WordCounter` or
+    // `module TitleCaseConverter`; without this check a fully-implemented file was
+    // reported "planned export 'WordCounter' is not implemented". Measured live on
+    // a generated Ruby word-counter (class) and title-case converter (module).
+    const declRe = new RegExp(`^\\s*(?:class|module)\\s+${esc}\\b`, 'm');
+    if (declRe.test(content || ''))
+        return 'non-callable';
     return 'absent';
 }
 /**
@@ -209,8 +218,21 @@ export function memberImplementationState(content, name, language) {
             return 'trivial';
         return 'ok';
     }
-    const typeRe = new RegExp(`(?:class|interface|enum|record|struct|type|typedef|trait)\\s+${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`);
-    if (typeRe.test(content))
+    const esc = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // `object` (Kotlin), `actor`/`protocol`/`typealias` (Swift) and `object`-like
+    // declarations close a planned export too. Without them a Kotlin
+    // `object Sorter { fun sort(...) }` was reported absent — measured live on a
+    // generated sort CLI: "src/sorter.kt: planned export 'Sorter' is not
+    // implemented in the generated code" while `object Sorter` sat in the file.
+    const typeRe = new RegExp(`(?:class|interface|enum|record|struct|union|type|trait|object|actor|protocol|typealias)\\s+${esc}\\b`);
+    // C/C++ `typedef` puts the NAME LAST (`typedef long long NumberType;`), which
+    // the prefix regex above can never match — so every planned typedef was
+    // reported 'absent' and (for non-TS) rejected as unimplemented. Measured live:
+    // a generated C++ GCD app failed the stub gate on
+    // "src/types.h: planned export 'NumberType' is not implemented" while the
+    // header declared it. `[^;]*` spans the typedef body, `;` bounds it.
+    const typedefRe = new RegExp(`\\btypedef\\b[^;]*\\b${esc}\\s*;`);
+    if (typeRe.test(content) || typedefRe.test(content))
         return 'non-callable';
     return 'absent';
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseArchitectResponse, sanitizeNodes, buildFlowNodes, buildFlowEdges, enforceEdgeDensity, validateArchitectRequest, generateFallbackArchitecture, generateWebFallbackArchitecture, } from './architect.js';
+import { parseArchitectResponse, sanitizeNodes, buildFlowNodes, buildFlowEdges, enforceEdgeDensity, validateArchitectRequest, enforceRequiredTypes, generateFallbackArchitecture, generateWebFallbackArchitecture, } from './architect.js';
 import { getArchitectPrompt, ARCHITECT_SYSTEM_PROMPT } from '../ai/prompts.js';
 // ═══════════════════════════════════════════════════════════════════════════
 // 1. Prompt Building
@@ -97,6 +97,34 @@ describe('parseArchitectResponse', () => {
         expect(result).not.toBeNull();
         expect(result.nodes).toHaveLength(1);
     });
+    it('accepts nodes that name the file under `name` instead of `label`', () => {
+        // The qwen-coder family answers the architect prompt with `name`, not the
+        // documented `label` — this shape must still parse.
+        const input = JSON.stringify({
+            nodes: [
+                { name: 'src/index.ts', type: 'entry' },
+                { name: 'src/config.ts', type: 'config' },
+            ],
+            edges: [{ source: 'src/config.ts', target: 'src/index.ts' }],
+        });
+        const result = parseArchitectResponse(input);
+        expect(result).not.toBeNull();
+        expect(result.nodes).toHaveLength(2);
+    });
+    it('rejects a node array where no node carries a filename, so the retry loop fires', () => {
+        // Without a filename on ANY node, sanitizeNodes would fabricate "Node 1..N"
+        // for the whole graph (the blank-node canvas). Returning null makes the
+        // caller retry instead of silently shipping that.
+        const input = JSON.stringify({
+            nodes: [{ type: 'entry' }, { type: 'service' }],
+            edges: [],
+        });
+        expect(parseArchitectResponse(input)).toBeNull();
+    });
+    it('rejects an array of bare strings', () => {
+        const input = JSON.stringify({ nodes: ['src/index.ts', 'src/config.ts'], edges: [] });
+        expect(parseArchitectResponse(input)).toBeNull();
+    });
 });
 // ═══════════════════════════════════════════════════════════════════════════
 // 3. Node Validation & Sanitization
@@ -127,6 +155,35 @@ describe('sanitizeNodes', () => {
         ];
         const result = sanitizeNodes(input);
         expect(result[0].label).toBe('Node 1');
+    });
+    it('keeps the filename when the model returns `name` instead of `label`', () => {
+        const input = [
+            { name: 'src/index.ts', type: 'entry' },
+            { name: 'src/ui/App.tsx', type: 'ui', description: 'Renders the board' },
+        ];
+        const result = sanitizeNodes(input);
+        expect(result[0].label).toBe('src/index.ts');
+        expect(result[1].label).toBe('src/ui/App.tsx');
+        expect(result[1].description).toBe('Renders the board');
+    });
+    it('accepts file/filename/path as label aliases', () => {
+        const input = [
+            { file: 'a.ts' },
+            { filename: 'b.ts' },
+            { path: 'src/c.ts' },
+        ];
+        const result = sanitizeNodes(input);
+        expect(result.map(n => n.label)).toEqual(['a.ts', 'b.ts', 'src/c.ts']);
+    });
+    it('prefers `label` over the aliases when both are present', () => {
+        const input = [{ label: 'Real Label', name: 'src/index.ts' }];
+        expect(sanitizeNodes(input)[0].label).toBe('Real Label');
+    });
+    it('falls through a non-string or empty label to the next alias', () => {
+        expect(sanitizeNodes([{ label: 42, name: 'src/index.ts' }])[0].label).toBe('src/index.ts');
+        // An empty label is the blank-node case itself — it must not win.
+        expect(sanitizeNodes([{ label: '', name: 'src/app.ts' }])[0].label).toBe('src/app.ts');
+        expect(sanitizeNodes([{ label: '   ', path: 'src/app.ts' }])[0].label).toBe('src/app.ts');
     });
     it('truncates long labels to 60 characters', () => {
         const input = [
@@ -209,6 +266,48 @@ describe('sanitizeNodes', () => {
         result.forEach((n, i) => {
             expect(n.type).toBe(types[i]);
         });
+    });
+});
+// ═══════════════════════════════════════════════════════════════════════════
+// 3b. Required type distribution
+// ═══════════════════════════════════════════════════════════════════════════
+describe('enforceRequiredTypes', () => {
+    const threeLogicNodes = (lang) => [
+        { label: 'main', description: 'entry', type: 'logic', language: lang, position: { x: 100, y: 100 } },
+        { label: 'board', description: 'board', type: 'logic', language: lang, position: { x: 300, y: 100 } },
+        { label: 'moves', description: 'moves', type: 'logic', language: lang, position: { x: 500, y: 100 } },
+        { label: 'rules', description: 'rules', type: 'logic', language: lang, position: { x: 700, y: 100 } },
+    ];
+    it('labels inserted nodes with the plan language\'s real extension, not always .ts', () => {
+        // Regression: the old extension chain only special-cased go/csharp/swift/
+        // kotlin and fell through to '.ts', so a C++ plan got a node named "ui.ts".
+        const result = enforceRequiredTypes(threeLogicNodes('cpp'), 'simple checker game', 'cpp', false);
+        const labels = result.map((n) => n.label);
+        expect(labels).toContain('ui.cpp');
+        expect(labels).toContain('repository.cpp');
+        expect(labels).toContain('handlers.cpp');
+        expect(labels.some((l) => l.endsWith('.ts'))).toBe(false);
+    });
+    it('maps java, php, ruby, rust and python to their own extensions', () => {
+        const cases = [
+            ['java', 'ui.java'],
+            ['php', 'ui.php'],
+            ['ruby', 'ui.rb'],
+            ['rust', 'ui.rs'],
+            ['python', 'ui.py'],
+            ['go', 'ui.go'],
+        ];
+        for (const [lang, expected] of cases) {
+            const result = enforceRequiredTypes(threeLogicNodes(lang), 'a tool', lang, false);
+            expect(result.map((n) => n.label)).toContain(expected);
+        }
+    });
+    it('does not inject database/api layers for client-side apps', () => {
+        const result = enforceRequiredTypes(threeLogicNodes('typescript'), 'checker game', 'typescript', true);
+        const labels = result.map((n) => n.label);
+        expect(labels).toContain('ui.ts');
+        expect(labels).not.toContain('repository.ts');
+        expect(labels).not.toContain('handlers.ts');
     });
 });
 // ═══════════════════════════════════════════════════════════════════════════

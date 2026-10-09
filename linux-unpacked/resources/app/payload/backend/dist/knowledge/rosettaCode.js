@@ -18,7 +18,7 @@
  * one-line `print("Hello world!")` never masquerades as a "worked example".
  */
 import { isQualityCode } from './qualityGate.js';
-/** The 11 languages `nonTsCompileGate.GATE_LANGUAGES` can build. */
+/** The languages VACA seeds idioms for from Rosetta Code (a subset of `nonTsCompileGate.GATE_LANGUAGES`). */
 export const ROSETTA_TARGETS = [
     { language: 'go', headerAliases: ['go'], langAttrs: ['go'] },
     { language: 'python', headerAliases: ['python'], langAttrs: ['python', 'py', 'python3'] },

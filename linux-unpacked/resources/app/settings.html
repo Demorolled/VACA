@@ -43,11 +43,18 @@
   .ghost:hover { background: #2c2c4a; }
   #status { margin-left: auto; color: #77779a; font-size: 11px; text-align: right; }
   .warn { color: #ffcf7a; font-size: 11px; margin-top: 6px; }
+  .demo {
+    margin: -6px 0 18px; padding: 8px 11px; border-radius: 8px;
+    border: 1px solid #4a3c1e; background: #2a2313; color: #ffcf7a;
+    font-size: 11px;
+  }
+  .demo.licensed { border-color: #26402c; background: #16261a; color: #8ede9f; }
 </style>
 </head>
 <body>
   <h1>Veronica — Settings</h1>
   <p class="sub">AI Code Architect (VACA) · desktop build</p>
+  <div class="demo" id="demo" hidden></div>
 
   <fieldset>
     <legend>Backend</legend>
@@ -62,11 +69,11 @@
       <input type="radio" name="mode" id="mode-remote" value="remote" />
       <label for="mode-remote" style="margin:0">
         Remote
-        <span><small>Use a backend already running elsewhere, e.g. the agent box.</small></span>
+        <span><small>Use a backend already running elsewhere, e.g. an always-on machine.</small></span>
       </label>
     </div>
     <label for="remoteBackendUrl">Remote backend URL</label>
-    <input type="text" id="remoteBackendUrl" placeholder="http://192.168.1.234:3001" />
+    <input type="text" id="remoteBackendUrl" placeholder="http://127.0.0.1:3001" />
     <label for="port">Local backend port</label>
     <input type="number" id="port" min="1024" max="65535" />
     <div class="hint">If the port is busy, a free one is chosen automatically.</div>
@@ -86,8 +93,9 @@
     </div>
     <div class="hint">
       This build is pinned to a single model. Point the endpoint at an
-      Ollama/OpenAI-compatible server that has it, e.g. the agent box at
-      <code>http://192.168.1.234:11434/v1</code>.
+      Ollama/OpenAI-compatible server that has it, for example
+      <code>http://127.0.0.1:11434/v1</code>. A model on another machine is fine
+      too — put that machine's address here.
     </div>
     <div class="warn" id="modelWarn"></div>
   </fieldset>
@@ -120,6 +128,20 @@
     const st = await window.veronica.getStatus();
     $('status').textContent =
       `v${st.version} · backend ${st.healthy ? 'healthy' : 'down'}${st.port ? ' on :' + st.port : ''}`;
+
+    // Demo builds say so, up front. `st.demo` is undefined on a build that
+    // predates the demo gate, in which case the banner stays hidden.
+    const demo = $('demo');
+    if (st.demo) {
+      demo.hidden = false;
+      demo.textContent =
+        `Demo build — this copy runs until ${st.demoExpires} ` +
+        `(${st.demoDaysLeft} day(s) left), then it will stop launching.`;
+    } else if (st.demo === false) {
+      demo.hidden = false;
+      demo.className = 'demo licensed';
+      demo.textContent = 'Licensed build.';
+    }
 
     const model = (s.llmModel || '').toLowerCase();
     $('modelWarn').textContent = /14b/.test(model)

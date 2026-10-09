@@ -13,6 +13,11 @@ Node install required.
 > [releases page](https://github.com/demorolled/vaca/releases); the model is
 > installed separately (see below).
 
+> **⚠ This is a time-limited demo.** These builds run normally until
+> **9 December 2026**, then refuse to launch. The date is fixed, not counted per
+> machine — every copy stops on the same day however late it was installed.
+> Nothing is deleted when it expires. See [Demo builds](#demo-builds).
+
 ---
 
 ## Two things are *not* in this repo
@@ -24,6 +29,44 @@ Node install required.
 
 Everything else — the Electron main process, the backend, the frontend, the
 knowledge base, the scripts — is committed and readable.
+
+---
+
+## Demo builds
+
+Both installers (Linux and Windows) are the same demo: full functionality until
+**2026-12-09**, then a dialog and exit.
+
+The whole mechanism is 12 lines in `linux-unpacked/resources/app/main.js`:
+
+```js
+const DEMO = true;
+const DEMO_EXPIRES = '2026-12-09';
+```
+
+At startup, before any staging or backend launch, an expired copy shows
+*"This demo copy of Veronica has expired"* with the path to the user's data and
+then quits. `DEMO_EXPIRES` is the last day it runs, compared against the local
+clock, so the 9th itself still works.
+
+What it deliberately does **not** do:
+
+- **No phone-home.** Nothing contacts a licence server, and no network call is
+  made to check the date — the build works offline forever.
+- **No telemetry and no fingerprinting.** It never records who installed it,
+  where, or how often.
+- **No deletion.** Expiry removes nothing: projects, settings and logs stay put.
+- **No hidden state.** The only thing written is a line in the app's own
+  `main.log`.
+
+The trade-off, stated plainly: because there is no stored state, the check
+**trusts the machine's clock**. Winding the system date back keeps the demo
+running. A build that resists that needs to remember a "highest date ever seen"
+and is a deliberate next step, not an oversight.
+
+To build without the gate, set `DEMO = false` (the settings window then reads
+"Licensed build"), or move `DEMO_EXPIRES` forward. The Windows build is produced
+from the same source, so it carries the same constants.
 
 ---
 
@@ -285,6 +328,14 @@ reachable model. See [The model](#the-model--downloaded-separately).
   for a reader.
 - **`data/` and `projects/` are seeds, not a clean slate.** They contain the
   author's accumulated library, designs and example outputs.
+- **The payload carries some build-tool noise.** `payload/scripts/dspark.pid`
+  and `.terminal-speak-seen.json` are machine state that churns on every
+  rebuild, and `payload/scripts/batch-results/` is captured output from the
+  language-matrix harness. Harmless, but they make rebuild diffs noisier than
+  the actual code change.
+- **`payload/package-lock.json` is absent from the packaged tree**, although it
+  is present in the source payload. `electron-builder` strips it by default. The
+  app does not need it; only a manual `npm install` inside the payload would.
 - **`payload/dist` is built output**, committed because this repo is a
   distribution tree rather than the app's source repo. There is no build config
   in here — Electron + `electron-builder` ran elsewhere.

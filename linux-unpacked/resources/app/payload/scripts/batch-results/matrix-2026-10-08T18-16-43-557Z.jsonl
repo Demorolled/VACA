@@ -1,0 +1,1 @@
+{"lang":"php","name":"task-manager","request":"a multi-file PHP CLI task manager with add, list and done subcommands that reads and writes a JSON file","verdict":"FAIL","reason":"network: fetch failed","httpStatus":0,"ms":300737}
