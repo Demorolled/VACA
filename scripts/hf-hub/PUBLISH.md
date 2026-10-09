@@ -37,14 +37,29 @@ hf upload demorolled/veronica-r20-q4-GGUF scripts/hf-hub/params    params
 hf upload demorolled/veronica-r20-q4-GGUF scripts/hf-hub/README.md README.md
 ```
 
-Then set `TUNED_GGUF_URL` in `scripts/install-model.sh` and fill the same URL
-into `README.md` and `RELEASE_NOTES.md`, so `install-model.sh --tuned` works
-with no flags.
+The repository must be **public**. `hf.co` pulls and the `curl` in
+`install-model.sh` are both anonymous, so a private repo makes every documented
+install path fail with a 401.
+
+The URLs are already wired up: `TUNED_GGUF_URL` in `scripts/install-model.sh`,
+the model section in `README.md`, and the link in `RELEASE_NOTES.md` all point
+at `demorolled/veronica-r20-q4-GGUF`. Nothing else needs editing — but until the
+upload actually happens, those three files point at nothing.
 
 Verify before announcing anything:
 
 ```bash
-hf download demorolled/veronica-r20-q4-GGUF template   # reachable anonymously
+# must be HTTP 200 with no token in the environment
+curl -sSI https://huggingface.co/demorolled/veronica-r20-q4-GGUF/resolve/main/Qwen2.5-Coder-14B-Instruct-Uncensored.R20.Q4_K_M.gguf \
+  | head -1
+
 ollama run hf.co/demorolled/veronica-r20-q4-GGUF        # the one-command path
 ./scripts/install-model.sh --tuned --dry-run            # the scripted path
 ```
+
+A 401 above means private or absent — from outside, the two are indistinguishable,
+so check with `hf auth whoami` while logged in rather than guessing.
+
+The weights' SHA-256 is `27b12082b0ec01e31ec0161d75131ed32278fbbda643c433ab5f12bc3dcac4fc`
+(8,988,110,688 bytes). Confirm the uploaded file matches before publishing the
+card, or the verification instructions it gives are wrong.
