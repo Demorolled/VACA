@@ -1,13 +1,17 @@
 # Veronica — AI Code Architect (VACA)
 
+[![Release](https://img.shields.io/github/v/release/demorolled/vaca?label=release&sort=semver)](https://github.com/demorolled/vaca/releases)
+[![Platform](https://img.shields.io/badge/platform-linux--x64-blue)](#install)
+[![Electron](https://img.shields.io/badge/electron-44-47848f)](https://www.electronjs.org/)
+[![License](https://img.shields.io/badge/license-proprietary-red)](#license)
+
 Describe what you want in plain English and it builds the app. Electron desktop
 app for Linux x64 (Ubuntu/Debian), bundling its own Node backend — no system
 Node install required.
 
-> **Before you publish:** the URLs below assume the repo is
-> `demorolled/visual-ai-architect`, which is the value already baked into the
-> app's `package.json` and the `.deb` metadata. Change it in one place —
-> `scripts/repo-slug.sh` — if the real repo differs, and update the badges below.
+> **Status: 1.0.0, Linux x64 only.** Prebuilt binaries live on the
+> [releases page](https://github.com/demorolled/vaca/releases); the model is
+> installed separately (see below).
 
 ---
 
@@ -45,8 +49,8 @@ refuses to start and says so.
 ### C. Straight from a clone of this repo
 
 ```bash
-git clone https://github.com/demorolled/visual-ai-architect.git
-cd visual-ai-architect
+git clone https://github.com/demorolled/vaca.git
+cd vaca
 ./scripts/fetch-release-assets.sh   # restores the prebuilt runtime from Releases
 ./scripts/run-from-checkout.sh      # launches it
 ```
@@ -89,16 +93,26 @@ This build was developed against a **fine-tune**, not the stock model:
 > Qwen2.5-Coder-14B-Instruct-Uncensored + VACA LoRA rounds, merged, quantised to
 > Q4_K_M. ~9.0 GB. Built by `scripts/auto-deploy-r*.sh` / `quantize-r40-q4.sh`.
 
-It is not hosted by this repo, so it has to come from somewhere you control —
-Hugging Face is the normal place for a file this size (a GitHub Release caps at
-2 GB per asset, so a 9 GB GGUF will not fit there):
+It is hosted on **Hugging Face**, not here — a GitHub Release caps at 2 GB per
+asset, so a 9 GB GGUF cannot be one, and shipping weights inside a git repo is
+not a thing anyone should do:
 
 ```bash
-./scripts/install-model.sh --tuned \
-  --gguf-url https://huggingface.co/<your-org>/<your-repo>/resolve/main/Qwen2.5-Coder-14B-Instruct-Uncensored.R20.Q4_K_M.gguf
+./scripts/install-model.sh --tuned --gguf-url <the Hugging Face URL>
 ```
 
-or, if the GGUF is already on disk:
+Once the weights are published, `TUNED_GGUF_URL` near the top of
+`scripts/install-model.sh` is set to that URL and the bare form works:
+
+```bash
+./scripts/install-model.sh --tuned
+```
+
+<!-- TODO(publish): fill in the Hugging Face URL here and TUNED_GGUF_URL in
+     scripts/install-model.sh once the weights are uploaded. -->
+
+You can also point it at a copy you already have — downloaded by hand, mirrored
+internally, or rebuilt from the merged LoRA yourself:
 
 ```bash
 ./scripts/install-model.sh --tuned --gguf-path /mnt/models/vaca-r20.Q4_K_M.gguf
@@ -193,9 +207,10 @@ logs, and machine-local `*.env` files.
 | `scripts/build-release-assets.sh` | Maintainer: stages the AppImage, `.deb` and runtime tarball into `dist/`, writes `SHA256SUMS`, prints the `gh release create` line. |
 | `scripts/repo-slug.sh` | Shared helper: resolves `owner/repo` from `$VACA_REPO`, then the `origin` remote, then the default. |
 
-Every script takes `-h`. `install-model.sh`, `build-release-assets.sh` and
-`fetch-release-assets.sh` also take `--dry-run` or `--list` where that makes
-sense, so you can look before you leap.
+Every script takes `-h`. `install-model.sh` takes `--dry-run` and
+`fetch-release-assets.sh` takes `--list`, so you can look before you leap.
+`build-release-assets.sh` never uploads anything — it stages what it finds and
+prints the `gh release create` command for you to run.
 
 ---
 
@@ -265,19 +280,34 @@ reachable model. See [The model](#the-model--downloaded-separately).
 - **Unsigned build.** No code-signing certificate; some systems will warn.
 - **`payload/scripts/` still carries workstation-specific junk** — `.desktop`
   files and `dspark-target.env` referring to directories under
-  `/home/<user>/Desktop/visual-ai-architect`, which exist on exactly one
-  machine. A few hundred scripts from the training rounds are in there too.
-  Harmless at runtime, noise for a reader.
+  `/home/<user>/Desktop/…` that exist on exactly one machine. A few hundred
+  scripts from the training rounds are in there too. Harmless at runtime, noise
+  for a reader.
 - **`data/` and `projects/` are seeds, not a clean slate.** They contain the
   author's accumulated library, designs and example outputs.
 - **`payload/dist` is built output**, committed because this repo is a
   distribution tree rather than the app's source repo. There is no build config
   in here — Electron + `electron-builder` ran elsewhere.
 
+## License
+
+**Proprietary — all rights reserved.** There is deliberately no `LICENSE` file,
+and the app's `package.json` says `UNLICENSED`. Publishing the source is not a
+grant: no copying, modification, redistribution or commercial use without
+written permission. Open an issue if you want to talk about terms.
+
+This does **not** change the terms of anything bundled with it:
+
+- **Electron, Chromium and the vendored Node packages** keep their own licenses
+  (MIT and friends). Their notices ship inside the app.
+- **The model weights** are a separate download under their own terms — the
+  upstream base is `BlossomsAI/Qwen2.5-Coder-14B-Instruct-Uncensored`. Check
+  those before you ship anything the model generated.
+
 ## Metadata
 
-- `package.json` / `.deb`: `author`, `homepage` and `maintainer` are placeholders.
-- **License: `UNLICENSED`.** No license file is included, so the default
-  "all rights reserved" applies until one is added. Add a `LICENSE` before
-  inviting contributions.
+- Author: `demorolled`.
 - Built with Electron 44, packaged with electron-builder 26.
+- Canonical repo: <https://github.com/demorolled/vaca>. The release helper
+  scripts resolve it from `scripts/repo-slug.sh`, or from your `origin` remote
+  if you are working in a fork.

@@ -6,15 +6,13 @@
 #
 #   1. $VACA_REPO                      (explicit override: owner/repo)
 #   2. the origin remote's URL         (best: a clone knows where it came from)
-#   3. https://github.com/<default>    (placeholder, see below)
+#   3. $VACA_REPO_DEFAULT              (this project's canonical repo)
 #
-# The placeholder is what the packaged app metadata currently claims —
-# visual-ai-architect under demorolled. That repo does not exist yet, so treat
-# a resolution that lands there as "you still have to set this": the calling
-# script says so rather than printing URLs that 404.
+# A fork resolves to the fork, because origin wins over the default — which is
+# what you want when you are testing a release you published yourself.
 # ─────────────────────────────────────────────────────────────────────────────
 
-VACA_REPO_DEFAULT="demorolled/visual-ai-architect"
+VACA_REPO_DEFAULT="demorolled/vaca"
 
 repo_slug() {
   if [ -n "${VACA_REPO:-}" ]; then
@@ -40,7 +38,5 @@ repo_slug() {
   printf '%s' "$VACA_REPO_DEFAULT"
 }
 
-# True when the slug is still the placeholder — i.e. the release URL would 404.
-repo_slug_is_placeholder() {
-  [ "$(repo_slug)" = "$VACA_REPO_DEFAULT" ]
-}
+# Print the repo URL, for docs and error messages.
+repo_url() { printf 'https://github.com/%s' "$(repo_slug)"; }

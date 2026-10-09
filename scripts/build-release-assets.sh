@@ -130,12 +130,15 @@ done
 SLUG="$(repo_slug)"
 
 step "upload"
-if repo_slug_is_placeholder; then
-  say "  ⚠ the repo slug is still the placeholder ($SLUG) and does not exist."
-  say "    Set the real one before running this, e.g."
-  say "        VACA_REPO=you/veronica $0"
+say "  repo: $SLUG"
+if [ "$SLUG" != "$VACA_REPO_DEFAULT" ]; then
+  say "  ⚠ resolves to a repo other than $VACA_REPO_DEFAULT (origin remote?)"
+fi
+if ! command -v gh >/dev/null 2>&1; then
+  say "  ⚠ the gh CLI is not installed — install it, then 'gh auth login'"
 fi
 say ""
+
 say "    gh release create v$VERSION \\"
 for f in "$OUT"/*.AppImage "$OUT"/*.deb "$OUT"/*.tar.gz "$OUT"/SHA256SUMS; do
   [ -f "$f" ] || continue
@@ -150,6 +153,7 @@ say ""
 say "  Before tagging: upload the model separately (it is never a release asset)."
 say "  Use Hugging Face for the ~9 GB tuned GGUF and link it from the notes:"
 say "      ./scripts/install-model.sh --tuned --gguf-url <the HF URL>"
+say "  (or set TUNED_GGUF_URL in scripts/install-model.sh, once, for everyone)"
 
 if [ "$missing" -gt 0 ] || [ "$oversize" -gt 0 ]; then
   say ""

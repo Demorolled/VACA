@@ -32,7 +32,7 @@
 #
 # Options
 #   --base | --tuned     which model to install (default: base)
-#   --gguf-url URL       direct download URL for the tuned GGUF
+#   --gguf-url URL       direct download URL for the tuned GGUF (default: TUNED_GGUF_URL, if set)
 #   --gguf-path FILE     use an existing GGUF instead of downloading
 #   --name NAME          Ollama model name to create/verify (default: per mode)
 #   --endpoint URL       OpenAI-compatible base URL (default: http://127.0.0.1:11434/v1)
@@ -59,6 +59,12 @@ TUNED_MODEL="vaca-r20-q4"
 # The base the VACA rounds were trained on. Documented so the tuned weights can
 # be reproduced or re-obtained if the hosted copy disappears.
 TUNED_BASE_HF="BlossomsAI/Qwen2.5-Coder-14B-Instruct-Uncensored"
+
+# Where the tuned GGUF is hosted. This is the ONE place to change it: set it and
+# `--tuned` works with no flags for everyone, and the README and release notes
+# have a canonical URL to point at. Empty means "not published yet" — `--tuned`
+# then explains itself rather than failing mid-download on a 404.
+TUNED_GGUF_URL=""
 
 # Print every leading comment line except the shebang, so the help text cannot
 # drift out of sync with a hardcoded line range.
@@ -150,10 +156,15 @@ resolve_gguf() {
     GGUF="$(cd "$(dirname "$GGUF_PATH")" && pwd)/$(basename "$GGUF_PATH")"
     return
   fi
+  # No flag given: fall back to the project's hosted copy, if there is one.
+  if [ -z "$GGUF_URL" ]; then
+    GGUF_URL="$TUNED_GGUF_URL"
+  fi
+
   if [ -z "$GGUF_URL" ]; then
     cat >&2 <<EOF
 
-✗ --tuned needs the tuned weights, and they are not hosted by this project.
+✗ --tuned needs the tuned weights, and this project has not published them.
 
   The VACA R20 Q4_K_M GGUF is a ~9 GB fine-tune of
   $TUNED_BASE_HF
@@ -161,6 +172,9 @@ resolve_gguf() {
 
       --gguf-url  https://huggingface.co/<org>/<repo>/resolve/main/<file>.gguf
       --gguf-path /path/to/Qwen2.5-Coder-14B-Instruct-Uncensored.R20.Q4_K_M.gguf
+
+  If you host your own copy and want the bare '--tuned' to work for everyone,
+  set TUNED_GGUF_URL near the top of this script.
 
   If you only need a working model and do not need the VACA tuning, use --base:
       ./scripts/install-model.sh --base

@@ -79,22 +79,6 @@ sha_check() {
 }
 
 SLUG="$(repo_slug)"
-if repo_slug_is_placeholder; then
-  cat >&2 <<EOF
-
-✗ No GitHub repo to fetch from.
-
-  This clone has no origin remote, so there is nothing to resolve a release URL
-  from, and the fallback slug ($SLUG) is a placeholder.
-
-  Point it at the real repo, once:
-      git remote add origin https://github.com/<owner>/<repo>.git
-  or per run:
-      VACA_REPO=<owner>/<repo> $0
-
-EOF
-  exit 1
-fi
 
 have curl || die "curl not found"
 

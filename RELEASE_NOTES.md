@@ -27,8 +27,8 @@ See the README section “The model — downloaded separately”. Briefly:
 - **The app ships pinned to `qwen2.5-coder:14b`**, served over the
   OpenAI-compatible API (Ollama by default, `http://127.0.0.1:11434/v1`).
 - **This build was developed against a tuned Qwen2.5-Coder-14B-Instruct-Uncensored
-  Q4_K_M**, created in Ollama as `vaca-r20-q4`. It is hosted separately — link it
-  here before publishing this release.
+  Q4_K_M**, created in Ollama as `vaca-r20-q4`. It is hosted on Hugging Face, not
+  attached here — see **The tuned model** in the README.
 - Without a reachable model the UI loads and the app runs, but generation does
   nothing: `/health` reports `llm.up:false`.
 
@@ -51,8 +51,13 @@ See the README section “The model — downloaded separately”. Briefly:
 - `chrome-sandbox` in the tarball is not setuid, so `linux-unpacked/veronica`
   needs `--no-sandbox` (or the same fix).
 
+## License
+
+Proprietary — all rights reserved. Source is published for reference; that is
+not a license to reuse it. Electron, Chromium and the vendored packages keep
+their own licenses, and the model carries its own.
+
 ---
 
-**Before publishing this file:** replace the placeholder above with the real
-Hugging Face URL for the tuned GGUF, and confirm the checksums against the
-uploaded assets.
+<!-- TODO(publish): link the Hugging Face GGUF here, and confirm the checksums
+     against the assets you actually uploaded. -->
