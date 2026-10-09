@@ -155,19 +155,23 @@ It is hosted on **Hugging Face**, not here — a GitHub Release caps at 2 GB per
 asset, so a 9 GB GGUF cannot be one, and shipping weights inside a git repo is
 not a thing anyone should do:
 
+**<https://huggingface.co/demorolled/veronica-r20-q4-GGUF>**
+
+That repository carries the `template` and `params` files alongside the weights,
+so Ollama can pull it directly — no download step first, and no Modelfile to
+write:
+
 ```bash
-./scripts/install-model.sh --tuned --gguf-url <the Hugging Face URL>
+ollama run hf.co/demorolled/veronica-r20-q4-GGUF
 ```
 
-Once the weights are published, `TUNED_GGUF_URL` near the top of
-`scripts/install-model.sh` is set to that URL and the bare form works:
+If you would rather not use Ollama's Hugging Face integration, the scripted path
+reproduces the same model locally. `TUNED_GGUF_URL` near the top of
+`scripts/install-model.sh` already points at that file, so the bare form works:
 
 ```bash
 ./scripts/install-model.sh --tuned
 ```
-
-<!-- TODO(publish): fill in the Hugging Face URL here and TUNED_GGUF_URL in
-     scripts/install-model.sh once the weights are uploaded. -->
 
 You can also point it at a copy you already have — downloaded by hand, mirrored
 internally, or rebuilt from the merged LoRA yourself:
@@ -269,6 +273,12 @@ Every script takes `-h`. `install-model.sh` takes `--dry-run` and
 `fetch-release-assets.sh` takes `--list`, so you can look before you leap.
 `build-release-assets.sh` never uploads anything — it stages what it finds and
 prints the `gh release create` command for you to run.
+
+`scripts/hf-hub/` is not a script. It holds the files that are uploaded to the
+model's Hugging Face repository — the `template` and `params` that make
+`ollama run hf.co/…` work, and the model card — so the model's recipe is
+reviewable in the same place as the app. See
+[`scripts/hf-hub/PUBLISH.md`](scripts/hf-hub/PUBLISH.md).
 
 ---
 

@@ -64,7 +64,7 @@ TUNED_BASE_HF="BlossomsAI/Qwen2.5-Coder-14B-Instruct-Uncensored"
 # `--tuned` works with no flags for everyone, and the README and release notes
 # have a canonical URL to point at. Empty means "not published yet" — `--tuned`
 # then explains itself rather than failing mid-download on a 404.
-TUNED_GGUF_URL=""
+TUNED_GGUF_URL="https://huggingface.co/demorolled/veronica-r20-q4-GGUF/resolve/main/Qwen2.5-Coder-14B-Instruct-Uncensored.R20.Q4_K_M.gguf"
 
 # Print every leading comment line except the shebang, so the help text cannot
 # drift out of sync with a hardcoded line range.

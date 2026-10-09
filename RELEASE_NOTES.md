@@ -34,7 +34,16 @@ See the README section “The model — downloaded separately”. Briefly:
   OpenAI-compatible API (Ollama by default, `http://127.0.0.1:11434/v1`).
 - **This build was developed against a tuned Qwen2.5-Coder-14B-Instruct-Uncensored
   Q4_K_M**, created in Ollama as `vaca-r20-q4`. It is hosted on Hugging Face, not
-  attached here — see **The tuned model** in the README.
+  attached here — see **The tuned model** in the README:
+  <https://huggingface.co/demorolled/veronica-r20-q4-GGUF>
+
+  ```bash
+  ollama run hf.co/demorolled/veronica-r20-q4-GGUF
+  ```
+
+  That repository carries the `template` and `params` files, so the one command
+  above is the whole install. `./scripts/install-model.sh --tuned` does the same
+  thing through a local Modelfile.
 - Without a reachable model the UI loads and the app runs, but generation does
   nothing: `/health` reports `llm.up:false`.
 
@@ -68,5 +77,13 @@ their own licenses, and the model carries its own.
 
 ---
 
-<!-- TODO(publish): link the Hugging Face GGUF here, and confirm the checksums
-     against the assets you actually uploaded. -->
+## Verifying what you downloaded
+
+`SHA256SUMS` covers the four files above. From the directory you downloaded them
+into:
+
+```bash
+sha256sum -c SHA256SUMS
+```
+
+The model is a separate download and has its own checksum on Hugging Face.
